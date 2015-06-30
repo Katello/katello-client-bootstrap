@@ -15,11 +15,11 @@ HOSTNAME  = platform.node()
 
 parser = OptionParser()
 parser.add_option("-s", "--server", dest="sat6_fqdn", help="FQDN of Satellite - omit https://", metavar="SAT6_FQDN")
-parser.add_option("-l", "--login", dest="login", help="Login user for API Calls", metavar="LOGIN")
+parser.add_option("-l", "--login", dest="login", default='admin', help="Login user for API Calls", metavar="LOGIN")
 parser.add_option("-p", "--password", dest="password", help="Password for specified user. Will prompt if omitted", metavar="PASSWORD")
-parser.add_option("-g", "--hostgroup",  dest="hostgroup", help="Label of the Hostgroup in Satellite that the host is to be associated with", metavar="HOSTGROUP")
-parser.add_option("-L", "--location",  dest="location", help="Label of the Location in Satellite that the host is to be associated with", metavar="HOSTGROUP")
-parser.add_option("-o", "--organization",  dest="org", help="Label of the Organization in Satellite that the host is to be associated with", metavar="ORG")
+parser.add_option("-g", "--hostgroup", dest="hostgroup", help="Label of the Hostgroup in Satellite that the host is to be associated with", metavar="HOSTGROUP")
+parser.add_option("-L", "--location", dest="location", default='Default_Location', help="Label of the Location in Satellite that the host is to be associated with", metavar="HOSTGROUP")
+parser.add_option("-o", "--organization", dest="org", default='Default_Organization', help="Label of the Organization in Satellite that the host is to be associated with", metavar="ORG")
 (options, args) = parser.parse_args()
 
 if not ( options.sat6_fqdn and options.login and options.hostgroup and options.location and options.org ):
