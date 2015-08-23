@@ -111,9 +111,9 @@ def migrate_systems():
   print_generic("Second Prompt is for Satellite 6 credentials")
   subprocess.call("/usr/sbin/rhn-migrate-classic-to-rhsm")
 
-def enable_rh_common():
-  print_generic("Enabling the RH Common repositories for Puppet & Katello Agents")
-  exec_failexit("subscription-manager repos --enable=rhel-*-rh-common-rpms")
+def enable_sat_tools():
+  print_generic("Enabling the Satellite tools repositories for Puppet & Katello Agents")
+  exec_failexit("subscription-manager repos --enable=rhel-*-satellite-tools-*-rpms")
 
 def install_katello_agent():
   print_generic("Installing the Katello agent")
@@ -233,7 +233,7 @@ print "This script is designed to migrate a system to Red Hat Satellite 6"
 install_prereqs()
 get_bootstrap_rpm()
 migrate_systems()
-enable_rh_common()
+enable_sat_tools()
 install_katello_agent()
 install_puppet_agent()
 fully_update_the_box()
