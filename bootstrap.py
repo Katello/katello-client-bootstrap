@@ -8,24 +8,30 @@ import sys
 import commands
 import subprocess
 import platform
+import os.path
 from datetime import datetime
 from optparse import OptionParser
+from uuid import getnode
+
 
 HOSTNAME  = platform.node()
+HEXMAC    = hex(getnode())
+MAC       = HEXMAC[2:14]
 
 parser = OptionParser()
 parser.add_option("-s", "--server", dest="sat6_fqdn", help="FQDN of Satellite - omit https://", metavar="SAT6_FQDN")
 parser.add_option("-l", "--login", dest="login", default='admin', help="Login user for API Calls", metavar="LOGIN")
 parser.add_option("-p", "--password", dest="password", help="Password for specified user. Will prompt if omitted", metavar="PASSWORD")
+parser.add_option("-a", "--activationkey", dest="activationkey", help="Activation Key to register the system", metavar="ACTIVATIONKEY")
 parser.add_option("-g", "--hostgroup", dest="hostgroup", help="Label of the Hostgroup in Satellite that the host is to be associated with", metavar="HOSTGROUP")
 parser.add_option("-L", "--location", dest="location", default='Default_Location', help="Label of the Location in Satellite that the host is to be associated with", metavar="HOSTGROUP")
 parser.add_option("-o", "--organization", dest="org", default='Default_Organization', help="Label of the Organization in Satellite that the host is to be associated with", metavar="ORG")
 (options, args) = parser.parse_args()
 
-if not ( options.sat6_fqdn and options.login and options.hostgroup and options.location and options.org ):
+if not ( options.sat6_fqdn and options.login and options.hostgroup and options.location and options.org and options.activationkey):
     print "Must specify server, login, hostgroup, location, and organization options.  See usage:"
     parser.print_help()
-    print "\nExample usage: ./bootstrap.py -l admin -s satellite.example.com -o Default_Organization -L Default_Location -g My_Hostgroup"
+    print "\nExample usage: ./bootstrap.py -l admin -s satellite.example.com -o Default_Organization -L Default_Location -g My_Hostgroup -a My_Activation_Key"
     sys.exit(1)
 else:
     SAT6_FQDN = options.sat6_fqdn
@@ -34,17 +40,20 @@ else:
     HOSTGROUP = options.hostgroup
     LOCATION  = options.location
     ORG       = options.org
+    ACTIVATIONKEY = options.activationkey
 
 if not PASSWORD: 
 	PASSWORD = getpass.getpass("%s's password:" % LOGIN)
 
-
+print "HOSTNAME - %s" % HOSTNAME
+print "MAC - %s" % MAC
 print "SAT6_FQDN - %s" % SAT6_FQDN
 print "LOGIN - %s" % LOGIN
 print "PASSWORD - %s" % PASSWORD
 print "HOSTGROUP - %s" % HOSTGROUP
 print "LOCATION - %s" % LOCATION
 print "ORG - %s" % ORG
+print "ACTIVATIONKEY - %s" % ACTIVATIONKEY
 
 class error_colors:
     HEADER = '\033[95m'
@@ -61,7 +70,7 @@ def print_warning(msg):
   print "[%sWARNING%s], [%s], NON-FATAL: [%s] failed to execute properly." % (error_colors.WARNING,error_colors.ENDC,datetime.now().strftime('%Y-%m-%d %H:%M:%S'),msg)
 
 def print_success(msg):
-  print "[%sSUCCESS%s], [%s], [%s], completed sucessfully." % (error_colors.OKGREEN,error_colors.ENDC,datetime.now().strftime('%Y-%m-%d %H:%M:%S'),msg)
+  print "[%sSUCCESS%s], [%s], [%s], completed successfully." % (error_colors.OKGREEN,error_colors.ENDC,datetime.now().strftime('%Y-%m-%d %H:%M:%S'),msg)
 
 def print_running(msg):
   print "[%sRUNNING%s], [%s], [%s] " % (error_colors.OKBLUE,error_colors.ENDC,datetime.now().strftime('%Y-%m-%d %H:%M:%S'),msg)
@@ -107,9 +116,15 @@ def get_bootstrap_rpm():
 
 def migrate_systems():
   print_generic("Calling rhn-migrate-classic-to-rhsm")
-  print_generic("First Prompt is for RHN Classic / Satellite 5 credentials")
-  print_generic("Second Prompt is for Satellite 6 credentials")
-  subprocess.call("/usr/sbin/rhn-migrate-classic-to-rhsm")
+  #print_generic("First Prompt is for RHN Classic / Satellite 5 credentials")
+  #print_generic("Second Prompt is for Satellite 6 credentials")
+  #subprocess.call("/usr/sbin/rhn-migrate-classic-to-rhsm")
+  exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activationkey %s --keep" % (ORG,ACTIVATIONKEY))
+
+def register_systems():
+  print_generic("Calling subscription-manager")
+  exec_failexit("/usr/sbin/subscription-manager register --org %s --activationkey %s" % (ORG,ACTIVATIONKEY))
+
 
 def enable_sat_tools():
   print_generic("Enabling the Satellite tools repositories for Puppet & Katello Agents")
@@ -136,7 +151,7 @@ def install_puppet_agent():
 
 def fully_update_the_box():
   print_generic("Fully Updating The Box")
-  exec_failexit("/usr/bin/yum -v -y update")
+  exec_failexit("/usr/bin/yum -y update")
 
 def get_json(url):
 	# Generic function to HTTP GET JSON from Satellite's API
@@ -167,7 +182,8 @@ def post_json(url, jdata):
 	request.add_header("Authorization", "Basic %s" % base64string)
 	request.add_header("Content-Type", "application/json")
 	request.add_header("Accept", "application/json")
-	request.get_method = lambda: 'PUT'
+	#request.get_method = lambda: 'PUT'
+	request.get_method = lambda: 'POST'
 	url = opener.open(request)
 
     except urllib2.URLError, e:
@@ -215,26 +231,52 @@ def return_matching_org(organization):
         org_id = org['id']
 	return org_id
 
-def update_host_with_org():
+#def update_host_with_org():
+#	myhgid = return_matching_hg_id(HOSTGROUP)
+#	myhostid = return_matching_host_id(HOSTNAME)
+#	mylocid = return_matching_location(LOCATION)
+#	myorgid = return_matching_org(ORG)
+#	jsondata = json.loads('{"id": %s,"host": {"hostgroup_id": %s,"organization_id": %s,"location_id": %s}}' % (myhostid,myhgid,myorgid,mylocid))
+#	myurl = "https://" + SAT6_FQDN + "/api/v2/hosts/" + str(myhostid) + "/"
+#	print_running("Calling Satellite API to associate host with hostgroup, org & location")
+#	post_json(myurl,jsondata)
+#	print_success("Successfully associated host with hostgroup, org & location")
+
+def create_host():
 	myhgid = return_matching_hg_id(HOSTGROUP)
-	myhostid = return_matching_host_id(HOSTNAME)
 	mylocid = return_matching_location(LOCATION)
 	myorgid = return_matching_org(ORG)
-	jsondata = json.loads('{"id": %s,"host": {"hostgroup_id": %s,"organization_id": %s,"location_id": %s}}' % (myhostid,myhgid,myorgid,mylocid))
-	myurl = "https://" + SAT6_FQDN + "/api/v2/hosts/" + str(myhostid) + "/"
-	print_running("Calling Satellite API to associate host with hostgroup, org & location")
+	jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s"}}' % (HOSTNAME,myhgid,myorgid,mylocid,MAC))
+	myurl = "https://" + SAT6_FQDN + "/api/v2/hosts/"
+	print_running("Calling Satellite API to create a host entry assoicated with the group, org & location")
 	post_json(myurl,jsondata)
-	print_success("Successfully associated host with hostgroup, org & location")
+	print_success("Successfully created host %s" % HOSTNAME)
+
+def check_rhn_registration():
+	if os.path.exists('/etc/sysconfig/rhn/systemid'):
+	     return True
+	else:
+	     return False
+	
+	
 
 
 print "Satellite 6 Bootstrap Script"
 print "This script is designed to migrate a system to Red Hat Satellite 6"
 
-install_prereqs()
-get_bootstrap_rpm()
-migrate_systems()
+if check_rhn_registration():
+	print_generic('This system is registered to RHN. Attempting to migrate via rhn-classic-migrate-to-rhsm')
+	create_host()
+	install_prereqs()
+	get_bootstrap_rpm()
+	migrate_systems()
+else:
+	print_generic('This system is not registered to RHN. Attempting to register via subscription-manager')
+	create_host()
+	get_bootstrap_rpm()
+	register_systems()
+
 enable_sat_tools()
 install_katello_agent()
 install_puppet_agent()
 fully_update_the_box()
-update_host_with_org()
