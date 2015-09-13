@@ -26,6 +26,7 @@ parser.add_option("-a", "--activationkey", dest="activationkey", help="Activatio
 parser.add_option("-g", "--hostgroup", dest="hostgroup", help="Label of the Hostgroup in Satellite that the host is to be associated with", metavar="HOSTGROUP")
 parser.add_option("-L", "--location", dest="location", default='Default_Location', help="Label of the Location in Satellite that the host is to be associated with", metavar="HOSTGROUP")
 parser.add_option("-o", "--organization", dest="org", default='Default_Organization', help="Label of the Organization in Satellite that the host is to be associated with", metavar="ORG")
+parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="Verbose output")
 (options, args) = parser.parse_args()
 
 if not ( options.sat6_fqdn and options.login and options.hostgroup and options.location and options.org and options.activationkey):
@@ -45,15 +46,16 @@ else:
 if not PASSWORD: 
 	PASSWORD = getpass.getpass("%s's password:" % LOGIN)
 
-print "HOSTNAME - %s" % HOSTNAME
-print "MAC - %s" % MAC
-print "SAT6_FQDN - %s" % SAT6_FQDN
-print "LOGIN - %s" % LOGIN
-print "PASSWORD - %s" % PASSWORD
-print "HOSTGROUP - %s" % HOSTGROUP
-print "LOCATION - %s" % LOCATION
-print "ORG - %s" % ORG
-print "ACTIVATIONKEY - %s" % ACTIVATIONKEY
+if VERBOSE:
+    print "HOSTNAME - %s" % HOSTNAME
+    print "MAC - %s" % MAC
+    print "SAT6_FQDN - %s" % SAT6_FQDN
+    print "LOGIN - %s" % LOGIN
+    print "PASSWORD - %s" % PASSWORD
+    print "HOSTGROUP - %s" % HOSTGROUP
+    print "LOCATION - %s" % LOCATION
+    print "ORG - %s" % ORG
+    print "ACTIVATIONKEY - %s" % ACTIVATIONKEY
 
 class error_colors:
     HEADER = '\033[95m'
@@ -262,7 +264,7 @@ def check_rhn_registration():
 
 
 print "Satellite 6 Bootstrap Script"
-print "This script is designed to migrate a system to Red Hat Satellite 6"
+print "This script is designed to register new systems or to migrate an existing system to Red Hat Satellite 6"
 
 if check_rhn_registration():
 	print_generic('This system is registered to RHN. Attempting to migrate via rhn-classic-migrate-to-rhsm')
