@@ -43,6 +43,11 @@ else:
     ORG       = options.org
     ACTIVATIONKEY = options.activationkey
 
+if options.verbose:
+    VERBOSE=True
+else:
+    VERBOSE=False
+
 if not PASSWORD: 
 	PASSWORD = getpass.getpass("%s's password:" % LOGIN)
 
