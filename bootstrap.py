@@ -198,31 +198,24 @@ def post_json(url, jdata):
 
 def return_matching_hg_id(hg_name):
 	# Given a hostgroup name, find its id
-    myurl = "https://" + SAT6_FQDN+ "/api/v2/hostgroups/"
-    hg = get_json(myurl)
-    for hostgroup in hg['results']:
-      #print hostgroup['name']
-      if hostgroup['name'] == hg_name:
-        hg_id = hostgroup['id']
-	return hg_id
+    myurl = "https://" + SAT6_FQDN+ "/api/v2/hostgroups/" + hg_name
+    hostgroup = get_json(myurl)
+    hg_id = hostgroup['id']
+    return hg_id
 
 def return_matching_host_id(hostname):
 	# Given a hostname (more precisely a puppet certname) find its id
-    myurl = "https://" + SAT6_FQDN+ "/api/v2/hosts/"
-    hosts = get_json(myurl)
-    for host in hosts['results']:
-      if host['certname'] == hostname:
-        host_id = host['id']
-	return host_id
+    myurl = "https://" + SAT6_FQDN+ "/api/v2/hosts/" + hostname
+    host = get_json(myurl)
+    host_id = host['id']
+    return host_id
 
 def return_matching_location(location):
 	# Given a location, find its id
-    myurl = "https://" + SAT6_FQDN+ "/api/v2/locations/"
-    locations = get_json(myurl)
-    for loc in locations['results']:
-      if loc['name'] == location:
-        loc_id = loc['id']
-	return loc_id
+    myurl = "https://" + SAT6_FQDN+ "/api/v2/locations/" + location
+    location = get_json(myurl)
+    loc_id = location['id']
+    return loc_id
 
 def return_matching_org(organization):
 	# Given an org, find its id.
