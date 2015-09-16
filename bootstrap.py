@@ -119,19 +119,20 @@ def install_prereqs():
 
 def get_bootstrap_rpm():
   print_generic("Retrieving Candlepin Consumer RPMs")
-  exec_failexit("/usr/bin/yum -y install http://%s/pub/katello-ca-consumer-latest.noarch.rpm --nogpgcheck" % SAT6_FQDN)
+  exec_failexit("/usr/bin/yum -y localinstall http://%s/pub/katello-ca-consumer-latest.noarch.rpm --nogpgcheck" % SAT6_FQDN)
 
-def migrate_systems():
+def migrate_systems(org_name,ak):
+  org_label=return_matching_org_label(org_name)
   print_generic("Calling rhn-migrate-classic-to-rhsm")
   #print_generic("First Prompt is for RHN Classic / Satellite 5 credentials")
   #print_generic("Second Prompt is for Satellite 6 credentials")
   #subprocess.call("/usr/sbin/rhn-migrate-classic-to-rhsm")
-  exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activationkey %s --keep" % (ORG,ACTIVATIONKEY))
+  exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activationkey %s --keep" % (org_label,ak))
 
 def register_systems(org_name,ak):
   org_label=return_matching_org_label(org_name)
   print_generic("Calling subscription-manager")
-  exec_failexit("/usr/sbin/subscription-manager register --org %s --activationkey %s" % (ORG,ACTIVATIONKEY))
+  exec_failexit("/usr/sbin/subscription-manager register --org %s --activationkey %s" % (org_label,ak))
 
 
 def enable_sat_tools():
@@ -281,7 +282,7 @@ if check_rhn_registration():
 	create_host()
 	install_prereqs()
 	get_bootstrap_rpm()
-	migrate_systems()
+	migrate_systems(ORG,ACTIVATIONKEY)
 else:
 	print_generic('This system is not registered to RHN. Attempting to register via subscription-manager')
 	create_host()
