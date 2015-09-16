@@ -164,7 +164,7 @@ def fully_update_the_box():
 def get_json(url):
 	# Generic function to HTTP GET JSON from Satellite's API
     try:
-        request = urllib2.Request(urllib2.quote(url,':/')
+        request = urllib2.Request(urllib2.quote(url,':/'))
         base64string = base64.encodestring('%s:%s' % (LOGIN, PASSWORD)).strip()
         request.add_header("Authorization", "Basic %s" % base64string)
         result = urllib2.urlopen(request)
