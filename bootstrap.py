@@ -163,7 +163,7 @@ def fully_update_the_box():
 def get_json(url):
 	# Generic function to HTTP GET JSON from Satellite's API
     try:
-        request = urllib2.Request(url)
+        request = urllib2.Request(urllib2.quote(url,':/')
         base64string = base64.encodestring('%s:%s' % (LOGIN, PASSWORD)).strip()
         request.add_header("Authorization", "Basic %s" % base64string)
         result = urllib2.urlopen(request)
@@ -225,11 +225,12 @@ def return_matching_location(location):
 def return_matching_org(organization):
 	# Given an org, find its id.
     myurl = "https://" + SAT6_FQDN+ "/api/v2/organizations/"
+#    myurl = "https://" + SAT6_FQDN+ "/katello/api/organizations/" + organization
     organizations = get_json(myurl)
     for org in organizations['results']:
       if org['name'] == organization:
         org_id = org['id']
-	return org_id
+        return org_id
 
 #def update_host_with_org():
 #	myhgid = return_matching_hg_id(HOSTGROUP)
@@ -246,6 +247,8 @@ def create_host():
 	myhgid = return_matching_hg_id(HOSTGROUP)
 	mylocid = return_matching_location(LOCATION)
 	myorgid = return_matching_org(ORG)
+        if VERBOSE:
+             print "------\nmyhgid: " + str(myhgid)  + "\nmylocid: " + str(mylocid) + "\nmyorgid: " + str(myorgid) + "\nMAC: " + str(MAC) + "\n------"
 	jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s"}}' % (HOSTNAME,myhgid,myorgid,mylocid,MAC))
 	myurl = "https://" + SAT6_FQDN + "/api/v2/hosts/"
 	print_running("Calling Satellite API to create a host entry assoicated with the group, org & location")
