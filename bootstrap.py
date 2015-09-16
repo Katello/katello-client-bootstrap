@@ -128,7 +128,8 @@ def migrate_systems():
   #subprocess.call("/usr/sbin/rhn-migrate-classic-to-rhsm")
   exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activationkey %s --keep" % (ORG,ACTIVATIONKEY))
 
-def register_systems():
+def register_systems(org_name,ak):
+  org_label=return_matching_org_label(org_name)
   print_generic("Calling subscription-manager")
   exec_failexit("/usr/sbin/subscription-manager register --org %s --activationkey %s" % (ORG,ACTIVATIONKEY))
 
@@ -232,6 +233,14 @@ def return_matching_org(organization):
         org_id = org['id']
         return org_id
 
+def return_matching_org_label(organization):
+        # Given an org name, find its label - required by subscription-manager
+    myurl = "https://" + SAT6_FQDN+ "/katello/api/organizations/" + organization
+    print "myurl: " + myurl
+    organization = get_json(myurl)
+    org_label = organization['label']
+    return org_label
+
 #def update_host_with_org():
 #	myhgid = return_matching_hg_id(HOSTGROUP)
 #	myhostid = return_matching_host_id(HOSTNAME)
@@ -277,7 +286,7 @@ else:
 	print_generic('This system is not registered to RHN. Attempting to register via subscription-manager')
 	create_host()
 	get_bootstrap_rpm()
-	register_systems()
+	register_systems(ORG,ACTIVATIONKEY)
 
 enable_sat_tools()
 install_katello_agent()
