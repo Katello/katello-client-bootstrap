@@ -43,6 +43,11 @@ else:
     ORG       = options.org
     ACTIVATIONKEY = options.activationkey
 
+if options.verbose:
+    VERBOSE=True
+else:
+    VERBOSE=False
+
 if not PASSWORD: 
 	PASSWORD = getpass.getpass("%s's password:" % LOGIN)
 
@@ -114,18 +119,20 @@ def install_prereqs():
 
 def get_bootstrap_rpm():
   print_generic("Retrieving Candlepin Consumer RPMs")
-  exec_failexit("/usr/bin/yum -y install http://%s/pub/katello-ca-consumer-latest.noarch.rpm --nogpgcheck" % SAT6_FQDN)
+  exec_failexit("/usr/bin/yum -y localinstall http://%s/pub/katello-ca-consumer-latest.noarch.rpm --nogpgcheck" % SAT6_FQDN)
 
-def migrate_systems():
+def migrate_systems(org_name,ak):
+  org_label=return_matching_org_label(org_name)
   print_generic("Calling rhn-migrate-classic-to-rhsm")
   #print_generic("First Prompt is for RHN Classic / Satellite 5 credentials")
   #print_generic("Second Prompt is for Satellite 6 credentials")
   #subprocess.call("/usr/sbin/rhn-migrate-classic-to-rhsm")
-  exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activationkey %s --keep" % (ORG,ACTIVATIONKEY))
+  exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activationkey %s --keep" % (org_label,ak))
 
-def register_systems():
+def register_systems(org_name,ak):
+  org_label=return_matching_org_label(org_name)
   print_generic("Calling subscription-manager")
-  exec_failexit("/usr/sbin/subscription-manager register --org %s --activationkey %s" % (ORG,ACTIVATIONKEY))
+  exec_failexit("/usr/sbin/subscription-manager register --org %s --activationkey %s" % (org_label,ak))
 
 
 def enable_sat_tools():
@@ -158,7 +165,7 @@ def fully_update_the_box():
 def get_json(url):
 	# Generic function to HTTP GET JSON from Satellite's API
     try:
-        request = urllib2.Request(url)
+        request = urllib2.Request(urllib2.quote(url,':/'))
         base64string = base64.encodestring('%s:%s' % (LOGIN, PASSWORD)).strip()
         request.add_header("Authorization", "Basic %s" % base64string)
         result = urllib2.urlopen(request)
@@ -198,40 +205,42 @@ def post_json(url, jdata):
 
 def return_matching_hg_id(hg_name):
 	# Given a hostgroup name, find its id
-    myurl = "https://" + SAT6_FQDN+ "/api/v2/hostgroups/"
-    hg = get_json(myurl)
-    for hostgroup in hg['results']:
-      #print hostgroup['name']
-      if hostgroup['name'] == hg_name:
-        hg_id = hostgroup['id']
-	return hg_id
+    myurl = "https://" + SAT6_FQDN+ "/api/v2/hostgroups/" + hg_name
+    hostgroup = get_json(myurl)
+    hg_id = hostgroup['id']
+    return hg_id
 
 def return_matching_host_id(hostname):
 	# Given a hostname (more precisely a puppet certname) find its id
-    myurl = "https://" + SAT6_FQDN+ "/api/v2/hosts/"
-    hosts = get_json(myurl)
-    for host in hosts['results']:
-      if host['certname'] == hostname:
-        host_id = host['id']
-	return host_id
+    myurl = "https://" + SAT6_FQDN+ "/api/v2/hosts/" + hostname
+    host = get_json(myurl)
+    host_id = host['id']
+    return host_id
 
 def return_matching_location(location):
 	# Given a location, find its id
-    myurl = "https://" + SAT6_FQDN+ "/api/v2/locations/"
-    locations = get_json(myurl)
-    for loc in locations['results']:
-      if loc['name'] == location:
-        loc_id = loc['id']
-	return loc_id
+    myurl = "https://" + SAT6_FQDN+ "/api/v2/locations/" + location
+    location = get_json(myurl)
+    loc_id = location['id']
+    return loc_id
 
 def return_matching_org(organization):
 	# Given an org, find its id.
     myurl = "https://" + SAT6_FQDN+ "/api/v2/organizations/"
+#    myurl = "https://" + SAT6_FQDN+ "/katello/api/organizations/" + organization
     organizations = get_json(myurl)
     for org in organizations['results']:
       if org['name'] == organization:
         org_id = org['id']
-	return org_id
+        return org_id
+
+def return_matching_org_label(organization):
+        # Given an org name, find its label - required by subscription-manager
+    myurl = "https://" + SAT6_FQDN+ "/katello/api/organizations/" + organization
+    print "myurl: " + myurl
+    organization = get_json(myurl)
+    org_label = organization['label']
+    return org_label
 
 #def update_host_with_org():
 #	myhgid = return_matching_hg_id(HOSTGROUP)
@@ -248,6 +257,8 @@ def create_host():
 	myhgid = return_matching_hg_id(HOSTGROUP)
 	mylocid = return_matching_location(LOCATION)
 	myorgid = return_matching_org(ORG)
+        if VERBOSE:
+             print "------\nmyhgid: " + str(myhgid)  + "\nmylocid: " + str(mylocid) + "\nmyorgid: " + str(myorgid) + "\nMAC: " + str(MAC) + "\n------"
 	jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s"}}' % (HOSTNAME,myhgid,myorgid,mylocid,MAC))
 	myurl = "https://" + SAT6_FQDN + "/api/v2/hosts/"
 	print_running("Calling Satellite API to create a host entry assoicated with the group, org & location")
@@ -271,12 +282,12 @@ if check_rhn_registration():
 	create_host()
 	install_prereqs()
 	get_bootstrap_rpm()
-	migrate_systems()
+	migrate_systems(ORG,ACTIVATIONKEY)
 else:
 	print_generic('This system is not registered to RHN. Attempting to register via subscription-manager')
 	create_host()
 	get_bootstrap_rpm()
-	register_systems()
+	register_systems(ORG,ACTIVATIONKEY)
 
 enable_sat_tools()
 install_katello_agent()
