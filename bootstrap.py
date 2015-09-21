@@ -16,7 +16,8 @@ from uuid import getnode
 
 HOSTNAME  = platform.node()
 HEXMAC    = hex(getnode())
-MAC       = HEXMAC[2:14]
+NOHEXMAC  = HEXMAC[2:]
+MAC       = NOHEXMAC.zfill(13)[0:12]
 
 parser = OptionParser()
 parser.add_option("-s", "--server", dest="sat6_fqdn", help="FQDN of Satellite - omit https://", metavar="SAT6_FQDN")
