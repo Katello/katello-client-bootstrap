@@ -262,7 +262,7 @@ def create_host():
              print "------\nmyhgid: " + str(myhgid)  + "\nmylocid: " + str(mylocid) + "\nmyorgid: " + str(myorgid) + "\nMAC: " + str(MAC) + "\n------"
 	jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s"}}' % (HOSTNAME,myhgid,myorgid,mylocid,MAC))
 	myurl = "https://" + SAT6_FQDN + "/api/v2/hosts/"
-	print_running("Calling Satellite API to create a host entry assoicated with the group, org & location")
+	print_running("Calling Satellite API to create a host entry associated with the group, org & location")
 	post_json(myurl,jsondata)
 	print_success("Successfully created host %s" % HOSTNAME)
 
