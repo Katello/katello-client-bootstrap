@@ -33,52 +33,52 @@ parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="
 (options, args) = parser.parse_args()
 
 if not ( options.sat6_fqdn and options.login and options.hostgroup and options.location and options.org and options.activationkey):
-    print "Must specify server, login, hostgroup, location, and organization options.  See usage:"
-    parser.print_help()
-    print "\nExample usage: ./bootstrap.py -l admin -s satellite.example.com -o Default_Organization -L Default_Location -g My_Hostgroup -a My_Activation_Key"
-    sys.exit(1)
+	print "Must specify server, login, hostgroup, location, and organization options.  See usage:"
+	parser.print_help()
+	print "\nExample usage: ./bootstrap.py -l admin -s satellite.example.com -o Default_Organization -L Default_Location -g My_Hostgroup -a My_Activation_Key"
+	sys.exit(1)
 else:
-    SAT6_FQDN = options.sat6_fqdn
-    LOGIN     = options.login
-    PASSWORD  = options.password
-    HOSTGROUP = options.hostgroup
-    LOCATION  = options.location
-    ORG       = options.org
-    ACTIVATIONKEY = options.activationkey
+	SAT6_FQDN = options.sat6_fqdn
+	LOGIN     = options.login
+	PASSWORD  = options.password
+	HOSTGROUP = options.hostgroup
+	LOCATION  = options.location
+	ORG       = options.org
+	ACTIVATIONKEY = options.activationkey
 
 if options.verbose:
-    VERBOSE=True
+	VERBOSE=True
 else:
-    VERBOSE=False
+	VERBOSE=False
 
 if options.nested:
-    NESTED=True
+	NESTED=True
 else:
-    NESTED=False
+	NESTED=False
 
 
 
 if not PASSWORD: 
-    PASSWORD = getpass.getpass("%s's password:" % LOGIN)
+	PASSWORD = getpass.getpass("%s's password:" % LOGIN)
 
 if VERBOSE:
-    print "HOSTNAME - %s" % HOSTNAME
-    print "MAC - %s" % MAC
-    print "SAT6_FQDN - %s" % SAT6_FQDN
-    print "LOGIN - %s" % LOGIN
-    print "PASSWORD - %s" % PASSWORD
-    print "HOSTGROUP - %s" % HOSTGROUP
-    print "LOCATION - %s" % LOCATION
-    print "ORG - %s" % ORG
-    print "ACTIVATIONKEY - %s" % ACTIVATIONKEY
+	print "HOSTNAME - %s" % HOSTNAME
+	print "MAC - %s" % MAC
+	print "SAT6_FQDN - %s" % SAT6_FQDN
+	print "LOGIN - %s" % LOGIN
+	print "PASSWORD - %s" % PASSWORD
+	print "HOSTGROUP - %s" % HOSTGROUP
+	print "LOCATION - %s" % LOCATION
+	print "ORG - %s" % ORG
+	print "ACTIVATIONKEY - %s" % ACTIVATIONKEY
 
 class error_colors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
+	HEADER = '\033[95m'
+	OKBLUE = '\033[94m'
+	OKGREEN = '\033[92m'
+	WARNING = '\033[93m'
+	FAIL = '\033[91m'
+	ENDC = '\033[0m'
 
 def print_error(msg):
   print "[%sERROR%s], [%s], EXITING: [%s] failed to execute properly." % (error_colors.FAIL,error_colors.ENDC,datetime.now().strftime('%Y-%m-%d %H:%M:%S'),msg)
@@ -104,7 +104,7 @@ def exec_failok(command):
   output = commands.getstatusoutput(command)
   retcode = output[0]
   if retcode != 0:
-    print_warning(command)
+	print_warning(command)
   print output[1]
   print ""
 
@@ -115,9 +115,9 @@ def exec_failexit(command):
   output = commands.getstatusoutput(command)
   retcode = output[0]
   if retcode != 0:
-    print_error(command)
-    print output[1]
-    exit(retcode)
+	print_error(command)
+	print output[1]
+	exit(retcode)
   print output[1]
   print_success(command)
   print ""
@@ -173,142 +173,128 @@ def fully_update_the_box():
   exec_failexit("/usr/bin/yum -y update")
 
 def get_json(url):
-    # Generic function to HTTP GET JSON from Satellite's API
-    try:
-        request = urllib2.Request(urllib2.quote(url,':/'))
-        base64string = base64.encodestring('%s:%s' % (LOGIN, PASSWORD)).strip()
-        request.add_header("Authorization", "Basic %s" % base64string)
-        result = urllib2.urlopen(request)
-        return json.load(result)
-    except urllib2.URLError, e:
-        print "Error: cannot connect to the API: %s" % (e)
-        print "Check your URL & try to login using the same user/pass via the WebUI and check the error!"
-        sys.exit(1)
-    except:
-        print "FATAL Error - %s" % (e)
-        sys.exit(2)
+	# Generic function to HTTP GET JSON from Satellite's API
+	try:
+		request = urllib2.Request(urllib2.quote(url,':/'))
+		base64string = base64.encodestring('%s:%s' % (LOGIN, PASSWORD)).strip()
+		request.add_header("Authorization", "Basic %s" % base64string)
+		result = urllib2.urlopen(request)
+		return json.load(result)
+	except urllib2.URLError, e:
+		print "Error: cannot connect to the API: %s" % (e)
+		print "Check your URL & try to login using the same user/pass via the WebUI and check the error!"
+		sys.exit(1)
+	except:
+		print "FATAL Error - %s" % (e)
+		sys.exit(2)
 
 def post_json(url, jdata):
-    # Generic function to HTTP PUT JSON to Satellite's API.
-    # Had to use a couple of hacks to urllib2 to make it
-    # support an HTTP PUT, which it doesn't by default.
+	# Generic function to HTTP PUT JSON to Satellite's API.
+	# Had to use a couple of hacks to urllib2 to make it
+	# support an HTTP PUT, which it doesn't by default.
 
-    try:
-        opener = urllib2.build_opener(urllib2.HTTPHandler)
-        request = urllib2.Request(url)
-        base64string = base64.encodestring('%s:%s' % (LOGIN, PASSWORD)).strip()
-        request.add_data(json.dumps(jdata))
-        request.add_header("Authorization", "Basic %s" % base64string)
-        request.add_header("Content-Type", "application/json")
-        request.add_header("Accept", "application/json")
-        #request.get_method = lambda: 'PUT'
-        request.get_method = lambda: 'POST'
-        url = opener.open(request)
+	try:
+		opener = urllib2.build_opener(urllib2.HTTPHandler)
+		request = urllib2.Request(url)
+		base64string = base64.encodestring('%s:%s' % (LOGIN, PASSWORD)).strip()
+		request.add_data(json.dumps(jdata))
+		request.add_header("Authorization", "Basic %s" % base64string)
+		request.add_header("Content-Type", "application/json")
+		request.add_header("Accept", "application/json")
+		#request.get_method = lambda: 'PUT'
+		request.get_method = lambda: 'POST'
+		url = opener.open(request)
 
-    except urllib2.URLError, e:
-        print "Error: cannot connect to the API: %s" % (e)
-        print "Check your URL & try to login using the same user/pass via the WebUI and check the error!"
-        sys.exit(1)
-    except:
-        print "FATAL Error - %s" % (e)
-        sys.exit(2)
+	except urllib2.URLError, e:
+		print "Error: cannot connect to the API: %s" % (e)
+		print "Check your URL & try to login using the same user/pass via the WebUI and check the error!"
+		sys.exit(1)
+	except:
+		print "FATAL Error - %s" % (e)
+		sys.exit(2)
 
 def return_matching_hg_id(hg_name):
-    # Given a hostgroup name, find its id
-    myurl = "https://" + SAT6_FQDN+ "/api/v2/hostgroups/" + hg_name
-    hostgroup = get_json(myurl)
-    hg_id = hostgroup['id']
-    return hg_id
+	# Given a hostgroup name, find its id
+	myurl = "https://" + SAT6_FQDN+ "/api/v2/hostgroups/" + hg_name
+	hostgroup = get_json(myurl)
+	hg_id = hostgroup['id']
+	return hg_id
 
 def return_matching_nested_hg_id(hg_name):
-    # Look for the hostgroup id in the list of hostgroups on the satellite.
-    hostgroups = return_all_hostgroups(ORG)
-    try:
-        hg_id = hostgroups[hg_name]
-    except KeyError, e:
-        print_error("Nested host group name '%s' not found." % hg_name)
-    return hg_id
+	# Look for the hostgroup id in the list of hostgroups on the satellite.
+	hostgroups = return_all_hostgroups(ORG)
+	try:
+		hg_id = hostgroups[hg_name]
+	except KeyError, e:
+		print_error("Nested host group name '%s' not found." % hg_name)
+	return hg_id
 
 def return_matching_host_id(hostname):
-    # Given a hostname (more precisely a puppet certname) find its id
-    myurl = "https://" + SAT6_FQDN+ "/api/v2/hosts/" + hostname
-    host = get_json(myurl)
-    host_id = host['id']
-    return host_id
+	# Given a hostname (more precisely a puppet certname) find its id
+	myurl = "https://" + SAT6_FQDN+ "/api/v2/hosts/" + hostname
+	host = get_json(myurl)
+	host_id = host['id']
+	return host_id
 
 def return_matching_location(location):
-    # Given a location, find its id
-    myurl = "https://" + SAT6_FQDN+ "/api/v2/locations/" + location
-    location = get_json(myurl)
-    loc_id = location['id']
-    return loc_id
+	# Given a location, find its id
+	myurl = "https://" + SAT6_FQDN+ "/api/v2/locations/" + location
+	location = get_json(myurl)
+	loc_id = location['id']
+	return loc_id
 
 def return_matching_org(organization):
-    # Given an org, find its id.
-    myurl = "https://" + SAT6_FQDN+ "/api/v2/organizations/"
+	# Given an org, find its id.
+	myurl = "https://" + SAT6_FQDN+ "/api/v2/organizations/"
 #    myurl = "https://" + SAT6_FQDN+ "/katello/api/organizations/" + organization
-    organizations = get_json(myurl)
-    for org in organizations['results']:
-      if org['name'] == organization:
-        org_id = org['id']
-        return org_id
+	organizations = get_json(myurl)
+	for org in organizations['results']:
+	  if org['name'] == organization:
+		org_id = org['id']
+		return org_id
 
 def return_matching_org_label(organization):
-        # Given an org name, find its label - required by subscription-manager
-    myurl = "https://" + SAT6_FQDN+ "/katello/api/organizations/" + organization
-    print "myurl: " + myurl
-    organization = get_json(myurl)
-    org_label = organization['label']
-    return org_label
+		# Given an org name, find its label - required by subscription-manager
+	myurl = "https://" + SAT6_FQDN+ "/katello/api/organizations/" + organization
+	print "myurl: " + myurl
+	organization = get_json(myurl)
+	org_label = organization['label']
+	return org_label
 
 def return_all_hostgroups(organization):
-    # Get a list of all host group titles and id's.
-    # Required to get a hostgroup ID from a nested hostgroup.
+	# Get a list of all host group titles and id's.
+	# Required to get a hostgroup ID from a nested hostgroup.
 
-    myurl = "https://" + SAT6_FQDN + "/api/v2/hostgroups/"
-    print "myurl: " + myurl
-    hostgroups = get_json(myurl)
-    hostgroupdict = {}
-    for result in hostgroups['results']:
-        hostgroupdict[result['title']] = result['id']
-    return hostgroupdict
-
-
-
-
-
-
-
-
-
-
-
-
+	myurl = "https://" + SAT6_FQDN + "/api/v2/hostgroups/"
+	print "myurl: " + myurl
+	hostgroups = get_json(myurl)
+	hostgroupdict = {}
+	for result in hostgroups['results']:
+		hostgroupdict[result['title']] = result['id']
+	return hostgroupdict
 
 def create_host():
-    if NESTED:
-        # If the -n nested option is selected,
-        myhgid = return_matching_nested_hg_id(HOSTGROUP)
-    else:
-        myhgid = return_matching_hg_id(HOSTGROUP)
+	if NESTED:
+		# If the -n nested option is selected,
+		myhgid = return_matching_nested_hg_id(HOSTGROUP)
+	else:
+		myhgid = return_matching_hg_id(HOSTGROUP)
 
-    mylocid = return_matching_location(LOCATION)
-    myorgid = return_matching_org(ORG)
-    if VERBOSE:
-            print "------\nmyhgid: " + str(myhgid)  + "\nmylocid: " + str(mylocid) + "\nmyorgid: " + str(myorgid) + "\nMAC: " + str(MAC) + "\n------"
-    jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s"}}' % (HOSTNAME,myhgid,myorgid,mylocid,MAC))
-    myurl = "https://" + SAT6_FQDN + "/api/v2/hosts/"
-    print_running("Calling Satellite API to create a host entry assoicated with the group, org & location")
-    post_json(myurl,jsondata)
-    print_success("Successfully created host %s" % HOSTNAME)
+	mylocid = return_matching_location(LOCATION)
+	myorgid = return_matching_org(ORG)
+	if VERBOSE:
+			print "------\nmyhgid: " + str(myhgid)  + "\nmylocid: " + str(mylocid) + "\nmyorgid: " + str(myorgid) + "\nMAC: " + str(MAC) + "\n------"
+	jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s"}}' % (HOSTNAME,myhgid,myorgid,mylocid,MAC))
+	myurl = "https://" + SAT6_FQDN + "/api/v2/hosts/"
+	print_running("Calling Satellite API to create a host entry assoicated with the group, org & location")
+	post_json(myurl,jsondata)
+	print_success("Successfully created host %s" % HOSTNAME)
 
 def check_rhn_registration():
-    if os.path.exists('/etc/sysconfig/rhn/systemid'):
-         return True
-    else:
-         return False
-
-
+	if os.path.exists('/etc/sysconfig/rhn/systemid'):
+		 return True
+	else:
+		 return False
 
 
 print "Satellite 6 Bootstrap Script"
