@@ -18,6 +18,7 @@ HOSTNAME  = platform.node()
 HEXMAC    = hex(getnode())
 NOHEXMAC  = HEXMAC[2:]
 MAC       = NOHEXMAC.zfill(13)[0:12]
+RELEASE   = platform.linux_distribution()[1]
 
 parser = OptionParser()
 parser.add_option("-s", "--server", dest="sat6_fqdn", help="FQDN of Satellite - omit https://", metavar="SAT6_FQDN")
@@ -28,6 +29,7 @@ parser.add_option("-g", "--hostgroup", dest="hostgroup", help="Label of the Host
 parser.add_option("-L", "--location", dest="location", default='Default_Location', help="Label of the Location in Satellite that the host is to be associated with", metavar="HOSTGROUP")
 parser.add_option("-o", "--organization", dest="org", default='Default_Organization', help="Label of the Organization in Satellite that the host is to be associated with", metavar="ORG")
 parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="Verbose output")
+parser.add_option("-r", "--release", dest="release", default=RELEASE, help="Specify release version")
 (options, args) = parser.parse_args()
 
 if not ( options.sat6_fqdn and options.login and options.hostgroup and options.location and options.org and options.activationkey):
@@ -54,6 +56,7 @@ if not PASSWORD:
 
 if VERBOSE:
     print "HOSTNAME - %s" % HOSTNAME
+    print "RELEASE - %s" % RELEASE
     print "MAC - %s" % MAC
     print "SAT6_FQDN - %s" % SAT6_FQDN
     print "LOGIN - %s" % LOGIN
@@ -130,10 +133,10 @@ def migrate_systems(org_name,ak):
   #subprocess.call("/usr/sbin/rhn-migrate-classic-to-rhsm")
   exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activationkey %s --keep" % (org_label,ak))
 
-def register_systems(org_name,ak):
+def register_systems(org_name,ak,release):
   org_label=return_matching_org_label(org_name)
   print_generic("Calling subscription-manager")
-  exec_failexit("/usr/sbin/subscription-manager register --org %s --activationkey %s" % (org_label,ak))
+  exec_failexit("/usr/sbin/subscription-manager register --org %s --activationkey %s --release %s" % (org_label,ak,release))
 
 
 def enable_sat_tools():
@@ -288,7 +291,7 @@ else:
 	print_generic('This system is not registered to RHN. Attempting to register via subscription-manager')
 	create_host()
 	get_bootstrap_rpm()
-	register_systems(ORG,ACTIVATIONKEY)
+	register_systems(ORG,ACTIVATIONKEY, options.release)
 
 enable_sat_tools()
 install_katello_agent()
