@@ -156,7 +156,7 @@ def install_puppet_agent():
   #f.write("server=%s \n" % SAT6_FQDN)
   #f.close()
   print_generic("Running Puppet in noop mode to generate SSL certs")
-  exec_failexit("/usr/bin/puppet agent --test --noop --onetime")
+  exec_failexit("/usr/bin/puppet agent --test --noop --waitforcert 10")
   exec_failexit("/sbin/service puppet restart")
 
 def fully_update_the_box():
