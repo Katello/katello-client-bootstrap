@@ -52,14 +52,14 @@ else:
     ACTIVATIONKEY = options.activationkey
 
 if options.verbose:
-    VERBOSE=True
+    VERBOSE = True
 else:
-    VERBOSE=False
+    VERBOSE = False
 
 if options.update:
-    UPDATE=True
+    UPDATE = True
 else:
-    UPDATE=False
+    UPDATE = False
 
 if not PASSWORD:
     PASSWORD = getpass.getpass("%s's password:" % LOGIN)
@@ -138,12 +138,12 @@ def get_bootstrap_rpm():
     exec_failexit("/usr/bin/yum -y localinstall http://%s/pub/katello-ca-consumer-latest.noarch.rpm --nogpgcheck" % SAT6_FQDN)
 
 def migrate_systems(org_name, ak):
-    org_label=return_matching_org_label(org_name)
+    org_label = return_matching_org_label(org_name)
     print_generic("Calling rhn-migrate-classic-to-rhsm")
     exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activationkey %s --keep" % (org_label, ak))
 
 def register_systems(org_name, ak, release):
-    org_label=return_matching_org_label(org_name)
+    org_label = return_matching_org_label(org_name)
     print_generic("Calling subscription-manager")
     if options.force:
         options.smargs += " --force"
