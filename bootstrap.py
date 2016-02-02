@@ -38,7 +38,7 @@ parser.add_option("-f", "--force", dest="force", action="store_true", help="Forc
 parser.add_option("-r", "--release", dest="release", default=RELEASE, help="Specify release version")
 (options, args) = parser.parse_args()
 
-if not ( options.sat6_fqdn and options.login and options.hostgroup and options.location and options.org and options.activationkey):
+if not (options.sat6_fqdn and options.login and options.hostgroup and options.location and options.org and options.activationkey):
     print "Must specify server, login, hostgroup, location, and organization options.  See usage:"
     parser.print_help()
     print "\nExample usage: ./bootstrap.py -l admin -s satellite.example.com -o Default_Organization -L Default_Location -g My_Hostgroup -a My_Activation_Key"
@@ -62,7 +62,7 @@ if options.update:
 else:
     UPDATE=False
 
-if not PASSWORD: 
+if not PASSWORD:
     PASSWORD = getpass.getpass("%s's password:" % LOGIN)
 
 if VERBOSE:
@@ -87,19 +87,19 @@ class error_colors:
     ENDC = '\033[0m'
 
 def print_error(msg):
-    print "[%sERROR%s], [%s], EXITING: [%s] failed to execute properly." % (error_colors.FAIL,error_colors.ENDC,datetime.now().strftime('%Y-%m-%d %H:%M:%S'),msg)
+    print "[%sERROR%s], [%s], EXITING: [%s] failed to execute properly." % (error_colors.FAIL, error_colors.ENDC, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
 
 def print_warning(msg):
-    print "[%sWARNING%s], [%s], NON-FATAL: [%s] failed to execute properly." % (error_colors.WARNING,error_colors.ENDC,datetime.now().strftime('%Y-%m-%d %H:%M:%S'),msg)
+    print "[%sWARNING%s], [%s], NON-FATAL: [%s] failed to execute properly." % (error_colors.WARNING, error_colors.ENDC, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
 
 def print_success(msg):
-    print "[%sSUCCESS%s], [%s], [%s], completed successfully." % (error_colors.OKGREEN,error_colors.ENDC,datetime.now().strftime('%Y-%m-%d %H:%M:%S'),msg)
+    print "[%sSUCCESS%s], [%s], [%s], completed successfully." % (error_colors.OKGREEN, error_colors.ENDC, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
 
 def print_running(msg):
-    print "[%sRUNNING%s], [%s], [%s] " % (error_colors.OKBLUE,error_colors.ENDC,datetime.now().strftime('%Y-%m-%d %H:%M:%S'),msg)
+    print "[%sRUNNING%s], [%s], [%s] " % (error_colors.OKBLUE, error_colors.ENDC, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
 
 def print_generic(msg):
-    print "[NOTIFICATION], [%s], [%s] " % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'),msg)
+    print "[NOTIFICATION], [%s], [%s] " % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
 
 def get_output(command):
     output = commands.getstatusoutput(command)[1]
@@ -113,8 +113,6 @@ def exec_failok(command):
         print_warning(command)
     print output[1]
     print ""
-
-
 
 def exec_failexit(command):
     print_running(command)
@@ -140,15 +138,15 @@ def get_bootstrap_rpm():
     print_generic("Retrieving Candlepin Consumer RPMs")
     exec_failexit("/usr/bin/yum -y localinstall http://%s/pub/katello-ca-consumer-latest.noarch.rpm --nogpgcheck" % SAT6_FQDN)
 
-def migrate_systems(org_name,ak):
+def migrate_systems(org_name, ak):
     org_label=return_matching_org_label(org_name)
     print_generic("Calling rhn-migrate-classic-to-rhsm")
     #print_generic("First Prompt is for RHN Classic / Satellite 5 credentials")
     #print_generic("Second Prompt is for Satellite 6 credentials")
     #subprocess.call("/usr/sbin/rhn-migrate-classic-to-rhsm")
-    exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activationkey %s --keep" % (org_label,ak))
+    exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activationkey %s --keep" % (org_label, ak))
 
-def register_systems(org_name,ak,release):
+def register_systems(org_name, ak, release):
     org_label=return_matching_org_label(org_name)
     print_generic("Calling subscription-manager")
     if options.force:
@@ -212,10 +210,9 @@ def get_json(url):
         sys.exit(2)
 
 def post_json(url, jdata):
-    # Generic function to HTTP PUT JSON to Satellite's API. 
-    # Had to use a couple of hacks to urllib2 to make it 
-    # support an HTTP PUT, which it doesn't by default. 
-
+    # Generic function to HTTP PUT JSON to Satellite's API.
+    # Had to use a couple of hacks to urllib2 to make it
+    # support an HTTP PUT, which it doesn't by default.
     try:
         opener = urllib2.build_opener(urllib2.HTTPHandler)
         request = urllib2.Request(url)
@@ -316,18 +313,17 @@ def create_host():
     myorgid = return_matching_org(ORG)
     if VERBOSE:
         print "------\nmyhgid: " + str(myhgid)  + "\nmylocid: " + str(mylocid) + "\nmyorgid: " + str(myorgid) + "\nMAC: " + str(MAC) + "\n------"
-    jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s"}}' % (HOSTNAME,myhgid,myorgid,mylocid,MAC))
+    jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s"}}' % (HOSTNAME, myhgid, myorgid, mylocid, MAC))
     myurl = "https://" + SAT6_FQDN + "/api/v2/hosts/"
     if options.force:
         print_running("Deleting old host if any")
         delete_json("%s/%s" % (myurl, HOSTNAME))
     print_running("Calling Satellite API to create a host entry associated with the group, org & location")
-    post_json(myurl,jsondata)
+    post_json(myurl, jsondata)
     print_success("Successfully created host %s" % HOSTNAME)
 
 def check_rhn_registration():
     return os.path.exists('/etc/sysconfig/rhn/systemid')
-	
 
 print "Satellite 6 Bootstrap Script"
 print "This script is designed to register new systems or to migrate an existing system to Red Hat Satellite 6"
@@ -337,12 +333,12 @@ if check_rhn_registration():
     create_host()
     install_prereqs()
     get_bootstrap_rpm()
-    migrate_systems(ORG,ACTIVATIONKEY)
+    migrate_systems(ORG, ACTIVATIONKEY)
 else:
     print_generic('This system is not registered to RHN. Attempting to register via subscription-manager')
     create_host()
     get_bootstrap_rpm()
-    register_systems(ORG,ACTIVATIONKEY, options.release)
+    register_systems(ORG, ACTIVATIONKEY, options.release)
 
 enable_sat_tools()
 install_katello_agent()
