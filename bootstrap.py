@@ -136,7 +136,8 @@ def migrate_systems(org_name,ak):
 def register_systems(org_name,ak,release):
   org_label=return_matching_org_label(org_name)
   print_generic("Calling subscription-manager")
-  exec_failexit("/usr/sbin/subscription-manager register --org %s --activationkey %s --release %s" % (org_label,ak,release))
+#  exec_failexit("/usr/sbin/subscription-manager register --org %s --activationkey %s --release %s" % (org_label,ak,release))
+  exec_failexit("/usr/sbin/subscription-manager register --org %s --activationkey %s" % (org_label,ak))
 
 
 def enable_sat_tools():
