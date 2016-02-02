@@ -28,6 +28,7 @@ parser.add_option("-a", "--activationkey", dest="activationkey", help="Activatio
 parser.add_option("-g", "--hostgroup", dest="hostgroup", help="Label of the Hostgroup in Satellite that the host is to be associated with", metavar="HOSTGROUP")
 parser.add_option("-L", "--location", dest="location", default='Default_Location', help="Label of the Location in Satellite that the host is to be associated with", metavar="HOSTGROUP")
 parser.add_option("-o", "--organization", dest="org", default='Default_Organization', help="Label of the Organization in Satellite that the host is to be associated with", metavar="ORG")
+parser.add_option("-u", "--update", dest="update", action="store_true", help="Fully Updates the System")
 parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="Verbose output")
 parser.add_option("-r", "--release", dest="release", default=RELEASE, help="Specify release version")
 (options, args) = parser.parse_args()
@@ -51,6 +52,11 @@ if options.verbose:
 else:
     VERBOSE=False
 
+if options.update:
+    UPDATE=True
+else:
+    UPDATE=False
+
 if not PASSWORD: 
 	PASSWORD = getpass.getpass("%s's password:" % LOGIN)
 
@@ -65,6 +71,7 @@ if VERBOSE:
     print "LOCATION - %s" % LOCATION
     print "ORG - %s" % ORG
     print "ACTIVATIONKEY - %s" % ACTIVATIONKEY
+    print "UPDATE - %s" % UPDATE
 
 class error_colors:
     HEADER = '\033[95m'
@@ -278,7 +285,6 @@ def check_rhn_registration():
 	
 	
 
-
 print "Satellite 6 Bootstrap Script"
 print "This script is designed to register new systems or to migrate an existing system to Red Hat Satellite 6"
 
@@ -297,4 +303,5 @@ else:
 enable_sat_tools()
 install_katello_agent()
 install_puppet_agent()
-fully_update_the_box()
+if UPDATE:
+	fully_update_the_box()
