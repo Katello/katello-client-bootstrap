@@ -6,7 +6,6 @@ import urllib2
 import base64
 import sys
 import commands
-import subprocess
 import platform
 import socket
 import os.path
