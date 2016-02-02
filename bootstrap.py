@@ -140,9 +140,6 @@ def get_bootstrap_rpm():
 def migrate_systems(org_name, ak):
     org_label=return_matching_org_label(org_name)
     print_generic("Calling rhn-migrate-classic-to-rhsm")
-    #print_generic("First Prompt is for RHN Classic / Satellite 5 credentials")
-    #print_generic("Second Prompt is for Satellite 6 credentials")
-    #subprocess.call("/usr/sbin/rhn-migrate-classic-to-rhsm")
     exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activationkey %s --keep" % (org_label, ak))
 
 def register_systems(org_name, ak, release):
@@ -220,7 +217,6 @@ def post_json(url, jdata):
         request.add_header("Authorization", "Basic %s" % base64string)
         request.add_header("Content-Type", "application/json")
         request.add_header("Accept", "application/json")
-        #request.get_method = lambda: 'PUT'
         request.get_method = lambda: 'POST'
         url = opener.open(request)
     except urllib2.URLError, e:
@@ -280,7 +276,6 @@ def return_matching_location(location):
 def return_matching_org(organization):
     # Given an org, find its id.
     myurl = "https://" + SAT6_FQDN+ "/api/v2/organizations/"
-    # myurl = "https://" + SAT6_FQDN+ "/katello/api/organizations/" + organization
     organizations = get_json(myurl)
     for org in organizations['results']:
         if org['name'] == organization:
@@ -294,17 +289,6 @@ def return_matching_org_label(organization):
     organization = get_json(myurl)
     org_label = organization['label']
     return org_label
-
-#def update_host_with_org():
-# myhgid = return_matching_hg_id(HOSTGROUP)
-# myhostid = return_matching_host_id(HOSTNAME)
-# mylocid = return_matching_location(LOCATION)
-# myorgid = return_matching_org(ORG)
-# jsondata = json.loads('{"id": %s,"host": {"hostgroup_id": %s,"organization_id": %s,"location_id": %s}}' % (myhostid,myhgid,myorgid,mylocid))
-# myurl = "https://" + SAT6_FQDN + "/api/v2/hosts/" + str(myhostid) + "/"
-# print_running("Calling Satellite API to associate host with hostgroup, org & location")
-# post_json(myurl,jsondata)
-# print_success("Successfully associated host with hostgroup, org & location")
 
 def create_host():
     myhgid = return_matching_hg_id(HOSTGROUP)
