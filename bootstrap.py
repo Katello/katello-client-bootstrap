@@ -125,6 +125,7 @@ def exec_failexit(command):
 
 def install_prereqs():
   print_generic("Installing subscription manager prerequisites")
+  exec_failexit("/usr/bin/yum -y remove subscription-manager-gnome")
   exec_failexit("/usr/bin/yum -y install subscription-manager subscription-manager-migration-*")
   exec_failexit("/usr/bin/yum -y update yum openssl")
 
