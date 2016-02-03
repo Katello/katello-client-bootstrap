@@ -12,6 +12,7 @@ import os.path
 from datetime import datetime
 from optparse import OptionParser
 from uuid import getnode
+from urllib import urlencode
 
 
 HOSTNAME  = platform.node()
@@ -178,7 +179,7 @@ def fully_update_the_box():
 def get_json(url):
 	# Generic function to HTTP GET JSON from Satellite's API
     try:
-        request = urllib2.Request(urllib2.quote(url,':/'))
+        request = urllib2.Request(url)
         base64string = base64.encodestring('%s:%s' % (LOGIN, PASSWORD)).strip()
         request.add_header("Authorization", "Basic %s" % base64string)
         result = urllib2.urlopen(request)
@@ -218,9 +219,9 @@ def post_json(url, jdata):
 
 def return_matching_hg_id(hg_name):
 	# Given a hostgroup name, find its id
-    myurl = "https://" + SAT6_FQDN+ "/api/v2/hostgroups/" + hg_name
+    myurl = "https://" + SAT6_FQDN+ "/api/v2/hostgroups/?" + urlencode([('search', 'title=%s' % hg_name)])
     hostgroup = get_json(myurl)
-    hg_id = hostgroup['id']
+    hg_id = hostgroup['results'][0]['id']
     return hg_id
 
 def return_matching_host_id(hostname):
@@ -232,9 +233,9 @@ def return_matching_host_id(hostname):
 
 def return_matching_location(location):
 	# Given a location, find its id
-    myurl = "https://" + SAT6_FQDN+ "/api/v2/locations/" + location
+    myurl = "https://" + SAT6_FQDN+ "/api/v2/locations/?" + urlencode([('search', 'title=%s' % location)])
     location = get_json(myurl)
-    loc_id = location['id']
+    loc_id = location['results'][0]['id']
     return loc_id
 
 def return_matching_org(organization):
