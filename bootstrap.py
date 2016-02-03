@@ -280,11 +280,7 @@ def create_host():
 	print_success("Successfully created host %s" % HOSTNAME)
 
 def check_rhn_registration():
-	if os.path.exists('/etc/sysconfig/rhn/systemid'):
-	     return True
-	else:
-	     return False
-	
+	return os.path.exists('/etc/sysconfig/rhn/systemid')
 	
 
 print "Satellite 6 Bootstrap Script"
