@@ -154,7 +154,7 @@ def register_systems(org_name,ak,release):
   if options.force:
     options.smargs += " --force"
 #  exec_failexit("/usr/sbin/subscription-manager register --org %s --activationkey %s --release %s" % (org_label,ak,release))
-  exec_failexit("/usr/sbin/subscription-manager register --org %s --name %s --activationkey %s %s" % (org_label, HOSTNAME, ak, options.smargs))
+  exec_failexit("/usr/sbin/subscription-manager register --org '%s' --name '%s' --activationkey '%s' %s" % (org_label, HOSTNAME, ak, options.smargs))
 
 
 def enable_sat_tools():
