@@ -155,8 +155,8 @@ def enable_sat_tools():
     exec_failexit("subscription-manager repos --enable=rhel-*-satellite-tools-*-rpms")
 
 def clean_katello_certs():
-  print_generic("Cleaning old Katello certs")
-  exec_failexit("/usr/bin/yum -y erase katello-ca-consumer-*")
+    print_generic("Cleaning old Katello certs")
+    exec_failexit("/usr/bin/yum -y erase katello-ca-consumer-*")
 
 def install_katello_agent():
     print_generic("Installing the Katello agent")
@@ -228,14 +228,14 @@ def post_json(url, jdata):
         sys.exit(2)
 
 def delete_json(url):
-	# Generic function to HTTP DELETE JSON from Satellite's API
+    # Generic function to HTTP DELETE JSON from Satellite's API
     try:
         request = urllib2.Request(url)
         base64string = base64.encodestring('%s:%s' % (LOGIN, PASSWORD)).strip()
         request.add_header("Authorization", "Basic %s" % base64string)
         request.get_method = lambda: 'DELETE'
         result = urllib2.urlopen(request)
-	return json.load(result)
+        return json.load(result)
     except urllib2.HTTPError, e:
         if e.code != 404:
             raise e
@@ -326,11 +326,11 @@ else:
 enable_sat_tools()
 install_katello_agent()
 if UPDATE:
-	fully_update_the_box()
+    fully_update_the_box()
 
 if not options.no_puppet:
-  if options.force:
-    clean_puppet()
-  install_puppet_agent()
+    if options.force:
+        clean_puppet()
+    install_puppet_agent()
 
 fully_update_the_box()
