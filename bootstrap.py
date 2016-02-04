@@ -31,6 +31,7 @@ parser.add_option("-P", "--skip-puppet", dest="no_puppet", action="store_true", 
 parser.add_option("-g", "--hostgroup", dest="hostgroup", help="Label of the Hostgroup in Satellite that the host is to be associated with", metavar="HOSTGROUP")
 parser.add_option("-L", "--location", dest="location", default='Default_Location', help="Label of the Location in Satellite that the host is to be associated with", metavar="HOSTGROUP")
 parser.add_option("-o", "--organization", dest="org", default='Default_Organization', help="Label of the Organization in Satellite that the host is to be associated with", metavar="ORG")
+parser.add_option("-S", "--subscription-manager-args", dest="smargs", default="", help="Which additional arguments shall be passed to subscription-manager", metavar="ARGS")
 parser.add_option("-u", "--update", dest="update", action="store_true", help="Fully Updates the System")
 parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="Verbose output")
 parser.add_option("-f", "--force", dest="force", action="store_true", help="Force registration (will erase old katello and puppet certs)")
@@ -150,11 +151,10 @@ def migrate_systems(org_name,ak):
 def register_systems(org_name,ak,release):
   org_label=return_matching_org_label(org_name)
   print_generic("Calling subscription-manager")
-  smargs = ""
   if options.force:
-    smargs += " --force"
+    options.smargs += " --force"
 #  exec_failexit("/usr/sbin/subscription-manager register --org %s --activationkey %s --release %s" % (org_label,ak,release))
-  exec_failexit("/usr/sbin/subscription-manager register --org %s --name %s --activationkey %s %s" % (org_label, HOSTNAME, ak, smargs))
+  exec_failexit("/usr/sbin/subscription-manager register --org %s --name %s --activationkey %s %s" % (org_label, HOSTNAME, ak, options.smargs))
 
 
 def enable_sat_tools():
