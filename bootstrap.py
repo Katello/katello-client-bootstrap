@@ -33,6 +33,7 @@ parser.add_option("-L", "--location", dest="location", default='Default_Location
 parser.add_option("-o", "--organization", dest="org", default='Default_Organization', help="Label of the Organization in Satellite that the host is to be associated with", metavar="ORG")
 parser.add_option("-u", "--update", dest="update", action="store_true", help="Fully Updates the System")
 parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="Verbose output")
+parser.add_option("-f", "--force", dest="force", action="store_true", help="Force registration (will erase old katello and puppet certs)")
 parser.add_option("-r", "--release", dest="release", default=RELEASE, help="Specify release version")
 (options, args) = parser.parse_args()
 
@@ -133,6 +134,8 @@ def install_prereqs():
   exec_failexit("/usr/bin/yum -y update yum openssl")
 
 def get_bootstrap_rpm():
+  if options.force:
+    clean_katello_certs()
   print_generic("Retrieving Candlepin Consumer RPMs")
   exec_failexit("/usr/bin/yum -y localinstall http://%s/pub/katello-ca-consumer-latest.noarch.rpm --nogpgcheck" % SAT6_FQDN)
 
@@ -147,19 +150,31 @@ def migrate_systems(org_name,ak):
 def register_systems(org_name,ak,release):
   org_label=return_matching_org_label(org_name)
   print_generic("Calling subscription-manager")
+  smargs = ""
+  if options.force:
+    smargs += " --force"
 #  exec_failexit("/usr/sbin/subscription-manager register --org %s --activationkey %s --release %s" % (org_label,ak,release))
-  exec_failexit("/usr/sbin/subscription-manager register --org %s --activationkey %s" % (org_label,ak))
+  exec_failexit("/usr/sbin/subscription-manager register --org %s --activationkey %s %s" % (org_label,ak, smargs))
 
 
 def enable_sat_tools():
   print_generic("Enabling the Satellite tools repositories for Puppet & Katello Agents")
   exec_failexit("subscription-manager repos --enable=rhel-*-satellite-tools-*-rpms")
 
+def clean_katello_certs():
+  print_generic("Cleaning old Katello certs")
+  exec_failexit("/usr/bin/yum -y erase katello-ca-consumer-*")
+
 def install_katello_agent():
   print_generic("Installing the Katello agent")
   exec_failexit("/usr/bin/yum -y install katello-agent")
   exec_failexit("/sbin/chkconfig goferd on")
   exec_failexit("/sbin/service goferd restart")
+
+def clean_puppet():
+  print_generic("Cleaning old Puppet Agent")
+  exec_failexit("/usr/bin/yum -y erase puppet")
+  exec_failexit("rm -rf /var/lib/puppet/")
 
 def install_puppet_agent():
   print_generic("Installing the Puppet Agent")
@@ -211,6 +226,26 @@ def post_json(url, jdata):
 	request.get_method = lambda: 'POST'
 	url = opener.open(request)
 
+    except urllib2.URLError, e:
+        print "Error: cannot connect to the API: %s" % (e)
+        print "Check your URL & try to login using the same user/pass via the WebUI and check the error!"
+        sys.exit(1)
+    except:
+        print "FATAL Error - %s" % (e)
+        sys.exit(2)
+
+def delete_json(url):
+	# Generic function to HTTP DELETE JSON from Satellite's API
+    try:
+        request = urllib2.Request(url)
+        base64string = base64.encodestring('%s:%s' % (LOGIN, PASSWORD)).strip()
+        request.add_header("Authorization", "Basic %s" % base64string)
+        request.get_method = lambda: 'DELETE'
+        result = urllib2.urlopen(request)
+	return json.load(result)
+    except urllib2.HTTPError, e:
+        if e.code != 404:
+            raise e
     except urllib2.URLError, e:
         print "Error: cannot connect to the API: %s" % (e)
         print "Check your URL & try to login using the same user/pass via the WebUI and check the error!"
@@ -277,6 +312,9 @@ def create_host():
              print "------\nmyhgid: " + str(myhgid)  + "\nmylocid: " + str(mylocid) + "\nmyorgid: " + str(myorgid) + "\nMAC: " + str(MAC) + "\n------"
 	jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s"}}' % (HOSTNAME,myhgid,myorgid,mylocid,MAC))
 	myurl = "https://" + SAT6_FQDN + "/api/v2/hosts/"
+	if options.force:
+		print_running("Deleting old host if any")
+		delete_json("%s/%s" % (myurl, HOSTNAME))
 	print_running("Calling Satellite API to create a host entry associated with the group, org & location")
 	post_json(myurl,jsondata)
 	print_success("Successfully created host %s" % HOSTNAME)
@@ -306,6 +344,8 @@ if UPDATE:
 	fully_update_the_box()
 
 if not options.no_puppet:
+  if options.force:
+    clean_puppet()
   install_puppet_agent()
 
 fully_update_the_box()
