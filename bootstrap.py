@@ -177,16 +177,19 @@ def clean_puppet():
   exec_failexit("rm -rf /var/lib/puppet/")
 
 def install_puppet_agent():
+  puppet_env = return_puppetenv_for_hg(return_matching_hg_id(HOSTGROUP))
   print_generic("Installing the Puppet Agent")
   exec_failexit("/usr/bin/yum -y install puppet")
   exec_failexit("/sbin/chkconfig puppet on")
   exec_failexit("/usr/bin/puppet config set server %s --section agent" % SAT6_FQDN)
+  exec_failexit("/usr/bin/puppet config set ca_server %s --section agent" % SAT6_FQDN)
+  exec_failexit("/usr/bin/puppet config set environment %s --section agent" % puppet_env)
   ### Might need this for RHEL5
   #f = open("/etc/puppet/puppet.conf","a")
   #f.write("server=%s \n" % SAT6_FQDN)
   #f.close()
   print_generic("Running Puppet in noop mode to generate SSL certs")
-  exec_failexit("/usr/bin/puppet agent --test --noop --waitforcert 10")
+  exec_failexit("/usr/bin/puppet agent --test --noop --tags no_such_tag --waitforcert 10")
   exec_failexit("/sbin/service puppet restart")
 
 def fully_update_the_box():
@@ -260,6 +263,11 @@ def return_matching_hg_id(hg_name):
     hostgroup = get_json(myurl)
     hg_id = hostgroup['results'][0]['id']
     return hg_id
+
+def return_puppetenv_for_hg(hg_id):
+    myurl = "https://" + SAT6_FQDN+ "/api/v2/hostgroups/" + str(hg_id)
+    hostgroup = get_json(myurl)
+    return hostgroup['environment_name']
 
 def return_matching_host_id(hostname):
 	# Given a hostname (more precisely a puppet certname) find its id
