@@ -8,6 +8,7 @@ import sys
 import commands
 import subprocess
 import platform
+import socket
 import os.path
 from datetime import datetime
 from optparse import OptionParser
@@ -15,7 +16,7 @@ from uuid import getnode
 from urllib import urlencode
 
 
-HOSTNAME  = platform.node()
+HOSTNAME  = socket.getfqdn()
 HEXMAC    = hex(getnode())
 NOHEXMAC  = HEXMAC[2:]
 MAC       = NOHEXMAC.zfill(13)[0:12]
