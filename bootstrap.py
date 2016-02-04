@@ -233,6 +233,26 @@ def post_json(url, jdata):
         print "FATAL Error - %s" % (e)
         sys.exit(2)
 
+def delete_json(url):
+	# Generic function to HTTP DELETE JSON from Satellite's API
+    try:
+        request = urllib2.Request(url)
+        base64string = base64.encodestring('%s:%s' % (LOGIN, PASSWORD)).strip()
+        request.add_header("Authorization", "Basic %s" % base64string)
+        request.get_method = lambda: 'DELETE'
+        result = urllib2.urlopen(request)
+	return json.load(result)
+    except urllib2.HTTPError, e:
+        if e.code != 404:
+            raise e
+    except urllib2.URLError, e:
+        print "Error: cannot connect to the API: %s" % (e)
+        print "Check your URL & try to login using the same user/pass via the WebUI and check the error!"
+        sys.exit(1)
+    except:
+        print "FATAL Error - %s" % (e)
+        sys.exit(2)
+
 def return_matching_hg_id(hg_name):
 	# Given a hostgroup name, find its id
     myurl = "https://" + SAT6_FQDN+ "/api/v2/hostgroups/?" + urlencode([('search', 'title=%s' % hg_name)])
@@ -291,6 +311,9 @@ def create_host():
              print "------\nmyhgid: " + str(myhgid)  + "\nmylocid: " + str(mylocid) + "\nmyorgid: " + str(myorgid) + "\nMAC: " + str(MAC) + "\n------"
 	jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s"}}' % (HOSTNAME,myhgid,myorgid,mylocid,MAC))
 	myurl = "https://" + SAT6_FQDN + "/api/v2/hosts/"
+	if options.force:
+		print_running("Deleting old host if any")
+		delete_json("%s/%s" % (myurl, HOSTNAME))
 	print_running("Calling Satellite API to create a host entry associated with the group, org & location")
 	post_json(myurl,jsondata)
 	print_success("Successfully created host %s" % HOSTNAME)
