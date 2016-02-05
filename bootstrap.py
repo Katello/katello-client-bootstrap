@@ -257,7 +257,12 @@ def return_matching_hg_id(hg_name):
 def return_puppetenv_for_hg(hg_id):
     myurl = "https://" + SAT6_FQDN+ "/api/v2/hostgroups/" + str(hg_id)
     hostgroup = get_json(myurl)
-    return hostgroup['environment_name']
+    if hostgroup['environment_name']:
+        return hostgroup['environment_name']
+    elif hostgroup['ancestry']:
+        return return_puppetenv_for_hg(hostgroup['ancestry'])
+    else:
+        return 'production'
 
 def return_matching_host_id(hostname):
     # Given a hostname (more precisely a puppet certname) find its id
