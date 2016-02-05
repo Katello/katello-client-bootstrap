@@ -12,9 +12,9 @@ import commands
 import platform
 import socket
 import os.path
+import glob
 from datetime import datetime
 from optparse import OptionParser
-from uuid import getnode
 from urllib import urlencode
 from ConfigParser import SafeConfigParser
 
@@ -30,9 +30,26 @@ def get_architecture():
 FQDN = socket.getfqdn()
 HOSTNAME = FQDN.split('.')[0]
 DOMAIN = FQDN[FQDN.index('.')+1:]
-HEXMAC = hex(getnode())
-NOHEXMAC = HEXMAC[2:]
-MAC = NOHEXMAC.zfill(13)[0:12]
+
+MAC = None
+try:
+    import uuid
+    mac1 = uuid.getnode()
+    mac2 = uuid.getnode()
+    if mac1 == mac2:
+        MAC = ':'.join(("%012X" % mac1)[i:i+2] for i in range(0, 12, 2))
+except ImportError:
+    if os.path.exists('/sys/class/net/eth0/address'):
+        address_files = ['/sys/class/net/eth0/address']
+    else:
+        address_files = glob.glob('/sys/class/net/*/address')
+    for f in address_files:
+        MAC = open(f).readline().strip().upper()
+        if MAC != "00:00:00:00:00:00":
+            break
+if not MAC:
+    MAC = "00:00:00:00:00:00"
+
 RELEASE = platform.linux_distribution()[1]
 API_PORT = "443"
 ARCHITECTURE = get_architecture()
