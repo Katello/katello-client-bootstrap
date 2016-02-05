@@ -1,6 +1,9 @@
 #!/usr/bin/python
 #
-import json
+try:
+    import json
+except ImportError:
+    import simplejson as json
 import getpass
 import urllib2
 import base64
