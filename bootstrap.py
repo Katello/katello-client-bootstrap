@@ -293,8 +293,12 @@ def return_matching_hg_id(hg_name):
     if VERBOSE:
         print myurl
     hostgroup = get_json(myurl)
-    hg_id = hostgroup['results'][0]['id']
-    return hg_id
+    if len(hostgroup['results']) == 1:
+        hg_id = hostgroup['results'][0]['id']
+        return hg_id
+    else:
+        print_error("Could not find hostgroup %s" % hg_name)
+        sys.exit(2)
 
 def return_matching_architecture_id(architecture_name):
     # Given an architecture name, find its id
@@ -327,9 +331,13 @@ def return_matching_location(location):
     myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/locations/?" + urlencode([('search', 'title=%s' % location)])
     if VERBOSE:
         print myurl
-    location = get_json(myurl)
-    loc_id = location['results'][0]['id']
-    return loc_id
+    loc = get_json(myurl)
+    if len(loc['results']) == 1:
+        loc_id = loc['results'][0]['id']
+        return loc_id
+    else:
+        print_error("Could not find location %s" % location)
+        sys.exit(2)
 
 def return_matching_org(organization):
     # Given an org, find its id.
@@ -341,6 +349,8 @@ def return_matching_org(organization):
         if org['name'] == organization:
             org_id = org['id']
             return org_id
+    print_error("Could not find organization %s" % organization)
+    sys.exit(2)
 
 def return_matching_org_label(organization):
     # Given an org name, find its label - required by subscription-manager
