@@ -102,11 +102,6 @@ def print_generic(msg):
     print "[NOTIFICATION], [%s], [%s] " % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
 
 
-def get_output(command):
-    output = commands.getstatusoutput(command)[1]
-    return output
-
-
 def exec_failok(command):
     print_running(command)
     output = commands.getstatusoutput(command)
