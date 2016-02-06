@@ -132,21 +132,21 @@ def get_bootstrap_rpm():
     print_generic("Retrieving Candlepin Consumer RPMs")
     exec_failexit("/usr/bin/yum -y localinstall http://%s/pub/katello-ca-consumer-latest.noarch.rpm --nogpgcheck" % options.sat6_fqdn)
 
-def migrate_systems(org_name, ak):
+def migrate_systems(org_name, activationkey):
     org_label = return_matching_org_label(org_name)
     print_generic("Calling rhn-migrate-classic-to-rhsm")
     rhsmargs = "--keep"
     if options.force:
         rhsmargs += " --force"
-    exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key %s %s" % (org_label, ak, rhsmargs))
+    exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key %s %s" % (org_label, activationkey, rhsmargs))
 
-def register_systems(org_name, ak, release):
+def register_systems(org_name, activationkey, release):
     org_label = return_matching_org_label(org_name)
     print_generic("Calling subscription-manager")
     if options.force:
         options.smargs += " --force"
-    # exec_failexit("/usr/sbin/subscription-manager register --org %s --activationkey %s --release %s" % (org_label,ak,release))
-    exec_failexit("/usr/sbin/subscription-manager register --org '%s' --name '%s' --activationkey '%s' %s" % (org_label, HOSTNAME, ak, options.smargs))
+    # exec_failexit("/usr/sbin/subscription-manager register --org %s --activationkey %s --release %s" % (org_label,activationkey,release))
+    exec_failexit("/usr/sbin/subscription-manager register --org '%s' --name '%s' --activationkey '%s' %s" % (org_label, HOSTNAME, activationkey, options.smargs))
 
 def enable_sat_tools():
     print_generic("Enabling the Satellite tools repositories for Puppet & Katello Agents")
