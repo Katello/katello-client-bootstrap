@@ -72,25 +72,26 @@ if options.verbose:
     print "ACTIVATIONKEY - %s" % options.activationkey
     print "UPDATE - %s" % options.update
 
-class error_colors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
+error_colors = {
+    'HEADER': '\033[95m',
+    'OKBLUE': '\033[94m',
+    'OKGREEN': '\033[92m',
+    'WARNING': '\033[93m',
+    'FAIL': '\033[91m',
+    'ENDC': '\033[0m',
+}
 
 def print_error(msg):
-    print "[%sERROR%s], [%s], EXITING: [%s] failed to execute properly." % (error_colors.FAIL, error_colors.ENDC, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
+    print "[%sERROR%s], [%s], EXITING: [%s] failed to execute properly." % (error_colors['FAIL'], error_colors['ENDC'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
 
 def print_warning(msg):
-    print "[%sWARNING%s], [%s], NON-FATAL: [%s] failed to execute properly." % (error_colors.WARNING, error_colors.ENDC, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
+    print "[%sWARNING%s], [%s], NON-FATAL: [%s] failed to execute properly." % (error_colors['WARNING'], error_colors['ENDC'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
 
 def print_success(msg):
-    print "[%sSUCCESS%s], [%s], [%s], completed successfully." % (error_colors.OKGREEN, error_colors.ENDC, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
+    print "[%sSUCCESS%s], [%s], [%s], completed successfully." % (error_colors['OKGREEN'], error_colors['ENDC'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
 
 def print_running(msg):
-    print "[%sRUNNING%s], [%s], [%s] " % (error_colors.OKBLUE, error_colors.ENDC, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
+    print "[%sRUNNING%s], [%s], [%s] " % (error_colors['OKBLUE'], error_colors['ENDC'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
 
 def print_generic(msg):
     print "[NOTIFICATION], [%s], [%s] " % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
