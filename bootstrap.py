@@ -39,7 +39,7 @@ parser.add_option("-p", "--password", dest="password", help="Password for specif
 parser.add_option("-a", "--activationkey", dest="activationkey", help="Activation Key to register the system", metavar="ACTIVATIONKEY")
 parser.add_option("-P", "--skip-puppet", dest="no_puppet", action="store_true", default=False, help="Do not install Puppet")
 parser.add_option("-g", "--hostgroup", dest="hostgroup", help="Label of the Hostgroup in Satellite that the host is to be associated with", metavar="HOSTGROUP")
-parser.add_option("-L", "--location", dest="location", default='Default_Location', help="Label of the Location in Satellite that the host is to be associated with", metavar="HOSTGROUP")
+parser.add_option("-L", "--location", dest="location", default='Default_Location', help="Label of the Location in Satellite that the host is to be associated with", metavar="LOCATION")
 parser.add_option("-o", "--organization", dest="org", default='Default_Organization', help="Label of the Organization in Satellite that the host is to be associated with", metavar="ORG")
 parser.add_option("-S", "--subscription-manager-args", dest="smargs", default="", help="Which additional arguments shall be passed to subscription-manager", metavar="ARGS")
 parser.add_option("-u", "--update", dest="update", action="store_true", help="Fully Updates the System")
@@ -54,46 +54,23 @@ if not (options.sat6_fqdn and options.login and options.hostgroup and options.lo
     parser.print_help()
     print "\nExample usage: ./bootstrap.py -l admin -s satellite.example.com -o Default_Organization -L Default_Location -g My_Hostgroup -a My_Activation_Key"
     sys.exit(1)
-else:
-    SAT6_FQDN = options.sat6_fqdn
-    LOGIN     = options.login
-    PASSWORD  = options.password
-    HOSTGROUP = options.hostgroup
-    LOCATION  = options.location
-    ORG       = options.org
-    ACTIVATIONKEY = options.activationkey
+
+if not options.password:
+    options.password = getpass.getpass("%s's password:" % options.login)
 
 if options.verbose:
-    VERBOSE = True
-else:
-    VERBOSE = False
-
-if options.update:
-    UPDATE = True
-else:
-    UPDATE = False
-
-if options.removepkgs:
-    REMOVE = True
-else:
-    REMOVE = False
-
-if not PASSWORD:
-    PASSWORD = getpass.getpass("%s's password:" % LOGIN)
-
-if VERBOSE:
     print "HOSTNAME - %s" % HOSTNAME
     print "DOMAIN - %s" % DOMAIN
     print "RELEASE - %s" % RELEASE
     print "MAC - %s" % MAC
-    print "SAT6_FQDN - %s" % SAT6_FQDN
-    print "LOGIN - %s" % LOGIN
-    print "PASSWORD - %s" % PASSWORD
-    print "HOSTGROUP - %s" % HOSTGROUP
-    print "LOCATION - %s" % LOCATION
-    print "ORG - %s" % ORG
-    print "ACTIVATIONKEY - %s" % ACTIVATIONKEY
-    print "UPDATE - %s" % UPDATE
+    print "SAT6_FQDN - %s" % options.sat6_fqdn
+    print "LOGIN - %s" % options.login
+    print "PASSWORD - %s" % options.password
+    print "HOSTGROUP - %s" % options.hostgroup
+    print "LOCATION - %s" % options.location
+    print "ORG - %s" % options.org
+    print "ACTIVATIONKEY - %s" % options.activationkey
+    print "UPDATE - %s" % options.update
 
 class error_colors:
     HEADER = '\033[95m'
@@ -153,7 +130,7 @@ def get_bootstrap_rpm():
     if options.force:
         clean_katello_certs()
     print_generic("Retrieving Candlepin Consumer RPMs")
-    exec_failexit("/usr/bin/yum -y localinstall http://%s/pub/katello-ca-consumer-latest.noarch.rpm --nogpgcheck" % SAT6_FQDN)
+    exec_failexit("/usr/bin/yum -y localinstall http://%s/pub/katello-ca-consumer-latest.noarch.rpm --nogpgcheck" % options.sat6_fqdn)
 
 def migrate_systems(org_name, ak):
     org_label = return_matching_org_label(org_name)
@@ -191,16 +168,16 @@ def clean_puppet():
     exec_failexit("rm -rf /var/lib/puppet/")
 
 def install_puppet_agent():
-    puppet_env = return_puppetenv_for_hg(return_matching_hg_id(HOSTGROUP))
+    puppet_env = return_puppetenv_for_hg(return_matching_hg_id(options.hostgroup))
     print_generic("Installing the Puppet Agent")
     exec_failexit("/usr/bin/yum -y install puppet")
     exec_failexit("/sbin/chkconfig puppet on")
-    exec_failexit("/usr/bin/puppet config set server %s --section agent" % SAT6_FQDN)
-    exec_failexit("/usr/bin/puppet config set ca_server %s --section agent" % SAT6_FQDN)
+    exec_failexit("/usr/bin/puppet config set server %s --section agent" % options.sat6_fqdn)
+    exec_failexit("/usr/bin/puppet config set ca_server %s --section agent" % options.sat6_fqdn)
     exec_failexit("/usr/bin/puppet config set environment %s --section agent" % puppet_env)
     ### Might need this for RHEL5
     #f = open("/etc/puppet/puppet.conf","a")
-    #f.write("server=%s \n" % SAT6_FQDN)
+    #f.write("server=%s \n" % options.sat6_fqdn)
     #f.close()
     print_generic("Running Puppet in noop mode to generate SSL certs")
     exec_failexit("/usr/bin/puppet agent --test --noop --tags no_such_tag --waitforcert 10")
@@ -221,7 +198,7 @@ def get_json(url):
         request = urllib2.Request(url)
         if VERBOSE:
             print "request: " + url
-        base64string = base64.encodestring('%s:%s' % (LOGIN, PASSWORD)).strip()
+        base64string = base64.encodestring('%s:%s' % (options.login, options.password)).strip()
         request.add_header("Authorization", "Basic %s" % base64string)
         result = urllib2.urlopen(request)
         return json.load(result)
@@ -240,7 +217,7 @@ def post_json(url, jdata):
     try:
         opener = urllib2.build_opener(urllib2.HTTPHandler)
         request = urllib2.Request(url)
-        base64string = base64.encodestring('%s:%s' % (LOGIN, PASSWORD)).strip()
+        base64string = base64.encodestring('%s:%s' % (options.login, options.password)).strip()
         request.add_data(json.dumps(jdata))
         request.add_header("Authorization", "Basic %s" % base64string)
         request.add_header("Content-Type", "application/json")
@@ -262,7 +239,7 @@ def delete_json(url):
     # Generic function to HTTP DELETE JSON from Satellite's API
     try:
         request = urllib2.Request(url)
-        base64string = base64.encodestring('%s:%s' % (LOGIN, PASSWORD)).strip()
+        base64string = base64.encodestring('%s:%s' % (options.login, options.password)).strip()
         request.add_header("Authorization", "Basic %s" % base64string)
         request.get_method = lambda: 'DELETE'
         result = urllib2.urlopen(request)
@@ -289,7 +266,7 @@ def return_matching_domain_id(domain_name):
 
 def return_matching_hg_id(hg_name):
     # Given a hostgroup name, find its id
-    myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/hostgroups/?" + urlencode([('search', 'title=%s' % hg_name)])
+    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hostgroups/?" + urlencode([('search', 'title=%s' % hg_name)])
     if VERBOSE:
         print myurl
     hostgroup = get_json(myurl)
@@ -308,7 +285,7 @@ def return_matching_architecture_id(architecture_name):
     return architectureid
 
 def return_puppetenv_for_hg(hg_id):
-    myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/hostgroups/" + str(hg_id)
+    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hostgroups/" + str(hg_id)
     hostgroup = get_json(myurl)
     if hostgroup['environment_name']:
         return hostgroup['environment_name']
@@ -319,7 +296,7 @@ def return_puppetenv_for_hg(hg_id):
 
 def return_matching_host_id(hostname):
     # Given a hostname (more precisely a puppet certname) find its id
-    myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/hosts/" + hostname
+    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hosts/" + hostname
     if VERBOSE:
         print myurl
     host = get_json(myurl)
@@ -328,7 +305,7 @@ def return_matching_host_id(hostname):
 
 def return_matching_location(location):
     # Given a location, find its id
-    myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/locations/?" + urlencode([('search', 'title=%s' % location)])
+    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/locations/?" + urlencode([('search', 'title=%s' % location)])
     if VERBOSE:
         print myurl
     loc = get_json(myurl)
@@ -341,7 +318,7 @@ def return_matching_location(location):
 
 def return_matching_org(organization):
     # Given an org, find its id.
-    myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/organizations/"
+    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/organizations/"
     if VERBOSE:
         print myurl
     organizations = get_json(myurl)
@@ -354,16 +331,16 @@ def return_matching_org(organization):
 
 def return_matching_org_label(organization):
     # Given an org name, find its label - required by subscription-manager
-    myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/katello/api/organizations/" + organization
+    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/katello/api/organizations/" + organization
     print "myurl: " + myurl
     organization = get_json(myurl)
     org_label = organization['label']
     return org_label
 
 def create_host():
-    myhgid = return_matching_hg_id(HOSTGROUP)
-    mylocid = return_matching_location(LOCATION)
-    myorgid = return_matching_org(ORG)
+    myhgid = return_matching_hg_id(options.hostgroup)
+    mylocid = return_matching_location(options.location)
+    myorgid = return_matching_org(options.org)
     mydomainid = return_matching_domain_id(DOMAIN)
     architecture_id = return_matching_architecture_id(ARCHITECTURE)
     if VERBOSE:
@@ -372,6 +349,7 @@ def create_host():
     if VERBOSE:
         print jsondata
     myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/hosts/"
+    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hosts/"
     if options.force:
         print_running("Deleting old host if any")
         delete_json("%s/%s" % (myurl, HOSTNAME))
@@ -396,17 +374,17 @@ if check_rhn_registration():
     get_bootstrap_rpm()
     API_PORT = get_api_port()
     create_host()
-    migrate_systems(ORG, ACTIVATIONKEY)
+    migrate_systems(options.org, options.activationkey)
 else:
     print_generic('This system is not registered to RHN. Attempting to register via subscription-manager')
     get_bootstrap_rpm()
     API_PORT = get_api_port()
     create_host()
-    register_systems(ORG, ACTIVATIONKEY, options.release)
+    register_systems(options.org, options.activationkey, options.release)
 
 enable_sat_tools()
 install_katello_agent()
-if UPDATE:
+if options.update:
     fully_update_the_box()
 
 if not options.no_puppet:
@@ -414,5 +392,5 @@ if not options.no_puppet:
         clean_puppet()
     install_puppet_agent()
 
-if REMOVE:
+if options.removepkgs:
 	remove_old_rhn_packages()
