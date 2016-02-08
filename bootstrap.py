@@ -37,7 +37,7 @@ parser.add_option("-u", "--update", dest="update", action="store_true", help="Fu
 parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="Verbose output")
 parser.add_option("-f", "--force", dest="force", action="store_true", help="Force registration (will erase old katello and puppet certs)")
 parser.add_option("-r", "--release", dest="release", default=RELEASE, help="Specify release version")
-parser.add_option("-R", "--remove-rhn-packages", dest="removepkgs", store_true, help="Remove old RHN Packages")
+parser.add_option("-R", "--remove-rhn-packages", dest="removepkgs", action="store_true", help="Remove old Red Hat Network Packages")
 (options, args) = parser.parse_args()
 
 if not (options.sat6_fqdn and options.login and options.hostgroup and options.location and options.org and options.activationkey):
@@ -195,8 +195,8 @@ def install_puppet_agent():
 
 def remove_old_rhn_packages():
 	pkg_list = "rhn-setup rhn-client-tools yum-rhn-plugin rhnsd rhn-check rhnlib spacewalk-abrt spacewalk-oscap"
-    print_generic("Removing old RHN packages")
-    exec_failexit("/usr/bin/yum -y remove %s" % pkg_list)
+	print_generic("Removing old RHN packages")
+	exec_failexit("/usr/bin/yum -y remove %s" % pkg_list)
 
 def fully_update_the_box():
     print_generic("Fully Updating The Box")

@@ -101,10 +101,8 @@ Options:
                         certs)
   -r RELEASE, --release=RELEASE
                         Specify release version
-
-
-
-
+  -R, --remove-rhn-packages
+                        Remove old Red Hat Network Packages
 ~~~
 
 
