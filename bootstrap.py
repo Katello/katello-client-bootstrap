@@ -15,13 +15,22 @@ from uuid import getnode
 from urllib import urlencode
 from ConfigParser import SafeConfigParser
 
+def get_architecture():
+  # May not be safe for anything apart from 32/64 bit OS
+  is_64bit = sys.maxsize > 2**32
+  if is_64bit:
+     return "x86_64"
+  else:
+     return "x86"
 
-HOSTNAME  = socket.getfqdn()
-HEXMAC    = hex(getnode())
-NOHEXMAC  = HEXMAC[2:]
-MAC       = NOHEXMAC.zfill(13)[0:12]
-RELEASE   = platform.linux_distribution()[1]
-API_PORT  = 443
+HOSTNAME     = platform.node().split('.')[0]
+DOMAIN       = platform.node()[platform.node().index('.')+1:]
+HEXMAC       = hex(getnode())
+NOHEXMAC     = HEXMAC[2:]
+MAC          = NOHEXMAC.zfill(13)[0:12]
+RELEASE      = platform.linux_distribution()[1]
+API_PORT     = 443
+ARCHITECTURE = get_architecture()
 
 parser = OptionParser()
 parser.add_option("-s", "--server", dest="sat6_fqdn", help="FQDN of Satellite OR Satellite Capsule - omit https://", metavar="SAT6_FQDN")
@@ -206,6 +215,8 @@ def get_json(url):
     # Generic function to HTTP GET JSON from Satellite's API
     try:
         request = urllib2.Request(url)
+        if VERBOSE:
+            print "request: " + url
         base64string = base64.encodestring('%s:%s' % (LOGIN, PASSWORD)).strip()
         request.add_header("Authorization", "Basic %s" % base64string)
         result = urllib2.urlopen(request)
@@ -214,7 +225,7 @@ def get_json(url):
         print "Error: cannot connect to the API: %s" % (e)
         print "Check your URL & try to login using the same user/pass via the WebUI and check the error!"
         sys.exit(1)
-    except:
+    except Exception, e:
         print "FATAL Error - %s" % (e)
         sys.exit(2)
 
@@ -231,10 +242,13 @@ def post_json(url, jdata):
         request.add_header("Content-Type", "application/json")
         request.add_header("Accept", "application/json")
         request.get_method = lambda: 'POST'
-        url = opener.open(request)
+        reply = opener.open(request)
     except urllib2.URLError, e:
         print "Error: cannot connect to the API: %s" % (e)
         print "Check your URL & try to login using the same user/pass via the WebUI and check the error!"
+        print "error: " + e.read()
+        print "url: " + url
+        print "jdata: " + str(jdata)
         sys.exit(1)
     except:
         print "FATAL Error - %s" % (e)
@@ -260,12 +274,30 @@ def delete_json(url):
         print "FATAL Error - %s" % (e)
         sys.exit(2)
 
+def return_matching_domain_id(domain_name):
+  # Given a domain, find its id
+    myurl = "https://" + SAT6_FQDN+ "/api/v2/domains?search=" + domain_name
+    if VERBOSE:
+        print myurl
+    domain = get_json(myurl)
+    domain_id = domain['results'][0]['id']
+    return domain_id
+
 def return_matching_hg_id(hg_name):
     # Given a hostgroup name, find its id
     myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/hostgroups/?" + urlencode([('search', 'title=%s' % hg_name)])
+    if VERBOSE:
+        print myurl
     hostgroup = get_json(myurl)
     hg_id = hostgroup['results'][0]['id']
     return hg_id
+
+def return_matching_architecture_id(architecture_name):
+    # Given an architecture name, find its id
+    myurl = "https://" + SAT6_FQDN+ "/api/v2/architectures?search=" + architecture_name
+    architectures = get_json(myurl)
+    architectureid = architectures['results'][0]['id']
+    return architectureid
 
 def return_puppetenv_for_hg(hg_id):
     myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/hostgroups/" + str(hg_id)
@@ -280,6 +312,8 @@ def return_puppetenv_for_hg(hg_id):
 def return_matching_host_id(hostname):
     # Given a hostname (more precisely a puppet certname) find its id
     myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/hosts/" + hostname
+    if VERBOSE:
+        print myurl
     host = get_json(myurl)
     host_id = host['id']
     return host_id
@@ -287,6 +321,8 @@ def return_matching_host_id(hostname):
 def return_matching_location(location):
     # Given a location, find its id
     myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/locations/?" + urlencode([('search', 'title=%s' % location)])
+    if VERBOSE:
+        print myurl
     location = get_json(myurl)
     loc_id = location['results'][0]['id']
     return loc_id
@@ -294,6 +330,8 @@ def return_matching_location(location):
 def return_matching_org(organization):
     # Given an org, find its id.
     myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/organizations/"
+    if VERBOSE:
+        print myurl
     organizations = get_json(myurl)
     for org in organizations['results']:
         if org['name'] == organization:
@@ -312,9 +350,13 @@ def create_host():
     myhgid = return_matching_hg_id(HOSTGROUP)
     mylocid = return_matching_location(LOCATION)
     myorgid = return_matching_org(ORG)
+    mydomainid = return_matching_domain_id(DOMAIN)
+    architecture_id = return_matching_architecture_id(ARCHITECTURE)
     if VERBOSE:
-        print "------\nmyhgid: " + str(myhgid)  + "\nmylocid: " + str(mylocid) + "\nmyorgid: " + str(myorgid) + "\nMAC: " + str(MAC) + "\n------"
-    jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s"}}' % (HOSTNAME, myhgid, myorgid, mylocid, MAC))
+        print "------\nmyhgid: " + str(myhgid)  + "\nmylocid: " + str(mylocid) + "\nmyorgid: " + str(myorgid) + "\nMAC: " + str(MAC) + "\nDOMAIN_ID: " + str(mydomainid) +  "\nARCHITECTURE_ID: " + str(architecture_id) +  "\n------"
+    jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s", "domain_id":%s,"architecture_id":%s,"ptable_id":7}}' % (HOSTNAME,myhgid,myorgid,mylocid,MAC,mydomainid,architecture_id))
+    if VERBOSE:
+        print jsondata
     myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/hosts/"
     if options.force:
         print_running("Deleting old host if any")
