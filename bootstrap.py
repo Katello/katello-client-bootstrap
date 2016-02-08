@@ -420,4 +420,4 @@ if not options.no_puppet:
     install_puppet_agent()
 
 if options.removepkgs:
-	remove_old_rhn_packages()
+    remove_old_rhn_packages()
