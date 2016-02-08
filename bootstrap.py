@@ -13,6 +13,7 @@ from datetime import datetime
 from optparse import OptionParser
 from uuid import getnode
 from urllib import urlencode
+from ConfigParser import SafeConfigParser
 
 
 HOSTNAME  = socket.getfqdn()
@@ -20,9 +21,10 @@ HEXMAC    = hex(getnode())
 NOHEXMAC  = HEXMAC[2:]
 MAC       = NOHEXMAC.zfill(13)[0:12]
 RELEASE   = platform.linux_distribution()[1]
+API_PORT  = 443
 
 parser = OptionParser()
-parser.add_option("-s", "--server", dest="sat6_fqdn", help="FQDN of Satellite - omit https://", metavar="SAT6_FQDN")
+parser.add_option("-s", "--server", dest="sat6_fqdn", help="FQDN of Satellite OR Satellite Capsule - omit https://", metavar="SAT6_FQDN")
 parser.add_option("-l", "--login", dest="login", default='admin', help="Login user for API Calls", metavar="LOGIN")
 parser.add_option("-p", "--password", dest="password", help="Password for specified user. Will prompt if omitted", metavar="PASSWORD")
 parser.add_option("-a", "--activationkey", dest="activationkey", help="Activation Key to register the system", metavar="ACTIVATIONKEY")
@@ -249,13 +251,13 @@ def delete_json(url):
 
 def return_matching_hg_id(hg_name):
     # Given a hostgroup name, find its id
-    myurl = "https://" + SAT6_FQDN+ "/api/v2/hostgroups/?" + urlencode([('search', 'title=%s' % hg_name)])
+    myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/hostgroups/?" + urlencode([('search', 'title=%s' % hg_name)])
     hostgroup = get_json(myurl)
     hg_id = hostgroup['results'][0]['id']
     return hg_id
 
 def return_puppetenv_for_hg(hg_id):
-    myurl = "https://" + SAT6_FQDN+ "/api/v2/hostgroups/" + str(hg_id)
+    myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/hostgroups/" + str(hg_id)
     hostgroup = get_json(myurl)
     if hostgroup['environment_name']:
         return hostgroup['environment_name']
@@ -266,21 +268,21 @@ def return_puppetenv_for_hg(hg_id):
 
 def return_matching_host_id(hostname):
     # Given a hostname (more precisely a puppet certname) find its id
-    myurl = "https://" + SAT6_FQDN+ "/api/v2/hosts/" + hostname
+    myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/hosts/" + hostname
     host = get_json(myurl)
     host_id = host['id']
     return host_id
 
 def return_matching_location(location):
     # Given a location, find its id
-    myurl = "https://" + SAT6_FQDN+ "/api/v2/locations/?" + urlencode([('search', 'title=%s' % location)])
+    myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/locations/?" + urlencode([('search', 'title=%s' % location)])
     location = get_json(myurl)
     loc_id = location['results'][0]['id']
     return loc_id
 
 def return_matching_org(organization):
     # Given an org, find its id.
-    myurl = "https://" + SAT6_FQDN+ "/api/v2/organizations/"
+    myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/organizations/"
     organizations = get_json(myurl)
     for org in organizations['results']:
         if org['name'] == organization:
@@ -289,7 +291,7 @@ def return_matching_org(organization):
 
 def return_matching_org_label(organization):
     # Given an org name, find its label - required by subscription-manager
-    myurl = "https://" + SAT6_FQDN+ "/katello/api/organizations/" + organization
+    myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/katello/api/organizations/" + organization
     print "myurl: " + myurl
     organization = get_json(myurl)
     org_label = organization['label']
@@ -302,7 +304,7 @@ def create_host():
     if VERBOSE:
         print "------\nmyhgid: " + str(myhgid)  + "\nmylocid: " + str(mylocid) + "\nmyorgid: " + str(myorgid) + "\nMAC: " + str(MAC) + "\n------"
     jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s"}}' % (HOSTNAME, myhgid, myorgid, mylocid, MAC))
-    myurl = "https://" + SAT6_FQDN + "/api/v2/hosts/"
+    myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/hosts/"
     if options.force:
         print_running("Deleting old host if any")
         delete_json("%s/%s" % (myurl, HOSTNAME))
@@ -313,19 +315,26 @@ def create_host():
 def check_rhn_registration():
     return os.path.exists('/etc/sysconfig/rhn/systemid')
 
+def get_api_port():
+    parser = SafeConfigParser()
+    parser.read('/etc/rhsm/rhsm.conf')
+    return parser.get('server','port')
+
 print "Satellite 6 Bootstrap Script"
 print "This script is designed to register new systems or to migrate an existing system to Red Hat Satellite 6"
 
 if check_rhn_registration():
     print_generic('This system is registered to RHN. Attempting to migrate via rhn-classic-migrate-to-rhsm')
-    create_host()
     install_prereqs()
     get_bootstrap_rpm()
+    API_PORT = get_api_port()
+    create_host()
     migrate_systems(ORG, ACTIVATIONKEY)
 else:
     print_generic('This system is not registered to RHN. Attempting to register via subscription-manager')
-    create_host()
     get_bootstrap_rpm()
+    API_PORT = get_api_port()
+    create_host()
     register_systems(ORG, ACTIVATIONKEY, options.release)
 
 enable_sat_tools()
