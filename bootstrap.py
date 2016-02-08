@@ -347,4 +347,3 @@ if not options.no_puppet:
         clean_puppet()
     install_puppet_agent()
 
-fully_update_the_box()
