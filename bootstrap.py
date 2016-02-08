@@ -388,9 +388,9 @@ def check_rhn_registration():
     return os.path.exists('/etc/sysconfig/rhn/systemid')
 
 def get_api_port():
-    parser = SafeConfigParser()
-    parser.read('/etc/rhsm/rhsm.conf')
-    return parser.get('server','port')
+    configparser = SafeConfigParser()
+    configparser.read('/etc/rhsm/rhsm.conf')
+    return configparser.get('server', 'port')
 
 print "Satellite 6 Bootstrap Script"
 print "This script is designed to register new systems or to migrate an existing system to Red Hat Satellite 6"
