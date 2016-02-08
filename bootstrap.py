@@ -37,6 +37,7 @@ parser.add_option("-u", "--update", dest="update", action="store_true", help="Fu
 parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="Verbose output")
 parser.add_option("-f", "--force", dest="force", action="store_true", help="Force registration (will erase old katello and puppet certs)")
 parser.add_option("-r", "--release", dest="release", default=RELEASE, help="Specify release version")
+parser.add_option("-R", "--remove-rhn-packages", dest="removepkgs", store_true, help="Remove old RHN Packages")
 (options, args) = parser.parse_args()
 
 if not (options.sat6_fqdn and options.login and options.hostgroup and options.location and options.org and options.activationkey):
@@ -62,6 +63,11 @@ if options.update:
     UPDATE = True
 else:
     UPDATE = False
+
+if options.removepkgs:
+    REMOVE = True
+else:
+    REMOVE = False
 
 if not PASSWORD:
     PASSWORD = getpass.getpass("%s's password:" % LOGIN)
@@ -186,6 +192,11 @@ def install_puppet_agent():
     print_generic("Running Puppet in noop mode to generate SSL certs")
     exec_failexit("/usr/bin/puppet agent --test --noop --tags no_such_tag --waitforcert 10")
     exec_failexit("/sbin/service puppet restart")
+
+def remove_old_rhn_packages():
+	pkg_list = "rhn-setup rhn-client-tools yum-rhn-plugin rhnsd rhn-check rhnlib spacewalk-abrt spacewalk-oscap"
+    print_generic("Removing old RHN packages")
+    exec_failexit("/usr/bin/yum -y remove %s" % pkg_list)
 
 def fully_update_the_box():
     print_generic("Fully Updating The Box")
@@ -347,3 +358,5 @@ if not options.no_puppet:
         clean_puppet()
     install_puppet_agent()
 
+if REMOVE:
+	remove_old_rhn_packages()

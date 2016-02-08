@@ -41,9 +41,9 @@ API calls a lot more pleasant, but I couldn't justify the dependencies)
 * The activation key that is provide provides access to a Content View
   which provides the Satellite Tools repo.
 * The system in question has python.
-* Autosigning is enabled for the system in question.  (And be careful,
+* The administrator can approve puppet certificates if using Puppet. 
+  Alternatively, autosigning can be enabled for the system in question.  (And be careful,
   auto-signing isnt one of those things you'd leave enabled forever)
-* 
 
 # User required inputs
 
@@ -55,10 +55,57 @@ API calls a lot more pleasant, but I couldn't justify the dependencies)
 * An Activation Key that provides a content view with the Satellite Tools repo. 
 
 
-Usage:
+# Usage:
 
 ~~~
-# ./bootstrap.py -l admin -s satellite.example.com -o Default_Organization -L Default_Location -g My_Hostgroup -a My_Activation_Key
+# ./bootstrap.py -l admin \
+  -s satellite.example.com \
+  -o Default_Organization \
+  -L Default_Location \
+  -g My_Hostgroup \
+  -a My_Activation_Key
 ~~~
+
+# Help / Available options:
+
+~~~
+./bootstrap.py -h
+Usage: bootstrap.py [options]
+
+Options:
+  -h, --help            show this help message and exit
+  -s SAT6_FQDN, --server=SAT6_FQDN
+                        FQDN of Satellite OR Satellite Capsule - omit https://
+  -l LOGIN, --login=LOGIN
+                        Login user for API Calls
+  -p PASSWORD, --password=PASSWORD
+                        Password for specified user. Will prompt if omitted
+  -a ACTIVATIONKEY, --activationkey=ACTIVATIONKEY
+                        Activation Key to register the system
+  -P, --skip-puppet     Do not install Puppet
+  -g HOSTGROUP, --hostgroup=HOSTGROUP
+                        Label of the Hostgroup in Satellite that the host is
+                        to be associated with
+  -L HOSTGROUP, --location=HOSTGROUP
+                        Label of the Location in Satellite that the host is to
+                        be associated with
+  -o ORG, --organization=ORG
+                        Label of the Organization in Satellite that the host
+                        is to be associated with
+  -S ARGS, --subscription-manager-args=ARGS
+                        Which additional arguments shall be passed to
+                        subscription-manager
+  -u, --update          Fully Updates the System
+  -v, --verbose         Verbose output
+  -f, --force           Force registration (will erase old katello and puppet
+                        certs)
+  -r RELEASE, --release=RELEASE
+                        Specify release version
+
+
+
+
+~~~
+
 
 
