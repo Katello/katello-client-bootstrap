@@ -23,8 +23,8 @@ def get_architecture():
   else:
      return "x86"
 
-HOSTNAME     = platform.node().split('.')[0]
-DOMAIN       = platform.node()[platform.node().index('.')+1:]
+HOSTNAME     = socket.getfqdn().split('.')[0]
+DOMAIN       = socket.getfqdn()[socket.getfqdn().index('.')+1:]
 HEXMAC       = hex(getnode())
 NOHEXMAC     = HEXMAC[2:]
 MAC          = NOHEXMAC.zfill(13)[0:12]
