@@ -148,7 +148,10 @@ def get_bootstrap_rpm():
 def migrate_systems(org_name, ak):
     org_label = return_matching_org_label(org_name)
     print_generic("Calling rhn-migrate-classic-to-rhsm")
-    exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key %s --keep" % (org_label, ak))
+    rhsmargs = "--keep"
+    if options.force:
+        rhsmargs += " --force"
+    exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key %s %s" % (org_label, ak, rhsmargs))
 
 def register_systems(org_name, ak, release):
     org_label = return_matching_org_label(org_name)
