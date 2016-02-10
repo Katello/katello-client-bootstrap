@@ -207,7 +207,7 @@ def install_puppet_agent():
     exec_failexit("/sbin/service puppet restart")
 
 def remove_old_rhn_packages():
-	pkg_list = "rhn-setup rhn-client-tools yum-rhn-plugin rhnsd rhn-check rhnlib spacewalk-abrt spacewalk-oscap"
+	pkg_list = "rhn-setup rhn-client-tools yum-rhn-plugin rhnsd rhn-check rhnlib spacewalk-abrt spacewalk-oscap osad"
 	print_generic("Removing old RHN packages")
 	exec_failexit("/usr/bin/yum -y remove %s" % pkg_list)
 
