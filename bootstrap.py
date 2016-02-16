@@ -213,7 +213,7 @@ def get_json(url):
     # Generic function to HTTP GET JSON from Satellite's API
     try:
         request = urllib2.Request(url)
-        if VERBOSE:
+        if options.verbose:
             print "request: " + url
         base64string = base64.encodestring('%s:%s' % (options.login, options.password)).strip()
         request.add_header("Authorization", "Basic %s" % base64string)
@@ -278,7 +278,7 @@ def delete_json(url):
 def return_matching_domain_id(domain_name):
     # Given a domain, find its id
     myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/domains?search=" + domain_name
-    if VERBOSE:
+    if options.verbose:
         print myurl
     domain = get_json(myurl)
     domain_id = domain['results'][0]['id']
@@ -288,7 +288,7 @@ def return_matching_domain_id(domain_name):
 def return_matching_hg_id(hg_name):
     # Given a hostgroup name, find its id
     myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hostgroups/?" + urlencode([('search', 'title=%s' % hg_name)])
-    if VERBOSE:
+    if options.verbose:
         print myurl
     hostgroup = get_json(myurl)
     if len(hostgroup['results']) == 1:
@@ -321,7 +321,7 @@ def return_puppetenv_for_hg(hg_id):
 def return_matching_host_id(hostname):
     # Given a hostname (more precisely a puppet certname) find its id
     myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hosts/" + hostname
-    if VERBOSE:
+    if options.verbose:
         print myurl
     host = get_json(myurl)
     host_id = host['id']
@@ -331,7 +331,7 @@ def return_matching_host_id(hostname):
 def return_matching_location(location):
     # Given a location, find its id
     myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/locations/?" + urlencode([('search', 'title=%s' % location)])
-    if VERBOSE:
+    if options.verbose:
         print myurl
     loc = get_json(myurl)
     if len(loc['results']) == 1:
@@ -345,7 +345,7 @@ def return_matching_location(location):
 def return_matching_org(organization):
     # Given an org, find its id.
     myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/organizations/"
-    if VERBOSE:
+    if options.verbose:
         print myurl
     organizations = get_json(myurl)
     for org in organizations['results']:
@@ -359,7 +359,8 @@ def return_matching_org(organization):
 def return_matching_org_label(organization):
     # Given an org name, find its label - required by subscription-manager
     myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/katello/api/organizations/" + organization
-    print "myurl: " + myurl
+    if options.verbose:
+        print "myurl: " + myurl
     organization = get_json(myurl)
     org_label = organization['label']
     return org_label
