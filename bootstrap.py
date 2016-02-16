@@ -15,21 +15,22 @@ from uuid import getnode
 from urllib import urlencode
 from ConfigParser import SafeConfigParser
 
-def get_architecture():
-  # May not be safe for anything apart from 32/64 bit OS
-  is_64bit = sys.maxsize > 2**32
-  if is_64bit:
-     return "x86_64"
-  else:
-     return "x86"
 
-HOSTNAME     = socket.getfqdn().split('.')[0]
-DOMAIN       = socket.getfqdn()[socket.getfqdn().index('.')+1:]
-HEXMAC       = hex(getnode())
-NOHEXMAC     = HEXMAC[2:]
-MAC          = NOHEXMAC.zfill(13)[0:12]
-RELEASE      = platform.linux_distribution()[1]
-API_PORT     = 443
+def get_architecture():
+    # May not be safe for anything apart from 32/64 bit OS
+    is_64bit = sys.maxsize > 2 ** 32
+    if is_64bit:
+        return "x86_64"
+    else:
+        return "x86"
+
+HOSTNAME = socket.getfqdn().split('.')[0]
+DOMAIN = socket.getfqdn()[socket.getfqdn().index('.') + 1:]
+HEXMAC = hex(getnode())
+NOHEXMAC = HEXMAC[2:]
+MAC = NOHEXMAC.zfill(13)[0:12]
+RELEASE = platform.linux_distribution()[1]
+API_PORT = 443
 ARCHITECTURE = get_architecture()
 
 parser = OptionParser()
@@ -39,7 +40,7 @@ parser.add_option("-p", "--password", dest="password", help="Password for specif
 parser.add_option("-a", "--activationkey", dest="activationkey", help="Activation Key to register the system", metavar="ACTIVATIONKEY")
 parser.add_option("-P", "--skip-puppet", dest="no_puppet", action="store_true", default=False, help="Do not install Puppet")
 parser.add_option("-g", "--hostgroup", dest="hostgroup", help="Label of the Hostgroup in Satellite that the host is to be associated with", metavar="HOSTGROUP")
-parser.add_option("-L", "--location", dest="location", default='Default_Location', help="Label of the Location in Satellite that the host is to be associated with", metavar="HOSTGROUP")
+parser.add_option("-L", "--location", dest="location", default='Default_Location', help="Label of the Location in Satellite that the host is to be associated with", metavar="LOCATION")
 parser.add_option("-o", "--organization", dest="org", default='Default_Organization', help="Label of the Organization in Satellite that the host is to be associated with", metavar="ORG")
 parser.add_option("-S", "--subscription-manager-args", dest="smargs", default="", help="Which additional arguments shall be passed to subscription-manager", metavar="ARGS")
 parser.add_option("-u", "--update", dest="update", action="store_true", help="Fully Updates the System")
@@ -54,73 +55,53 @@ if not (options.sat6_fqdn and options.login and options.hostgroup and options.lo
     parser.print_help()
     print "\nExample usage: ./bootstrap.py -l admin -s satellite.example.com -o Default_Organization -L Default_Location -g My_Hostgroup -a My_Activation_Key"
     sys.exit(1)
-else:
-    SAT6_FQDN = options.sat6_fqdn
-    LOGIN     = options.login
-    PASSWORD  = options.password
-    HOSTGROUP = options.hostgroup
-    LOCATION  = options.location
-    ORG       = options.org
-    ACTIVATIONKEY = options.activationkey
+
+if not options.password:
+    options.password = getpass.getpass("%s's password:" % options.login)
 
 if options.verbose:
-    VERBOSE = True
-else:
-    VERBOSE = False
-
-if options.update:
-    UPDATE = True
-else:
-    UPDATE = False
-
-if options.removepkgs:
-    REMOVE = True
-else:
-    REMOVE = False
-
-if not PASSWORD:
-    PASSWORD = getpass.getpass("%s's password:" % LOGIN)
-
-if VERBOSE:
     print "HOSTNAME - %s" % HOSTNAME
     print "DOMAIN - %s" % DOMAIN
     print "RELEASE - %s" % RELEASE
     print "MAC - %s" % MAC
-    print "SAT6_FQDN - %s" % SAT6_FQDN
-    print "LOGIN - %s" % LOGIN
-    print "PASSWORD - %s" % PASSWORD
-    print "HOSTGROUP - %s" % HOSTGROUP
-    print "LOCATION - %s" % LOCATION
-    print "ORG - %s" % ORG
-    print "ACTIVATIONKEY - %s" % ACTIVATIONKEY
-    print "UPDATE - %s" % UPDATE
+    print "SAT6_FQDN - %s" % options.sat6_fqdn
+    print "LOGIN - %s" % options.login
+    print "PASSWORD - %s" % options.password
+    print "HOSTGROUP - %s" % options.hostgroup
+    print "LOCATION - %s" % options.location
+    print "ORG - %s" % options.org
+    print "ACTIVATIONKEY - %s" % options.activationkey
+    print "UPDATE - %s" % options.update
 
-class error_colors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
+error_colors = {
+    'HEADER': '\033[95m',
+    'OKBLUE': '\033[94m',
+    'OKGREEN': '\033[92m',
+    'WARNING': '\033[93m',
+    'FAIL': '\033[91m',
+    'ENDC': '\033[0m',
+}
+
 
 def print_error(msg):
-    print "[%sERROR%s], [%s], EXITING: [%s] failed to execute properly." % (error_colors.FAIL, error_colors.ENDC, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
+    print "[%sERROR%s], [%s], EXITING: [%s] failed to execute properly." % (error_colors['FAIL'], error_colors['ENDC'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
+
 
 def print_warning(msg):
-    print "[%sWARNING%s], [%s], NON-FATAL: [%s] failed to execute properly." % (error_colors.WARNING, error_colors.ENDC, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
+    print "[%sWARNING%s], [%s], NON-FATAL: [%s] failed to execute properly." % (error_colors['WARNING'], error_colors['ENDC'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
+
 
 def print_success(msg):
-    print "[%sSUCCESS%s], [%s], [%s], completed successfully." % (error_colors.OKGREEN, error_colors.ENDC, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
+    print "[%sSUCCESS%s], [%s], [%s], completed successfully." % (error_colors['OKGREEN'], error_colors['ENDC'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
+
 
 def print_running(msg):
-    print "[%sRUNNING%s], [%s], [%s] " % (error_colors.OKBLUE, error_colors.ENDC, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
+    print "[%sRUNNING%s], [%s], [%s] " % (error_colors['OKBLUE'], error_colors['ENDC'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
+
 
 def print_generic(msg):
     print "[NOTIFICATION], [%s], [%s] " % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
 
-def get_output(command):
-    output = commands.getstatusoutput(command)[1]
-    return output
 
 def exec_failok(command):
     print_running(command)
@@ -130,6 +111,7 @@ def exec_failok(command):
         print_warning(command)
     print output[1]
     print ""
+
 
 def exec_failexit(command):
     print_running(command)
@@ -143,41 +125,48 @@ def exec_failexit(command):
     print_success(command)
     print ""
 
+
 def install_prereqs():
     print_generic("Installing subscription manager prerequisites")
     exec_failexit("/usr/bin/yum -y remove subscription-manager-gnome")
     exec_failexit("/usr/bin/yum -y install subscription-manager subscription-manager-migration-*")
     exec_failexit("/usr/bin/yum -y update yum openssl")
 
+
 def get_bootstrap_rpm():
     if options.force:
         clean_katello_certs()
     print_generic("Retrieving Candlepin Consumer RPMs")
-    exec_failexit("/usr/bin/yum -y localinstall http://%s/pub/katello-ca-consumer-latest.noarch.rpm --nogpgcheck" % SAT6_FQDN)
+    exec_failexit("/usr/bin/yum -y localinstall http://%s/pub/katello-ca-consumer-latest.noarch.rpm --nogpgcheck" % options.sat6_fqdn)
 
-def migrate_systems(org_name, ak):
+
+def migrate_systems(org_name, activationkey):
     org_label = return_matching_org_label(org_name)
     print_generic("Calling rhn-migrate-classic-to-rhsm")
     rhsmargs = "--keep"
     if options.force:
         rhsmargs += " --force"
-    exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key %s %s" % (org_label, ak, rhsmargs))
+    exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key %s %s" % (org_label, activationkey, rhsmargs))
 
-def register_systems(org_name, ak, release):
+
+def register_systems(org_name, activationkey, release):
     org_label = return_matching_org_label(org_name)
     print_generic("Calling subscription-manager")
     if options.force:
         options.smargs += " --force"
-    # exec_failexit("/usr/sbin/subscription-manager register --org %s --activationkey %s --release %s" % (org_label,ak,release))
-    exec_failexit("/usr/sbin/subscription-manager register --org '%s' --name '%s' --activationkey '%s' %s" % (org_label, HOSTNAME, ak, options.smargs))
+    # exec_failexit("/usr/sbin/subscription-manager register --org %s --activationkey %s --release %s" % (org_label,activationkey,release))
+    exec_failexit("/usr/sbin/subscription-manager register --org '%s' --name '%s' --activationkey '%s' %s" % (org_label, HOSTNAME, activationkey, options.smargs))
+
 
 def enable_sat_tools():
     print_generic("Enabling the Satellite tools repositories for Puppet & Katello Agents")
     exec_failexit("subscription-manager repos --enable=rhel-*-satellite-tools-*-rpms")
 
+
 def clean_katello_certs():
     print_generic("Cleaning old Katello certs")
     exec_failexit("/usr/bin/yum -y erase katello-ca-consumer-*")
+
 
 def install_katello_agent():
     print_generic("Installing the Katello agent")
@@ -185,43 +174,48 @@ def install_katello_agent():
     exec_failexit("/sbin/chkconfig goferd on")
     exec_failexit("/sbin/service goferd restart")
 
+
 def clean_puppet():
     print_generic("Cleaning old Puppet Agent")
     exec_failexit("/usr/bin/yum -y erase puppet")
     exec_failexit("rm -rf /var/lib/puppet/")
 
+
 def install_puppet_agent():
-    puppet_env = return_puppetenv_for_hg(return_matching_hg_id(HOSTGROUP))
+    puppet_env = return_puppetenv_for_hg(return_matching_hg_id(options.hostgroup))
     print_generic("Installing the Puppet Agent")
     exec_failexit("/usr/bin/yum -y install puppet")
     exec_failexit("/sbin/chkconfig puppet on")
-    exec_failexit("/usr/bin/puppet config set server %s --section agent" % SAT6_FQDN)
-    exec_failexit("/usr/bin/puppet config set ca_server %s --section agent" % SAT6_FQDN)
+    exec_failexit("/usr/bin/puppet config set server %s --section agent" % options.sat6_fqdn)
+    exec_failexit("/usr/bin/puppet config set ca_server %s --section agent" % options.sat6_fqdn)
     exec_failexit("/usr/bin/puppet config set environment %s --section agent" % puppet_env)
-    ### Might need this for RHEL5
-    #f = open("/etc/puppet/puppet.conf","a")
-    #f.write("server=%s \n" % SAT6_FQDN)
-    #f.close()
+    # Might need this for RHEL5
+    # f = open("/etc/puppet/puppet.conf","a")
+    # f.write("server=%s \n" % options.sat6_fqdn)
+    # f.close()
     print_generic("Running Puppet in noop mode to generate SSL certs")
     exec_failexit("/usr/bin/puppet agent --test --noop --tags no_such_tag --waitforcert 10")
     exec_failexit("/sbin/service puppet restart")
 
+
 def remove_old_rhn_packages():
-	pkg_list = "rhn-setup rhn-client-tools yum-rhn-plugin rhnsd rhn-check rhnlib spacewalk-abrt spacewalk-oscap osad"
-	print_generic("Removing old RHN packages")
-	exec_failexit("/usr/bin/yum -y remove %s" % pkg_list)
+    pkg_list = "rhn-setup rhn-client-tools yum-rhn-plugin rhnsd rhn-check rhnlib spacewalk-abrt spacewalk-oscap osad"
+    print_generic("Removing old RHN packages")
+    exec_failexit("/usr/bin/yum -y remove %s" % pkg_list)
+
 
 def fully_update_the_box():
     print_generic("Fully Updating The Box")
     exec_failexit("/usr/bin/yum -y update")
 
+
 def get_json(url):
     # Generic function to HTTP GET JSON from Satellite's API
     try:
         request = urllib2.Request(url)
-        if VERBOSE:
+        if options.verbose:
             print "request: " + url
-        base64string = base64.encodestring('%s:%s' % (LOGIN, PASSWORD)).strip()
+        base64string = base64.encodestring('%s:%s' % (options.login, options.password)).strip()
         request.add_header("Authorization", "Basic %s" % base64string)
         result = urllib2.urlopen(request)
         return json.load(result)
@@ -233,6 +227,7 @@ def get_json(url):
         print "FATAL Error - %s" % (e)
         sys.exit(2)
 
+
 def post_json(url, jdata):
     # Generic function to HTTP PUT JSON to Satellite's API.
     # Had to use a couple of hacks to urllib2 to make it
@@ -240,7 +235,7 @@ def post_json(url, jdata):
     try:
         opener = urllib2.build_opener(urllib2.HTTPHandler)
         request = urllib2.Request(url)
-        base64string = base64.encodestring('%s:%s' % (LOGIN, PASSWORD)).strip()
+        base64string = base64.encodestring('%s:%s' % (options.login, options.password)).strip()
         request.add_data(json.dumps(jdata))
         request.add_header("Authorization", "Basic %s" % base64string)
         request.add_header("Content-Type", "application/json")
@@ -258,11 +253,12 @@ def post_json(url, jdata):
         print "FATAL Error - %s" % (e)
         sys.exit(2)
 
+
 def delete_json(url):
     # Generic function to HTTP DELETE JSON from Satellite's API
     try:
         request = urllib2.Request(url)
-        base64string = base64.encodestring('%s:%s' % (LOGIN, PASSWORD)).strip()
+        base64string = base64.encodestring('%s:%s' % (options.login, options.password)).strip()
         request.add_header("Authorization", "Basic %s" % base64string)
         request.get_method = lambda: 'DELETE'
         result = urllib2.urlopen(request)
@@ -278,19 +274,21 @@ def delete_json(url):
         print "FATAL Error - %s" % (e)
         sys.exit(2)
 
+
 def return_matching_domain_id(domain_name):
-  # Given a domain, find its id
-    myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/domains?search=" + domain_name
-    if VERBOSE:
+    # Given a domain, find its id
+    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/domains?search=" + domain_name
+    if options.verbose:
         print myurl
     domain = get_json(myurl)
     domain_id = domain['results'][0]['id']
     return domain_id
 
+
 def return_matching_hg_id(hg_name):
     # Given a hostgroup name, find its id
-    myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/hostgroups/?" + urlencode([('search', 'title=%s' % hg_name)])
-    if VERBOSE:
+    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hostgroups/?" + urlencode([('search', 'title=%s' % hg_name)])
+    if options.verbose:
         print myurl
     hostgroup = get_json(myurl)
     if len(hostgroup['results']) == 1:
@@ -300,15 +298,17 @@ def return_matching_hg_id(hg_name):
         print_error("Could not find hostgroup %s" % hg_name)
         sys.exit(2)
 
+
 def return_matching_architecture_id(architecture_name):
     # Given an architecture name, find its id
-    myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/architectures?search=" + architecture_name
+    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/architectures?search=" + architecture_name
     architectures = get_json(myurl)
     architectureid = architectures['results'][0]['id']
     return architectureid
 
+
 def return_puppetenv_for_hg(hg_id):
-    myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/hostgroups/" + str(hg_id)
+    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hostgroups/" + str(hg_id)
     hostgroup = get_json(myurl)
     if hostgroup['environment_name']:
         return hostgroup['environment_name']
@@ -317,19 +317,21 @@ def return_puppetenv_for_hg(hg_id):
     else:
         return 'production'
 
+
 def return_matching_host_id(hostname):
     # Given a hostname (more precisely a puppet certname) find its id
-    myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/hosts/" + hostname
-    if VERBOSE:
+    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hosts/" + hostname
+    if options.verbose:
         print myurl
     host = get_json(myurl)
     host_id = host['id']
     return host_id
 
+
 def return_matching_location(location):
     # Given a location, find its id
-    myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/locations/?" + urlencode([('search', 'title=%s' % location)])
-    if VERBOSE:
+    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/locations/?" + urlencode([('search', 'title=%s' % location)])
+    if options.verbose:
         print myurl
     loc = get_json(myurl)
     if len(loc['results']) == 1:
@@ -339,10 +341,11 @@ def return_matching_location(location):
         print_error("Could not find location %s" % location)
         sys.exit(2)
 
+
 def return_matching_org(organization):
     # Given an org, find its id.
-    myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/organizations/"
-    if VERBOSE:
+    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/organizations/"
+    if options.verbose:
         print myurl
     organizations = get_json(myurl)
     for org in organizations['results']:
@@ -352,26 +355,29 @@ def return_matching_org(organization):
     print_error("Could not find organization %s" % organization)
     sys.exit(2)
 
+
 def return_matching_org_label(organization):
     # Given an org name, find its label - required by subscription-manager
-    myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/katello/api/organizations/" + organization
-    print "myurl: " + myurl
+    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/katello/api/organizations/" + organization
+    if options.verbose:
+        print "myurl: " + myurl
     organization = get_json(myurl)
     org_label = organization['label']
     return org_label
 
+
 def create_host():
-    myhgid = return_matching_hg_id(HOSTGROUP)
-    mylocid = return_matching_location(LOCATION)
-    myorgid = return_matching_org(ORG)
+    myhgid = return_matching_hg_id(options.hostgroup)
+    mylocid = return_matching_location(options.location)
+    myorgid = return_matching_org(options.org)
     mydomainid = return_matching_domain_id(DOMAIN)
     architecture_id = return_matching_architecture_id(ARCHITECTURE)
-    if VERBOSE:
-        print "------\nmyhgid: " + str(myhgid)  + "\nmylocid: " + str(mylocid) + "\nmyorgid: " + str(myorgid) + "\nMAC: " + str(MAC) + "\nDOMAIN_ID: " + str(mydomainid) +  "\nARCHITECTURE_ID: " + str(architecture_id) +  "\n------"
-    jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s", "domain_id":%s,"architecture_id":%s,"ptable_id":7}}' % (HOSTNAME,myhgid,myorgid,mylocid,MAC,mydomainid,architecture_id))
-    if VERBOSE:
+    if options.verbose:
+        print "------\nmyhgid: " + str(myhgid) + "\nmylocid: " + str(mylocid) + "\nmyorgid: " + str(myorgid) + "\nMAC: " + str(MAC) + "\nDOMAIN_ID: " + str(mydomainid) + "\nARCHITECTURE_ID: " + str(architecture_id) + "\n------"
+    jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s", "domain_id":%s,"architecture_id":%s,"ptable_id":7}}' % (HOSTNAME, myhgid, myorgid, mylocid, MAC, mydomainid, architecture_id))
+    if options.verbose:
         print jsondata
-    myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/hosts/"
+    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hosts/"
     if options.force:
         print_running("Deleting old host if any")
         delete_json("%s/%s" % (myurl, HOSTNAME))
@@ -379,13 +385,15 @@ def create_host():
     post_json(myurl, jsondata)
     print_success("Successfully created host %s" % HOSTNAME)
 
+
 def check_rhn_registration():
     return os.path.exists('/etc/sysconfig/rhn/systemid')
 
+
 def get_api_port():
-    parser = SafeConfigParser()
-    parser.read('/etc/rhsm/rhsm.conf')
-    return parser.get('server','port')
+    configparser = SafeConfigParser()
+    configparser.read('/etc/rhsm/rhsm.conf')
+    return configparser.get('server', 'port')
 
 print "Satellite 6 Bootstrap Script"
 print "This script is designed to register new systems or to migrate an existing system to Red Hat Satellite 6"
@@ -396,17 +404,17 @@ if check_rhn_registration():
     get_bootstrap_rpm()
     API_PORT = get_api_port()
     create_host()
-    migrate_systems(ORG, ACTIVATIONKEY)
+    migrate_systems(options.org, options.activationkey)
 else:
     print_generic('This system is not registered to RHN. Attempting to register via subscription-manager')
     get_bootstrap_rpm()
     API_PORT = get_api_port()
     create_host()
-    register_systems(ORG, ACTIVATIONKEY, options.release)
+    register_systems(options.org, options.activationkey, options.release)
 
 enable_sat_tools()
 install_katello_agent()
-if UPDATE:
+if options.update:
     fully_update_the_box()
 
 if not options.no_puppet:
@@ -414,5 +422,5 @@ if not options.no_puppet:
         clean_puppet()
     install_puppet_agent()
 
-if REMOVE:
-	remove_old_rhn_packages()
+if options.removepkgs:
+    remove_old_rhn_packages()
