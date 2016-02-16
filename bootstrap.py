@@ -15,16 +15,17 @@ from uuid import getnode
 from urllib import urlencode
 from ConfigParser import SafeConfigParser
 
+
 def get_architecture():
-  # May not be safe for anything apart from 32/64 bit OS
-  is_64bit = sys.maxsize > 2**32
-  if is_64bit:
-     return "x86_64"
-  else:
-     return "x86"
+    # May not be safe for anything apart from 32/64 bit OS
+    is_64bit = sys.maxsize > 2 ** 32
+    if is_64bit:
+        return "x86_64"
+    else:
+        return "x86"
 
 HOSTNAME = socket.getfqdn().split('.')[0]
-DOMAIN = socket.getfqdn()[socket.getfqdn().index('.')+1:]
+DOMAIN = socket.getfqdn()[socket.getfqdn().index('.') + 1:]
 HEXMAC = hex(getnode())
 NOHEXMAC = HEXMAC[2:]
 MAC = NOHEXMAC.zfill(13)[0:12]
@@ -275,7 +276,7 @@ def delete_json(url):
 
 
 def return_matching_domain_id(domain_name):
-  # Given a domain, find its id
+    # Given a domain, find its id
     myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/domains?search=" + domain_name
     if VERBOSE:
         print myurl
@@ -371,8 +372,8 @@ def create_host():
     mydomainid = return_matching_domain_id(DOMAIN)
     architecture_id = return_matching_architecture_id(ARCHITECTURE)
     if options.verbose:
-        print "------\nmyhgid: " + str(myhgid)  + "\nmylocid: " + str(mylocid) + "\nmyorgid: " + str(myorgid) + "\nMAC: " + str(MAC) + "\nDOMAIN_ID: " + str(mydomainid) +  "\nARCHITECTURE_ID: " + str(architecture_id) +  "\n------"
-    jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s", "domain_id":%s,"architecture_id":%s,"ptable_id":7}}' % (HOSTNAME,myhgid,myorgid,mylocid,MAC,mydomainid,architecture_id))
+        print "------\nmyhgid: " + str(myhgid) + "\nmylocid: " + str(mylocid) + "\nmyorgid: " + str(myorgid) + "\nMAC: " + str(MAC) + "\nDOMAIN_ID: " + str(mydomainid) + "\nARCHITECTURE_ID: " + str(architecture_id) + "\n------"
+    jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s", "domain_id":%s,"architecture_id":%s,"ptable_id":7}}' % (HOSTNAME, myhgid, myorgid, mylocid, MAC, mydomainid, architecture_id))
     if options.verbose:
         print jsondata
     myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hosts/"
@@ -386,6 +387,7 @@ def create_host():
 
 def check_rhn_registration():
     return os.path.exists('/etc/sysconfig/rhn/systemid')
+
 
 def get_api_port():
     configparser = SafeConfigParser()
