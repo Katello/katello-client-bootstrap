@@ -280,7 +280,7 @@ def delete_json(url):
 
 def return_matching_domain_id(domain_name):
   # Given a domain, find its id
-    myurl = "https://" + SAT6_FQDN+ "/api/v2/domains?search=" + domain_name
+    myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/domains?search=" + domain_name
     if VERBOSE:
         print myurl
     domain = get_json(myurl)
@@ -302,7 +302,7 @@ def return_matching_hg_id(hg_name):
 
 def return_matching_architecture_id(architecture_name):
     # Given an architecture name, find its id
-    myurl = "https://" + SAT6_FQDN+ "/api/v2/architectures?search=" + architecture_name
+    myurl = "https://" + SAT6_FQDN + ":" + API_PORT + "/api/v2/architectures?search=" + architecture_name
     architectures = get_json(myurl)
     architectureid = architectures['results'][0]['id']
     return architectureid
