@@ -194,6 +194,8 @@ def install_puppet_agent():
     # f.write("server=%s \n" % options.sat6_fqdn)
     # f.close()
     print_generic("Running Puppet in noop mode to generate SSL certs")
+    print_generic("Visit the UI and approve this certificate via Infrastructure->Capsules")
+    print_generic("if auto-signing is disabled")
     exec_failexit("/usr/bin/puppet agent --test --noop --tags no_such_tag --waitforcert 10")
     exec_failexit("/sbin/service puppet restart")
 
