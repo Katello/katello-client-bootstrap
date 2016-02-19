@@ -21,7 +21,10 @@ from ConfigParser import SafeConfigParser
 
 def get_architecture():
     # May not be safe for anything apart from 32/64 bit OS
-    is_64bit = sys.maxsize > 2 ** 32
+    try:
+        is_64bit = sys.maxsize > 2 ** 32
+    except:
+        is_64bit = platform.architecture()[0] == '64bit'
     if is_64bit:
         return "x86_64"
     else:
