@@ -120,7 +120,7 @@ def exec_failexit(command):
     if retcode != 0:
         print_error(command)
         print output[1]
-        exit(retcode)
+        sys.exit(retcode)
     print output[1]
     print_success(command)
     print ""
