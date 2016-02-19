@@ -29,8 +29,12 @@ def get_architecture():
         return "x86"
 
 FQDN = socket.getfqdn()
-HOSTNAME = FQDN.split('.')[0]
-DOMAIN = FQDN[FQDN.index('.')+1:]
+if FQDN.find(".") != -1:
+    HOSTNAME = FQDN.split('.')[0]
+    DOMAIN = FQDN[FQDN.index('.')+1:]
+else:
+    HOSTNAME = FQDN
+    DOMAIN = None
 
 MAC = None
 try:
@@ -88,6 +92,12 @@ if not (options.foreman_fqdn and options.login and (options.remove or (options.o
     print "Must specify server, login, hostgroup, location, and organization options.  See usage:"
     parser.print_help()
     print "\nExample usage: ./bootstrap.py -l admin -s foreman.example.com -o Default_Organization -L Default_Location -g My_Hostgroup -a My_Activation_Key"
+    sys.exit(1)
+
+if not DOMAIN and not (options.force or options.no_puppet):
+    print "We could not determine the domain of this machine, most probably `hostname -f` does not return the FQDN."
+    print "This can lead to Puppet missbehaviour and thus the script will terminate now."
+    print "You can override this by passing --force or --skip-puppet"
     sys.exit(1)
 
 if not options.password:
@@ -364,11 +374,14 @@ def create_host():
     myhgid = return_matching_foreman_key('hostgroups', 'title="%s"' % options.hostgroup, 'id', False)
     mylocid = return_matching_foreman_key('locations', 'title="%s"' % options.location, 'id', False)
     myorgid = return_matching_foreman_key('organizations', 'name="%s"' % options.org, 'id', False)
-    mydomainid = return_matching_foreman_key('domains', 'name="%s"' % DOMAIN, 'id', False)
+    if DOMAIN:
+        mydomainid = return_matching_foreman_key('domains', 'name="%s"' % DOMAIN, 'id', False)
+    else:
+        mydomainid = None
     architecture_id = return_matching_foreman_key('architectures', 'name="%s"' % ARCHITECTURE, 'id', False)
     host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', True)
     # create the starting json, to be filled below
-    jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s", "domain_id":%s,"architecture_id":%s}}' % (HOSTNAME, myhgid, myorgid, mylocid, MAC, mydomainid, architecture_id))
+    jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s","architecture_id":%s}}' % (HOSTNAME, myhgid, myorgid, mylocid, MAC, architecture_id))
     # optional parameters
     if options.operatingsystem is not None:
         operatingsystem_id = return_matching_foreman_key('operatingsystems', 'title="%s"' % options.operatingsystem, 'id', False)
@@ -380,6 +393,8 @@ def create_host():
         jsondata['host']['managed'] = 'true'
     else:
         jsondata['host']['managed'] = 'false'
+    if mydomainid:
+        jsondata['host']['domain_id'] = mydomainid
     myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/hosts/"
     if options.force and host_id is not None:
         delete_host(host_id)
