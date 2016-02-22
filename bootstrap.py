@@ -45,7 +45,7 @@ parser.add_option("-a", "--activationkey", dest="activationkey", help="Activatio
 parser.add_option("-P", "--skip-puppet", dest="no_puppet", action="store_true", default=False, help="Do not install Puppet")
 parser.add_option("-g", "--hostgroup", dest="hostgroup", help="Label of the Hostgroup in Satellite that the host is to be associated with", metavar="HOSTGROUP")
 parser.add_option("-L", "--location", dest="location", default='Default_Location', help="Label of the Location in Satellite that the host is to be associated with", metavar="LOCATION")
-parser.add_option("-O", "--operatingsystem", dest="operatingsystem", default=None, help="Label of the Operating System in Satellite that the host is to be associated with", metavar="HOSTGROUP")
+parser.add_option("-O", "--operatingsystem", dest="operatingsystem", default=None, help="Label of the Operating System in Satellite that the host is to be associated with", metavar="OPERATINGSYSTEM")
 parser.add_option("-o", "--organization", dest="org", default='Default_Organization', help="Label of the Organization in Satellite that the host is to be associated with", metavar="ORG")
 parser.add_option("-S", "--subscription-manager-args", dest="smargs", default="", help="Which additional arguments shall be passed to subscription-manager", metavar="ARGS")
 parser.add_option("-u", "--update", dest="update", action="store_true", help="Fully Updates the System")
@@ -53,7 +53,7 @@ parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="
 parser.add_option("-f", "--force", dest="force", action="store_true", help="Force registration (will erase old katello and puppet certs)")
 parser.add_option("-r", "--release", dest="release", default=RELEASE, help="Specify release version")
 parser.add_option("-R", "--remove-rhn-packages", dest="removepkgs", action="store_true", help="Remove old Red Hat Network Packages")
-parser.add_option("-U", "--unmanaged", dest="unmanaged", action="store_true", help="Add the server as unmanaged. Useful to skip provisioning dependencies.")
+parser.add_option("--unmanaged", dest="unmanaged", action="store_true", help="Add the server as unmanaged. Useful to skip provisioning dependencies.")
 (options, args) = parser.parse_args()
 
 if not (options.sat6_fqdn and options.login and options.hostgroup and options.location and options.org and options.activationkey):
@@ -321,8 +321,12 @@ def return_matching_architecture_id(architecture_name):
     if options.verbose:
         print myurl
     architectures = get_json(myurl)
-    architectureid = architectures['results'][0]['id']
-    return architectureid
+    if len(architecture['results']) == 1:
+        architecture_id = architecture['results'][0]['id']
+        return architecture_id
+    else:
+        print_error("Could not find architecture %s" % architecture)
+        sys.exit(2)
 
 
 def return_matching_operatingsystem_id(operatingsystem_name):
@@ -331,8 +335,12 @@ def return_matching_operatingsystem_id(operatingsystem_name):
     if options.verbose:
         print myurl
     operatingsystems = get_json(myurl)
-    operatingsystemid = operatingsystems['results'][0]['id']
-    return operatingsystemid
+    if len(operatingsystem['results']) == 1:
+        operatingsystem_id = operatingsystem['results'][0]['id']
+        return operatingsystem_id
+    else:
+        print_error("Could not find operatingsystem %s" % operatingsystem)
+        sys.exit(2)
 
 
 def return_puppetenv_for_hg(hg_id):
