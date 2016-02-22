@@ -45,6 +45,7 @@ parser.add_option("-a", "--activationkey", dest="activationkey", help="Activatio
 parser.add_option("-P", "--skip-puppet", dest="no_puppet", action="store_true", default=False, help="Do not install Puppet")
 parser.add_option("-g", "--hostgroup", dest="hostgroup", help="Label of the Hostgroup in Satellite that the host is to be associated with", metavar="HOSTGROUP")
 parser.add_option("-L", "--location", dest="location", default='Default_Location', help="Label of the Location in Satellite that the host is to be associated with", metavar="LOCATION")
+parser.add_option("-O", "--operatingsystem", dest="operatingsystem", default=None, help="Label of the Operating System in Satellite that the host is to be associated with", metavar="HOSTGROUP")
 parser.add_option("-o", "--organization", dest="org", default='Default_Organization', help="Label of the Organization in Satellite that the host is to be associated with", metavar="ORG")
 parser.add_option("-S", "--subscription-manager-args", dest="smargs", default="", help="Which additional arguments shall be passed to subscription-manager", metavar="ARGS")
 parser.add_option("-u", "--update", dest="update", action="store_true", help="Fully Updates the System")
@@ -52,6 +53,7 @@ parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="
 parser.add_option("-f", "--force", dest="force", action="store_true", help="Force registration (will erase old katello and puppet certs)")
 parser.add_option("-r", "--release", dest="release", default=RELEASE, help="Specify release version")
 parser.add_option("-R", "--remove-rhn-packages", dest="removepkgs", action="store_true", help="Remove old Red Hat Network Packages")
+parser.add_option("-U", "--unmanaged", dest="unmanaged", action="store_true", help="Add the server as unmanaged. Useful to skip provisioning dependencies.")
 (options, args) = parser.parse_args()
 
 if not (options.sat6_fqdn and options.login and options.hostgroup and options.location and options.org and options.activationkey):
@@ -73,6 +75,7 @@ if options.verbose:
     print "PASSWORD - %s" % options.password
     print "HOSTGROUP - %s" % options.hostgroup
     print "LOCATION - %s" % options.location
+    print "OPERATINGSYSTEM - %s" % options.operatingsystem
     print "ORG - %s" % options.org
     print "ACTIVATIONKEY - %s" % options.activationkey
     print "UPDATE - %s" % options.update
@@ -231,6 +234,8 @@ def get_json(url):
     except urllib2.URLError, e:
         print "Error: cannot connect to the API: %s" % (e)
         print "Check your URL & try to login using the same user/pass via the WebUI and check the error!"
+        print "error: " + e.read()
+        print "url: " + url
         sys.exit(1)
     except Exception, e:
         print "FATAL Error - %s" % (e)
@@ -258,7 +263,7 @@ def post_json(url, jdata):
         print "url: " + url
         print "jdata: " + str(jdata)
         sys.exit(1)
-    except:
+    except Exception, e:
         print "FATAL Error - %s" % (e)
         sys.exit(2)
 
@@ -278,8 +283,10 @@ def delete_json(url):
     except urllib2.URLError, e:
         print "Error: cannot connect to the API: %s" % (e)
         print "Check your URL & try to login using the same user/pass via the WebUI and check the error!"
+        print "error: " + e.read()
+        print "url: " + url
         sys.exit(1)
-    except:
+    except Exception, e:
         print "FATAL Error - %s" % (e)
         sys.exit(2)
 
@@ -311,9 +318,21 @@ def return_matching_hg_id(hg_name):
 def return_matching_architecture_id(architecture_name):
     # Given an architecture name, find its id
     myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/architectures?search=" + architecture_name
+    if options.verbose:
+        print myurl
     architectures = get_json(myurl)
     architectureid = architectures['results'][0]['id']
     return architectureid
+
+
+def return_matching_operatingsystem_id(operatingsystem_name):
+    # Given an operatingsystem name, find its id
+    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/operatingsystems?search=" + operatingsystem_name
+    if options.verbose:
+        print myurl
+    operatingsystems = get_json(myurl)
+    operatingsystemid = operatingsystems['results'][0]['id']
+    return operatingsystemid
 
 
 def return_puppetenv_for_hg(hg_id):
@@ -375,21 +394,48 @@ def return_matching_org_label(organization):
     return org_label
 
 
+def return_matching_host(fqdn):
+    # Given an org, find its id.
+    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hosts/?" + urlencode([('search', 'name=%s' % fqdn)])
+    if options.verbose:
+        print myurl
+    hosts = get_json(myurl)
+    if options.verbose:
+        print json.dumps(hosts, sort_keys = False, indent = 2)
+    if len(hosts['results']) == 1:
+        host_id = hosts['results'][0]['id']
+        return host_id
+    elif len(hosts['results']) == 0:
+        return None
+    else:
+        print_error("Found too many hosts with same name %s" % fqdn)
+        sys.exit(2)
+
+
 def create_host():
     myhgid = return_matching_hg_id(options.hostgroup)
     mylocid = return_matching_location(options.location)
     myorgid = return_matching_org(options.org)
     mydomainid = return_matching_domain_id(DOMAIN)
     architecture_id = return_matching_architecture_id(ARCHITECTURE)
-    if options.verbose:
-        print "------\nmyhgid: " + str(myhgid) + "\nmylocid: " + str(mylocid) + "\nmyorgid: " + str(myorgid) + "\nMAC: " + str(MAC) + "\nDOMAIN_ID: " + str(mydomainid) + "\nARCHITECTURE_ID: " + str(architecture_id) + "\n------"
+    host_id = return_matching_host(FQDN)
+    print "host id %s" % host_id
+    # create the starting json, to be filled below
     jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s", "domain_id":%s,"architecture_id":%s,"ptable_id":7}}' % (HOSTNAME, myhgid, myorgid, mylocid, MAC, mydomainid, architecture_id))
+    # optional parameters
+    if options.operatingsystem is not None:
+      operatingsystem_id = return_matching_operatingsystem_id(options.operatingsystem)
+      jsondata['host']['operatingsystem_id'] = operatingsystem_id
+    if not options.unmanaged:
+        jsondata['host']['managed'] = 'true'
+    else:
+        jsondata['host']['managed'] = 'false'
     if options.verbose:
-        print jsondata
+        print json.dumps(jsondata, sort_keys = False, indent = 2)
     myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hosts/"
     if options.force:
-        print_running("Deleting old host if any")
-        delete_json("%s/%s" % (myurl, FQDN))
+        print_running("Deleting host id %s for host %s" % (host_id, FQDN))
+        delete_json("%s/%s" % (myurl, host_id))
     print_running("Calling Satellite API to create a host entry associated with the group, org & location")
     post_json(myurl, jsondata)
     print_success("Successfully created host %s" % FQDN)
