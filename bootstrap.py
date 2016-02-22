@@ -24,8 +24,9 @@ def get_architecture():
     else:
         return "x86"
 
-HOSTNAME = socket.getfqdn().split('.')[0]
-DOMAIN = socket.getfqdn()[socket.getfqdn().index('.') + 1:]
+FQDN = socket.getfqdn()
+HOSTNAME = FQDN.split('.')[0]
+DOMAIN = FQDN[FQDN.index('.')+1:]
 HEXMAC = hex(getnode())
 NOHEXMAC = HEXMAC[2:]
 MAC = NOHEXMAC.zfill(13)[0:12]
@@ -155,7 +156,7 @@ def register_systems(org_name, activationkey, release):
     if options.force:
         options.smargs += " --force"
     # exec_failexit("/usr/sbin/subscription-manager register --org %s --activationkey %s --release %s" % (org_label,activationkey,release))
-    exec_failexit("/usr/sbin/subscription-manager register --org '%s' --name '%s' --activationkey '%s' %s" % (org_label, HOSTNAME, activationkey, options.smargs))
+    exec_failexit("/usr/sbin/subscription-manager register --org '%s' --name '%s' --activationkey '%s' %s" % (org_label, FQDN, activationkey, options.smargs))
 
 
 def enable_sat_tools():
@@ -382,10 +383,10 @@ def create_host():
     myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hosts/"
     if options.force:
         print_running("Deleting old host if any")
-        delete_json("%s/%s" % (myurl, HOSTNAME))
+        delete_json("%s/%s" % (myurl, FQDN))
     print_running("Calling Satellite API to create a host entry associated with the group, org & location")
     post_json(myurl, jsondata)
-    print_success("Successfully created host %s" % HOSTNAME)
+    print_success("Successfully created host %s" % FQDN)
 
 
 def check_rhn_registration():
