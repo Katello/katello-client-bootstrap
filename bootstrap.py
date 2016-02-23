@@ -293,12 +293,17 @@ def delete_json(url):
 
 def return_matching_domain_id(domain_name):
     # Given a domain, find its id
-    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/domains?search=" + domain_name
+    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/domains/?" + urlencode([('search', 'name=%s' % domain_name)])
     if options.verbose:
         print myurl
     domain = get_json(myurl)
-    domain_id = domain['results'][0]['id']
-    return domain_id
+    if len(domain['results']) == 1:
+        domain_id = domain['results'][0]['id']
+        return domain_id
+    else:
+        print_error("Could not find domain %s" % domain_name)
+        sys.exit(2)
+
 
 
 def return_matching_hg_id(hg_name):
@@ -317,10 +322,10 @@ def return_matching_hg_id(hg_name):
 
 def return_matching_architecture_id(architecture_name):
     # Given an architecture name, find its id
-    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/architectures?search=" + architecture_name
+    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/architectures/?" + urlencode([('search', 'name=%s' % architecture_name)])
     if options.verbose:
         print myurl
-    architectures = get_json(myurl)
+    architecture = get_json(myurl)
     if len(architecture['results']) == 1:
         architecture_id = architecture['results'][0]['id']
         return architecture_id
@@ -331,10 +336,10 @@ def return_matching_architecture_id(architecture_name):
 
 def return_matching_operatingsystem_id(operatingsystem_name):
     # Given an operatingsystem name, find its id
-    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/operatingsystems?search=" + operatingsystem_name
+    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/operatingsystems/?" + urlencode([('search', 'name=%s' % operatingsystem_name)])
     if options.verbose:
         print myurl
-    operatingsystems = get_json(myurl)
+    operatingsystem = get_json(myurl)
     if len(operatingsystem['results']) == 1:
         operatingsystem_id = operatingsystem['results'][0]['id']
         return operatingsystem_id
@@ -427,7 +432,6 @@ def create_host():
     mydomainid = return_matching_domain_id(DOMAIN)
     architecture_id = return_matching_architecture_id(ARCHITECTURE)
     host_id = return_matching_host(FQDN)
-    print "host id %s" % host_id
     # create the starting json, to be filled below
     jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s", "domain_id":%s,"architecture_id":%s,"ptable_id":7}}' % (HOSTNAME, myhgid, myorgid, mylocid, MAC, mydomainid, architecture_id))
     # optional parameters
@@ -441,7 +445,7 @@ def create_host():
     if options.verbose:
         print json.dumps(jsondata, sort_keys = False, indent = 2)
     myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hosts/"
-    if options.force:
+    if options.force and host_id is not None:
         print_running("Deleting host id %s for host %s" % (host_id, FQDN))
         delete_json("%s/%s" % (myurl, host_id))
     print_running("Calling Satellite API to create a host entry associated with the group, org & location")
