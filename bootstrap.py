@@ -1,9 +1,6 @@
 #!/usr/bin/python
 #
-try:
-    import json
-except ImportError:
-    import simplejson as json
+
 import getpass
 import urllib2
 import base64
@@ -462,6 +459,24 @@ def get_api_port():
 
 print "Foreman Bootstrap Script"
 print "This script is designed to register new systems or to migrate an existing system to a Foreman server with Katello"
+
+
+# try to import json or simplejson
+# do it at this point in the code to have our custom print and exec functions available
+try:
+    import json
+except ImportError:
+    try:
+        import simplejson as json
+    except ImportError:
+        print_warning("Could neither import json nor simplejson, will try to install simplejson and re-import")
+        exec_failexit("yum install -y python-simplejson")
+        try:
+            import simplejson as json
+        except ImportError:
+            print_error("Could not install python-simplejson")
+            sys.exit(1)
+
 
 clean_environment()
 if options.remove:
