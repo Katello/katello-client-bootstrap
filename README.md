@@ -43,6 +43,11 @@ Network Classic and get it registered to Foreman & Katello.
   Alternatively, autosigning can be enabled for the system in question.  (And be careful,
   auto-signing isnt one of those things you'd leave enabled forever)
 
+# Dependencies
+
+* Python2 >= 2.5 or 2.4 with python-simplejson installed
+* subscription-manager (if the machine has no previous subscription)
+
 # User required inputs
 
 * Hostname of Foreman and/or Capsule host
