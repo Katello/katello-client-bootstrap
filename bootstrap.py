@@ -48,6 +48,7 @@ parser.add_option("-L", "--location", dest="location", default='Default_Location
 parser.add_option("-O", "--operatingsystem", dest="operatingsystem", default=None, help="Label of the Operating System in Satellite that the host is to be associated with", metavar="OPERATINGSYSTEM")
 parser.add_option("-o", "--organization", dest="org", default='Default_Organization', help="Label of the Organization in Satellite that the host is to be associated with", metavar="ORG")
 parser.add_option("-S", "--subscription-manager-args", dest="smargs", default="", help="Which additional arguments shall be passed to subscription-manager", metavar="ARGS")
+parser.add_option("--rhn-migrate-args", dest="rhsmargs", default="", help="Which additional arguments shall be passed to rhn-migrate-classic-to-rhsm", metavar="ARGS")
 parser.add_option("-u", "--update", dest="update", action="store_true", help="Fully Updates the System")
 parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="Verbose output")
 parser.add_option("-f", "--force", dest="force", action="store_true", help="Force registration (will erase old katello and puppet certs)")
@@ -151,12 +152,12 @@ def migrate_systems(org_name, activationkey):
     org_label = return_matching_org_label(org_name)
     print_generic("Calling rhn-migrate-classic-to-rhsm")
     if options.legacy_purge:
-        rhsmargs = "--legacy-user '%s' --legacy-password '%s'" % (options.legacy_login, options.legacy_password)
+        options.rhsmargs += " --legacy-user '%s' --legacy-password '%s'" % (options.legacy_login, options.legacy_password)
     else:
-        rhsmargs = "--keep"
+        options.rhsmargs += " --keep"
     if options.force:
-        rhsmargs += " --force"
-    exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key %s %s" % (org_label, activationkey, rhsmargs))
+        options.rhsmargs += " --force"
+    exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key %s %s" % (org_label, activationkey, options.rhsmargs))
 
 
 def register_systems(org_name, activationkey, release):
