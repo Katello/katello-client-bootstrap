@@ -51,12 +51,13 @@ parser.add_option("-S", "--subscription-manager-args", dest="smargs", default=""
 parser.add_option("-u", "--update", dest="update", action="store_true", help="Fully Updates the System")
 parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="Verbose output")
 parser.add_option("-f", "--force", dest="force", action="store_true", help="Force registration (will erase old katello and puppet certs)")
+parser.add_option("--remove", dest="remove", action="store_true", help="Instead of registring the machine to Satellite remove it")
 parser.add_option("-r", "--release", dest="release", default=RELEASE, help="Specify release version")
 parser.add_option("-R", "--remove-rhn-packages", dest="removepkgs", action="store_true", help="Remove old Red Hat Network Packages")
 parser.add_option("--unmanaged", dest="unmanaged", action="store_true", help="Add the server as unmanaged. Useful to skip provisioning dependencies.")
 (options, args) = parser.parse_args()
 
-if not (options.sat6_fqdn and options.login and options.hostgroup and options.location and options.org and options.activationkey):
+if not (options.sat6_fqdn and options.login and (options.remove or (options.org and options.hostgroup and options.location and options.activationkey))):
     print "Must specify server, login, hostgroup, location, and organization options.  See usage:"
     parser.print_help()
     print "\nExample usage: ./bootstrap.py -l admin -s satellite.example.com -o Default_Organization -L Default_Location -g My_Hostgroup -a My_Activation_Key"
@@ -142,7 +143,7 @@ def install_prereqs():
 
 def get_bootstrap_rpm():
     if options.force:
-        clean_katello_certs()
+        clean_katello_agent()
     print_generic("Retrieving Candlepin Consumer RPMs")
     exec_failexit("/usr/bin/yum -y localinstall http://%s/pub/katello-ca-consumer-latest.noarch.rpm --nogpgcheck" % options.sat6_fqdn)
 
@@ -168,14 +169,19 @@ def register_systems(org_name, activationkey, release):
     exec_failexit("/usr/sbin/subscription-manager register --org '%s' --name '%s' --activationkey '%s' %s" % (org_label, FQDN, activationkey, options.smargs))
 
 
+def unregister_system():
+    print_generic("Unregistering")
+    exec_failexit("/usr/sbin/subscription-manager unregister")
+
+
 def enable_sat_tools():
     print_generic("Enabling the Satellite tools repositories for Puppet & Katello Agents")
     exec_failexit("subscription-manager repos --enable=rhel-*-satellite-tools-*-rpms")
 
 
-def clean_katello_certs():
-    print_generic("Cleaning old Katello certs")
-    exec_failexit("/usr/bin/yum -y erase katello-ca-consumer-*")
+def clean_katello_agent():
+    print_generic("Removing old Katello agent and certs")
+    exec_failexit("/usr/bin/yum -y erase katello-ca-consumer-* katello-agent gofer")
 
 
 def install_katello_agent():
@@ -446,11 +452,16 @@ def create_host():
         print json.dumps(jsondata, sort_keys = False, indent = 2)
     myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hosts/"
     if options.force and host_id is not None:
-        print_running("Deleting host id %s for host %s" % (host_id, FQDN))
-        delete_json("%s/%s" % (myurl, host_id))
+        delete_host(host_id)
     print_running("Calling Satellite API to create a host entry associated with the group, org & location")
     post_json(myurl, jsondata)
     print_success("Successfully created host %s" % FQDN)
+
+
+def delete_host(host_id):
+    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hosts/"
+    print_running("Deleting host id %s for host %s" % (host_id, FQDN))
+    delete_json("%s/%s" % (myurl, host_id))
 
 
 def check_rhn_registration():
@@ -465,7 +476,16 @@ def get_api_port():
 print "Satellite 6 Bootstrap Script"
 print "This script is designed to register new systems or to migrate an existing system to Red Hat Satellite 6"
 
-if check_rhn_registration():
+if options.remove:
+    API_PORT = get_api_port()
+    host_id = return_matching_host(FQDN)
+    if host_id is not None:
+        delete_host(host_id)
+    unregister_system()
+    clean_katello_agent()
+    if not options.no_puppet:
+        clean_puppet()
+elif check_rhn_registration():
     print_generic('This system is registered to RHN. Attempting to migrate via rhn-classic-migrate-to-rhsm')
     install_prereqs()
     get_bootstrap_rpm()
@@ -479,15 +499,16 @@ else:
     create_host()
     register_systems(options.org, options.activationkey, options.release)
 
-enable_sat_tools()
-install_katello_agent()
-if options.update:
-    fully_update_the_box()
+if not options.remove:
+    enable_sat_tools()
+    install_katello_agent()
+    if options.update:
+        fully_update_the_box()
 
-if not options.no_puppet:
-    if options.force:
-        clean_puppet()
-    install_puppet_agent()
+    if not options.no_puppet:
+        if options.force:
+            clean_puppet()
+        install_puppet_agent()
 
-if options.removepkgs:
-    remove_old_rhn_packages()
+    if options.removepkgs:
+        remove_old_rhn_packages()
