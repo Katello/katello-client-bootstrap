@@ -152,6 +152,7 @@ def get_bootstrap_rpm():
 def migrate_systems(org_name, activationkey):
     org_label = return_matching_org_label(org_name)
     print_generic("Calling rhn-migrate-classic-to-rhsm")
+    options.rhsmargs += " --destination-url=https://%s:%s" % (options.sat6_fqdn, API_PORT)
     if options.legacy_purge:
         options.rhsmargs += " --legacy-user '%s' --legacy-password '%s'" % (options.legacy_login, options.legacy_password)
     else:
@@ -159,11 +160,13 @@ def migrate_systems(org_name, activationkey):
     if options.force:
         options.rhsmargs += " --force"
     exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key %s %s" % (org_label, activationkey, options.rhsmargs))
+    exec_failexit("subscription-manager config --rhsm.baseurl=https://%s/pulp/repos" % options.sat6_fqdn)
 
 
 def register_systems(org_name, activationkey, release):
     org_label = return_matching_org_label(org_name)
     print_generic("Calling subscription-manager")
+    options.smargs += " --serverurl=https://%s:%s/rhsm --baseurl=https://%s/pulp/repos" % (options.sat6_fqdn, API_PORT, options.sat6_fqdn)
     if options.force:
         options.smargs += " --force"
     # exec_failexit("/usr/sbin/subscription-manager register --org %s --activationkey %s --release %s" % (org_label,activationkey,release))
