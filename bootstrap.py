@@ -31,7 +31,7 @@ HEXMAC = hex(getnode())
 NOHEXMAC = HEXMAC[2:]
 MAC = NOHEXMAC.zfill(13)[0:12]
 RELEASE = platform.linux_distribution()[1]
-API_PORT = 443
+API_PORT = "443"
 ARCHITECTURE = get_architecture()
 
 parser = OptionParser()
@@ -304,19 +304,23 @@ def delete_json(url):
 
 # Search in API 
 # given a search key, return the ID
-def return_matching_id(api_name, search_key):
-    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/" + api_name  + "/?" + urlencode([('search', search_key)])
+# api_name is the key in url for API name, search_key must contain also the key for search (name=, title=, ...)
+def return_matching_id(api_name, search_key, null_result_ok):
+    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/" + api_name  + "/?" + urlencode([('search', '' + str(search_key))])
     if options.verbose:
         print myurl
     return_values = get_json(myurl)
-    if len(return_values['results']) == 1:
+    if options.verbose:
+        print json.dumps(result_len, sort_keys = False, indent = 2)
+    result_len = len(return_values['results'])
+    if result_len == 1:
         return_values_id = return_values['results'][0]['id']
         return return_values_id
+    elif result_len == 0 and null_result_ok is True:
+        return None
     else:
-        print_error("Could not find search key %s in API %s" % search_key, api_name)
+        print_error("%d element in array for search key %s in API %s. Fatal error." % result_len, search_key, api_name)
         sys.exit(2)
-
-
 
 def return_matching_domain_id(domain_name):
     # Given a domain, find its id
@@ -454,14 +458,14 @@ def return_matching_host(fqdn):
 
 def create_host():
     #myhgid = return_matching_hg_id(options.hostgroup)
-    myhgid = return_matching_id('hostgroups', 'title=%s' % options.hostgroup)
+    myhgid = return_matching_id('hostgroups', 'title=%s' % options.hostgroup, False)
     #mylocid = return_matching_location(options.location)
-    mylocid = return_matching_location('locations', 'title=%s' %options.location)
+    mylocid = return_matching_location('locations', 'title=%s' %options.location, False)
     myorgid = return_matching_org(options.org)
     #mydomainid = return_matching_domain_id(DOMAIN)
-    mydomainid = return_matching_domain_id('domains', 'name=%s' % DOMAIN)
+    mydomainid = return_matching_domain_id('domains', 'name=%s' % DOMAIN, False)
     #architecture_id = return_matching_architecture_id(ARCHITECTURE)
-    architecture_id = return_matching_id('architectures', 'name=%s' % ARCHITECTURE)
+    architecture_id = return_matching_id('architectures', 'name=%s' % ARCHITECTURE, False)
     host_id = return_matching_host(FQDN)
     # create the starting json, to be filled below
     jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s", "domain_id":%s,"architecture_id":%s}}' % (HOSTNAME, myhgid, myorgid, mylocid, MAC, mydomainid, architecture_id))
