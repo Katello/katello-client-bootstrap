@@ -46,6 +46,7 @@ parser.add_option("-P", "--skip-puppet", dest="no_puppet", action="store_true", 
 parser.add_option("-g", "--hostgroup", dest="hostgroup", help="Label of the Hostgroup in Satellite that the host is to be associated with", metavar="HOSTGROUP")
 parser.add_option("-L", "--location", dest="location", default='Default_Location', help="Label of the Location in Satellite that the host is to be associated with", metavar="LOCATION")
 parser.add_option("-O", "--operatingsystem", dest="operatingsystem", default=None, help="Label of the Operating System in Satellite that the host is to be associated with", metavar="OPERATINGSYSTEM")
+parser.add_option("--partitiontable", dest="partitiontable", default=None, help="Label of the Operating System in Satellite that the host is to be associated with", metavar="PARTITIONTABLE")
 parser.add_option("-o", "--organization", dest="org", default='Default_Organization', help="Label of the Organization in Satellite that the host is to be associated with", metavar="ORG")
 parser.add_option("-S", "--subscription-manager-args", dest="smargs", default="", help="Which additional arguments shall be passed to subscription-manager", metavar="ARGS")
 parser.add_option("--rhn-migrate-args", dest="rhsmargs", default="", help="Which additional arguments shall be passed to rhn-migrate-classic-to-rhsm", metavar="ARGS")
@@ -78,6 +79,7 @@ if options.verbose:
     print "HOSTGROUP - %s" % options.hostgroup
     print "LOCATION - %s" % options.location
     print "OPERATINGSYSTEM - %s" % options.operatingsystem
+    print "PARTITIONTABLE - %s" % options.partitiontable
     print "ORG - %s" % options.org
     print "ACTIVATIONKEY - %s" % options.activationkey
     print "UPDATE - %s" % options.update
@@ -300,6 +302,21 @@ def delete_json(url):
         print "FATAL Error - %s" % (e)
         sys.exit(2)
 
+# Search in API 
+# given a search key, return the ID
+def return_matching_id(api_name, search_key):
+    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/" + api_name  + "/?" + urlencode([('search', search_key)])
+    if options.verbose:
+        print myurl
+    return_values = get_json(myurl)
+    if len(return_values['results']) == 1:
+        return_values_id = return_values['results'][0]['id']
+        return return_values_id
+    else:
+        print_error("Could not find search key %s in API %s" % search_key, api_name)
+        sys.exit(2)
+
+
 
 def return_matching_domain_id(domain_name):
     # Given a domain, find its id
@@ -436,18 +453,26 @@ def return_matching_host(fqdn):
 
 
 def create_host():
-    myhgid = return_matching_hg_id(options.hostgroup)
-    mylocid = return_matching_location(options.location)
+    #myhgid = return_matching_hg_id(options.hostgroup)
+    myhgid = return_matching_id('hostgroups', 'title=%s' % options.hostgroup)
+    #mylocid = return_matching_location(options.location)
+    mylocid = return_matching_location('locations', 'title=%s' %options.location)
     myorgid = return_matching_org(options.org)
-    mydomainid = return_matching_domain_id(DOMAIN)
-    architecture_id = return_matching_architecture_id(ARCHITECTURE)
+    #mydomainid = return_matching_domain_id(DOMAIN)
+    mydomainid = return_matching_domain_id('domains', 'name=%s' % DOMAIN)
+    #architecture_id = return_matching_architecture_id(ARCHITECTURE)
+    architecture_id = return_matching_id('architectures', 'name=%s' % ARCHITECTURE)
     host_id = return_matching_host(FQDN)
     # create the starting json, to be filled below
     jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s", "domain_id":%s,"architecture_id":%s}}' % (HOSTNAME, myhgid, myorgid, mylocid, MAC, mydomainid, architecture_id))
     # optional parameters
     if options.operatingsystem is not None:
-      operatingsystem_id = return_matching_operatingsystem_id(options.operatingsystem)
+      #operatingsystem_id = return_matching_operatingsystem_id(options.operatingsystem)
+      operatingsystem_id = return_matching_id('operatingsystems', 'name=%s' % options.operatingsystem)
       jsondata['host']['operatingsystem_id'] = operatingsystem_id
+    if options.partitiontable is not None:
+      partitiontable_id = return_matching_id('partitiontables', 'name=%s' % options.partitiontable)
+      jsondata['host']['ptable_id'] = partitiontable_id
     if not options.unmanaged:
         jsondata['host']['managed'] = 'true'
     else:
