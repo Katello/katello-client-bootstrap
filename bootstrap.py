@@ -234,13 +234,25 @@ def install_puppet_agent():
     print_generic("Installing the Puppet Agent")
     exec_failexit("/usr/bin/yum -y install puppet")
     exec_failexit("/sbin/chkconfig puppet on")
-    exec_failexit("/usr/bin/puppet config set server %s --section agent" % options.foreman_fqdn)
-    exec_failexit("/usr/bin/puppet config set ca_server %s --section agent" % options.foreman_fqdn)
-    exec_failexit("/usr/bin/puppet config set environment %s --section agent" % puppet_env)
-    # Might need this for RHEL5
-    # f = open("/etc/puppet/puppet.conf","a")
-    # f.write("server=%s \n" % options.foreman_fqdn)
-    # f.close()
+    puppet_conf = open('/etc/puppet/puppet.conf', 'wb')
+    puppet_conf.write("""
+[main]
+vardir = /var/lib/puppet
+logdir = /var/log/puppet
+rundir = /var/run/puppet
+ssldir = \$vardir/ssl
+
+[agent]
+pluginsync      = true
+report          = true
+ignoreschedules = true
+daemon          = false
+ca_server       = %s
+certname        = %s
+environment     = %s
+server          = %s
+""" % (options.foreman_fqdn, FQDN, puppet_env, options.foreman_fqdn))
+    puppet_conf.close()
     print_generic("Running Puppet in noop mode to generate SSL certs")
     print_generic("Visit the UI and approve this certificate via Infrastructure->Capsules")
     print_generic("if auto-signing is disabled")
