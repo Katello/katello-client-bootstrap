@@ -10,6 +10,7 @@ import platform
 import socket
 import os.path
 import glob
+import shutil
 from datetime import datetime
 from optparse import OptionParser
 from urllib import urlencode
@@ -473,6 +474,40 @@ print "Foreman Bootstrap Script"
 print "This script is designed to register new systems or to migrate an existing system to a Foreman server with Katello"
 
 
+def prepare_rhel5_migration():
+    install_prereqs()
+    _LIBPATH = "/usr/share/rhsm"
+    # add to the path if need be
+    if _LIBPATH not in sys.path:
+        sys.path.append(_LIBPATH)
+        from subscription_manager.migrate import migrate
+
+    me = migrate.MigrationEngine()
+    me.options.force = True
+    subscribed_channels = me.get_subscribed_channels_list()
+    me.print_banner(("System is currently subscribed to these RHNClassic Channels:"))
+    for channel in subscribed_channels:
+        print channel
+    me.check_for_conflicting_channels(subscribed_channels)
+    me.deploy_prod_certificates(subscribed_channels)
+    me.clean_up(subscribed_channels)
+
+    # check if certs are actually there..
+    if not os.path.exists('/etc/pki/product/'):
+        os.mkdir("/etc/pki/product/")
+    if not os.path.exists('/etc/pki/product/69.pem'):
+        # or put them there. Ugly.
+        for line in open("/usr/share/rhsm/product/RHEL-5/channel-cert-mapping.txt"):
+            if ("rhel-x86_64-server-5:" in line and ARCHITECTURE == "x86_64") or ("rhel-i386-server-5:" in line and ARCHITECTURE == "x86"):
+                cert=line.split(" ")[1]
+                shutil.copy('/usr/share/rhsm/product/RHEL-5/'+cert.strip(), '/etc/pki/product/69.pem')
+                break
+
+    # cleanup
+    if os.path.exists('/etc/sysconfig/rhn/systemid'):
+        os.remove('/etc/sysconfig/rhn/systemid')
+
+
 # try to import json or simplejson
 # do it at this point in the code to have our custom print and exec functions available
 try:
@@ -491,6 +526,10 @@ except ImportError:
 
 
 clean_environment()
+
+if not options.remove and int(RELEASE[0]) == 5:
+    prepare_rhel5_migration()
+
 if options.remove:
     API_PORT = get_api_port()
     host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', True)
