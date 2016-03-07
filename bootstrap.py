@@ -322,6 +322,7 @@ def return_matching_id(api_name, search_key, null_result_ok):
         print_error("%d element in array for search key %s in API %s. Fatal error." % result_len, search_key, api_name)
         sys.exit(2)
 
+
 def return_puppetenv_for_hg(hg_id):
     myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hostgroups/" + str(hg_id)
     hostgroup = get_json(myurl)
@@ -395,7 +396,6 @@ def create_host():
     jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s", "domain_id":%s,"architecture_id":%s}}' % (HOSTNAME, myhgid, myorgid, mylocid, MAC, mydomainid, architecture_id))
     # optional parameters
     if options.operatingsystem is not None:
-      #operatingsystem_id = return_matching_operatingsystem_id(options.operatingsystem)
       operatingsystem_id = return_matching_id('operatingsystems', 'name=%s' % options.operatingsystem, False)
       jsondata['host']['operatingsystem_id'] = operatingsystem_id
     if options.partitiontable is not None:
