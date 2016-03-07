@@ -204,7 +204,7 @@ def clean_puppet():
 
 
 def install_puppet_agent():
-    puppet_env = return_puppetenv_for_hg(return_matching_hg_id(options.hostgroup))
+    puppet_env = return_puppetenv_for_hg(return_matching_id('hostgroups', 'title=%s' % options.hostgroup, False))
     print_generic("Installing the Puppet Agent")
     exec_failexit("/usr/bin/yum -y install puppet")
     exec_failexit("/sbin/chkconfig puppet on")
@@ -311,7 +311,7 @@ def return_matching_id(api_name, search_key, null_result_ok):
         print myurl
     return_values = get_json(myurl)
     if options.verbose:
-        print json.dumps(result_len, sort_keys = False, indent = 2)
+        print json.dumps(return_values, sort_keys = False, indent = 2)
     result_len = len(return_values['results'])
     if result_len == 1:
         return_values_id = return_values['results'][0]['id']
@@ -321,63 +321,6 @@ def return_matching_id(api_name, search_key, null_result_ok):
     else:
         print_error("%d element in array for search key %s in API %s. Fatal error." % result_len, search_key, api_name)
         sys.exit(2)
-
-def return_matching_domain_id(domain_name):
-    # Given a domain, find its id
-    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/domains/?" + urlencode([('search', 'name=%s' % domain_name)])
-    if options.verbose:
-        print myurl
-    domain = get_json(myurl)
-    if len(domain['results']) == 1:
-        domain_id = domain['results'][0]['id']
-        return domain_id
-    else:
-        print_error("Could not find domain %s" % domain_name)
-        sys.exit(2)
-
-
-
-def return_matching_hg_id(hg_name):
-    # Given a hostgroup name, find its id
-    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hostgroups/?" + urlencode([('search', 'title=%s' % hg_name)])
-    if options.verbose:
-        print myurl
-    hostgroup = get_json(myurl)
-    if len(hostgroup['results']) == 1:
-        hg_id = hostgroup['results'][0]['id']
-        return hg_id
-    else:
-        print_error("Could not find hostgroup %s" % hg_name)
-        sys.exit(2)
-
-
-def return_matching_architecture_id(architecture_name):
-    # Given an architecture name, find its id
-    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/architectures/?" + urlencode([('search', 'name=%s' % architecture_name)])
-    if options.verbose:
-        print myurl
-    architecture = get_json(myurl)
-    if len(architecture['results']) == 1:
-        architecture_id = architecture['results'][0]['id']
-        return architecture_id
-    else:
-        print_error("Could not find architecture %s" % architecture)
-        sys.exit(2)
-
-
-def return_matching_operatingsystem_id(operatingsystem_name):
-    # Given an operatingsystem name, find its id
-    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/operatingsystems/?" + urlencode([('search', 'name=%s' % operatingsystem_name)])
-    if options.verbose:
-        print myurl
-    operatingsystem = get_json(myurl)
-    if len(operatingsystem['results']) == 1:
-        operatingsystem_id = operatingsystem['results'][0]['id']
-        return operatingsystem_id
-    else:
-        print_error("Could not find operatingsystem %s" % operatingsystem)
-        sys.exit(2)
-
 
 def return_puppetenv_for_hg(hg_id):
     myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hostgroups/" + str(hg_id)
@@ -389,7 +332,6 @@ def return_puppetenv_for_hg(hg_id):
     else:
         return 'production'
 
-
 def return_matching_host_id(hostname):
     # Given a hostname (more precisely a puppet certname) find its id
     myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hosts/" + hostname
@@ -398,20 +340,6 @@ def return_matching_host_id(hostname):
     host = get_json(myurl)
     host_id = host['id']
     return host_id
-
-
-def return_matching_location(location):
-    # Given a location, find its id
-    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/locations/?" + urlencode([('search', 'title=%s' % location)])
-    if options.verbose:
-        print myurl
-    loc = get_json(myurl)
-    if len(loc['results']) == 1:
-        loc_id = loc['results'][0]['id']
-        return loc_id
-    else:
-        print_error("Could not find location %s" % location)
-        sys.exit(2)
 
 
 def return_matching_org(organization):
@@ -457,25 +385,21 @@ def return_matching_host(fqdn):
 
 
 def create_host():
-    #myhgid = return_matching_hg_id(options.hostgroup)
     myhgid = return_matching_id('hostgroups', 'title=%s' % options.hostgroup, False)
-    #mylocid = return_matching_location(options.location)
-    mylocid = return_matching_location('locations', 'title=%s' %options.location, False)
-    myorgid = return_matching_org(options.org)
-    #mydomainid = return_matching_domain_id(DOMAIN)
-    mydomainid = return_matching_domain_id('domains', 'name=%s' % DOMAIN, False)
-    #architecture_id = return_matching_architecture_id(ARCHITECTURE)
+    mylocid = return_matching_id('locations', 'title=%s' %options.location, False)
+    myorgid = return_matching_id('organizations', 'name=%s' % options.org, False)
+    mydomainid = return_matching_id('domains', 'name=%s' % DOMAIN, False)
     architecture_id = return_matching_id('architectures', 'name=%s' % ARCHITECTURE, False)
-    host_id = return_matching_host(FQDN)
+    host_id = return_matching_id('hosts', 'name=%s' % FQDN, True)
     # create the starting json, to be filled below
     jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s", "domain_id":%s,"architecture_id":%s}}' % (HOSTNAME, myhgid, myorgid, mylocid, MAC, mydomainid, architecture_id))
     # optional parameters
     if options.operatingsystem is not None:
       #operatingsystem_id = return_matching_operatingsystem_id(options.operatingsystem)
-      operatingsystem_id = return_matching_id('operatingsystems', 'name=%s' % options.operatingsystem)
+      operatingsystem_id = return_matching_id('operatingsystems', 'name=%s' % options.operatingsystem, False)
       jsondata['host']['operatingsystem_id'] = operatingsystem_id
     if options.partitiontable is not None:
-      partitiontable_id = return_matching_id('partitiontables', 'name=%s' % options.partitiontable)
+      partitiontable_id = return_matching_id('ptables', 'name=%s' % options.partitiontable, False)
       jsondata['host']['ptable_id'] = partitiontable_id
     if not options.unmanaged:
         jsondata['host']['managed'] = 'true'
