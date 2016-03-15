@@ -468,6 +468,12 @@ def delete_host(host_id):
     delete_json("%s/%s" % (myurl, host_id))
 
 
+def disassociate_host(host_id):
+    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hosts/" + str(host_id) + "/disassociate"
+    print_running("Disassociating host id %s for host %s" % (host_id, FQDN))
+    put_json(myurl)
+
+
 def check_rhn_registration():
     return os.path.exists('/etc/sysconfig/rhn/systemid')
 
@@ -484,6 +490,7 @@ if options.remove:
     API_PORT = get_api_port()
     host_id = return_matching_host(FQDN)
     if host_id is not None:
+        disassociate_host(host_id)
         delete_host(host_id)
     unregister_system()
     clean_katello_agent()
