@@ -306,7 +306,7 @@ def delete_json(url):
 # Search in API
 # given a search key, return the ID
 # api_name is the key in url for API name, search_key must contain also the key for search (name=, title=, ...)
-def return_matching_id(api_name, search_key, null_result_ok):
+def return_matching_id(api_name, search_key, null_result_ok=False):
     myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/" + api_name + "/?" + urlencode([('search', '' + str(search_key))])
     if options.verbose:
         print myurl
