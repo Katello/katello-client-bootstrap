@@ -302,16 +302,17 @@ def delete_json(url):
         print "FATAL Error - %s" % (e)
         sys.exit(2)
 
-# Search in API 
+
+# Search in API
 # given a search key, return the ID
 # api_name is the key in url for API name, search_key must contain also the key for search (name=, title=, ...)
 def return_matching_id(api_name, search_key, null_result_ok):
-    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/" + api_name  + "/?" + urlencode([('search', '' + str(search_key))])
+    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/" + api_name + "/?" + urlencode([('search', '' + str(search_key))])
     if options.verbose:
         print myurl
     return_values = get_json(myurl)
     if options.verbose:
-        print json.dumps(return_values, sort_keys = False, indent = 2)
+        print json.dumps(return_values, sort_keys=False, indent=2)
     result_len = len(return_values['results'])
     if result_len == 1:
         return_values_id = return_values['results'][0]['id']
@@ -332,6 +333,7 @@ def return_puppetenv_for_hg(hg_id):
         return return_puppetenv_for_hg(hostgroup['ancestry'])
     else:
         return 'production'
+
 
 def return_matching_host_id(hostname):
     # Given a hostname (more precisely a puppet certname) find its id
@@ -374,7 +376,7 @@ def return_matching_host(fqdn):
         print myurl
     hosts = get_json(myurl)
     if options.verbose:
-        print json.dumps(hosts, sort_keys = False, indent = 2)
+        print json.dumps(hosts, sort_keys=False, indent=2)
     if len(hosts['results']) == 1:
         host_id = hosts['results'][0]['id']
         return host_id
@@ -387,7 +389,7 @@ def return_matching_host(fqdn):
 
 def create_host():
     myhgid = return_matching_id('hostgroups', 'title=%s' % options.hostgroup, False)
-    mylocid = return_matching_id('locations', 'title=%s' %options.location, False)
+    mylocid = return_matching_id('locations', 'title=%s' % options.location, False)
     myorgid = return_matching_id('organizations', 'name=%s' % options.org, False)
     mydomainid = return_matching_id('domains', 'name=%s' % DOMAIN, False)
     architecture_id = return_matching_id('architectures', 'name=%s' % ARCHITECTURE, False)
@@ -396,17 +398,17 @@ def create_host():
     jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s", "domain_id":%s,"architecture_id":%s}}' % (HOSTNAME, myhgid, myorgid, mylocid, MAC, mydomainid, architecture_id))
     # optional parameters
     if options.operatingsystem is not None:
-      operatingsystem_id = return_matching_id('operatingsystems', 'name=%s' % options.operatingsystem, False)
-      jsondata['host']['operatingsystem_id'] = operatingsystem_id
+        operatingsystem_id = return_matching_id('operatingsystems', 'name=%s' % options.operatingsystem, False)
+        jsondata['host']['operatingsystem_id'] = operatingsystem_id
     if options.partitiontable is not None:
-      partitiontable_id = return_matching_id('ptables', 'name=%s' % options.partitiontable, False)
-      jsondata['host']['ptable_id'] = partitiontable_id
+        partitiontable_id = return_matching_id('ptables', 'name=%s' % options.partitiontable, False)
+        jsondata['host']['ptable_id'] = partitiontable_id
     if not options.unmanaged:
         jsondata['host']['managed'] = 'true'
     else:
         jsondata['host']['managed'] = 'false'
     if options.verbose:
-        print json.dumps(jsondata, sort_keys = False, indent = 2)
+        print json.dumps(jsondata, sort_keys=False, indent=2)
     myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hosts/"
     if options.force and host_id is not None:
         delete_host(host_id)
