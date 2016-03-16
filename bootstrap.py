@@ -409,7 +409,7 @@ print "This script is designed to register new systems or to migrate an existing
 
 if options.remove:
     API_PORT = get_api_port()
-    host_id = return_matching_id('name', 'name=%s' % FQDN, True)
+    host_id = return_matching_id('hosts', 'name=%s' % FQDN, True)
     if host_id is not None:
         delete_host(host_id)
     unregister_system()
