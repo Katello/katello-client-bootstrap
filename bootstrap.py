@@ -335,16 +335,6 @@ def return_puppetenv_for_hg(hg_id):
         return 'production'
 
 
-def return_matching_host_id(hostname):
-    # Given a hostname (more precisely a puppet certname) find its id
-    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hosts/" + hostname
-    if options.verbose:
-        print myurl
-    host = get_json(myurl)
-    host_id = host['id']
-    return host_id
-
-
 def return_matching_org(organization):
     # Given an org, find its id.
     myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/organizations/"
@@ -367,24 +357,6 @@ def return_matching_org_label(organization):
     organization = get_json(myurl)
     org_label = organization['label']
     return org_label
-
-
-def return_matching_host(fqdn):
-    # Given an org, find its id.
-    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hosts/?" + urlencode([('search', 'name=%s' % fqdn)])
-    if options.verbose:
-        print myurl
-    hosts = get_json(myurl)
-    if options.verbose:
-        print json.dumps(hosts, sort_keys=False, indent=2)
-    if len(hosts['results']) == 1:
-        host_id = hosts['results'][0]['id']
-        return host_id
-    elif len(hosts['results']) == 0:
-        return None
-    else:
-        print_error("Found too many hosts with same name %s" % fqdn)
-        sys.exit(2)
 
 
 def create_host():
@@ -437,7 +409,7 @@ print "This script is designed to register new systems or to migrate an existing
 
 if options.remove:
     API_PORT = get_api_port()
-    host_id = return_matching_host(FQDN)
+    host_id = return_matching_id('name', 'name=%s' % FQDN, True)
     if host_id is not None:
         delete_host(host_id)
     unregister_system()
