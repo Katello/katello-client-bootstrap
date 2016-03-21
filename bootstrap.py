@@ -330,7 +330,8 @@ def return_puppetenv_for_hg(hg_id):
     if hostgroup['environment_name']:
         return hostgroup['environment_name']
     elif hostgroup['ancestry']:
-        return return_puppetenv_for_hg(hostgroup['ancestry'])
+        parent = hostgroup['ancestry'].split('/')[-1]
+        return return_puppetenv_for_hg(parent)
     else:
         return 'production'
 
