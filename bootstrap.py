@@ -31,7 +31,7 @@ HEXMAC = hex(getnode())
 NOHEXMAC = HEXMAC[2:]
 MAC = NOHEXMAC.zfill(13)[0:12]
 RELEASE = platform.linux_distribution()[1]
-API_PORT = 443
+API_PORT = "443"
 ARCHITECTURE = get_architecture()
 
 parser = OptionParser()
@@ -46,6 +46,7 @@ parser.add_option("-P", "--skip-puppet", dest="no_puppet", action="store_true", 
 parser.add_option("-g", "--hostgroup", dest="hostgroup", help="Label of the Hostgroup in Satellite that the host is to be associated with", metavar="HOSTGROUP")
 parser.add_option("-L", "--location", dest="location", default='Default_Location', help="Label of the Location in Satellite that the host is to be associated with", metavar="LOCATION")
 parser.add_option("-O", "--operatingsystem", dest="operatingsystem", default=None, help="Label of the Operating System in Satellite that the host is to be associated with", metavar="OPERATINGSYSTEM")
+parser.add_option("--partitiontable", dest="partitiontable", default=None, help="Label of the Operating System in Satellite that the host is to be associated with", metavar="PARTITIONTABLE")
 parser.add_option("-o", "--organization", dest="org", default='Default_Organization', help="Label of the Organization in Satellite that the host is to be associated with", metavar="ORG")
 parser.add_option("-S", "--subscription-manager-args", dest="smargs", default="", help="Which additional arguments shall be passed to subscription-manager", metavar="ARGS")
 parser.add_option("--rhn-migrate-args", dest="rhsmargs", default="", help="Which additional arguments shall be passed to rhn-migrate-classic-to-rhsm", metavar="ARGS")
@@ -78,6 +79,7 @@ if options.verbose:
     print "HOSTGROUP - %s" % options.hostgroup
     print "LOCATION - %s" % options.location
     print "OPERATINGSYSTEM - %s" % options.operatingsystem
+    print "PARTITIONTABLE - %s" % options.partitiontable
     print "ORG - %s" % options.org
     print "ACTIVATIONKEY - %s" % options.activationkey
     print "UPDATE - %s" % options.update
@@ -202,7 +204,7 @@ def clean_puppet():
 
 
 def install_puppet_agent():
-    puppet_env = return_puppetenv_for_hg(return_matching_hg_id(options.hostgroup))
+    puppet_env = return_puppetenv_for_hg(return_matching_id('hostgroups', 'title=%s' % options.hostgroup, False))
     print_generic("Installing the Puppet Agent")
     exec_failexit("/usr/bin/yum -y install puppet")
     exec_failexit("/sbin/chkconfig puppet on")
@@ -301,60 +303,24 @@ def delete_json(url):
         sys.exit(2)
 
 
-def return_matching_domain_id(domain_name):
-    # Given a domain, find its id
-    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/domains/?" + urlencode([('search', 'name=%s' % domain_name)])
+# Search in API
+# given a search key, return the ID
+# api_name is the key in url for API name, search_key must contain also the key for search (name=, title=, ...)
+def return_matching_id(api_name, search_key, null_result_ok=False):
+    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/" + api_name + "/?" + urlencode([('search', '' + str(search_key))])
     if options.verbose:
         print myurl
-    domain = get_json(myurl)
-    if len(domain['results']) == 1:
-        domain_id = domain['results'][0]['id']
-        return domain_id
-    else:
-        print_error("Could not find domain %s" % domain_name)
-        sys.exit(2)
-
-
-
-def return_matching_hg_id(hg_name):
-    # Given a hostgroup name, find its id
-    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hostgroups/?" + urlencode([('search', 'title=%s' % hg_name)])
+    return_values = get_json(myurl)
     if options.verbose:
-        print myurl
-    hostgroup = get_json(myurl)
-    if len(hostgroup['results']) == 1:
-        hg_id = hostgroup['results'][0]['id']
-        return hg_id
+        print json.dumps(return_values, sort_keys=False, indent=2)
+    result_len = len(return_values['results'])
+    if result_len == 1:
+        return_values_id = return_values['results'][0]['id']
+        return return_values_id
+    elif result_len == 0 and null_result_ok is True:
+        return None
     else:
-        print_error("Could not find hostgroup %s" % hg_name)
-        sys.exit(2)
-
-
-def return_matching_architecture_id(architecture_name):
-    # Given an architecture name, find its id
-    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/architectures/?" + urlencode([('search', 'name=%s' % architecture_name)])
-    if options.verbose:
-        print myurl
-    architecture = get_json(myurl)
-    if len(architecture['results']) == 1:
-        architecture_id = architecture['results'][0]['id']
-        return architecture_id
-    else:
-        print_error("Could not find architecture %s" % architecture)
-        sys.exit(2)
-
-
-def return_matching_operatingsystem_id(operatingsystem_name):
-    # Given an operatingsystem name, find its id
-    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/operatingsystems/?" + urlencode([('search', 'name=%s' % operatingsystem_name)])
-    if options.verbose:
-        print myurl
-    operatingsystem = get_json(myurl)
-    if len(operatingsystem['results']) == 1:
-        operatingsystem_id = operatingsystem['results'][0]['id']
-        return operatingsystem_id
-    else:
-        print_error("Could not find operatingsystem %s" % operatingsystem)
+        print_error("%d element in array for search key %s in API %s. Fatal error." % result_len, search_key, api_name)
         sys.exit(2)
 
 
@@ -367,30 +333,6 @@ def return_puppetenv_for_hg(hg_id):
         return return_puppetenv_for_hg(hostgroup['ancestry'])
     else:
         return 'production'
-
-
-def return_matching_host_id(hostname):
-    # Given a hostname (more precisely a puppet certname) find its id
-    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hosts/" + hostname
-    if options.verbose:
-        print myurl
-    host = get_json(myurl)
-    host_id = host['id']
-    return host_id
-
-
-def return_matching_location(location):
-    # Given a location, find its id
-    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/locations/?" + urlencode([('search', 'title=%s' % location)])
-    if options.verbose:
-        print myurl
-    loc = get_json(myurl)
-    if len(loc['results']) == 1:
-        loc_id = loc['results'][0]['id']
-        return loc_id
-    else:
-        print_error("Could not find location %s" % location)
-        sys.exit(2)
 
 
 def return_matching_org(organization):
@@ -417,43 +359,28 @@ def return_matching_org_label(organization):
     return org_label
 
 
-def return_matching_host(fqdn):
-    # Given an org, find its id.
-    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hosts/?" + urlencode([('search', 'name=%s' % fqdn)])
-    if options.verbose:
-        print myurl
-    hosts = get_json(myurl)
-    if options.verbose:
-        print json.dumps(hosts, sort_keys = False, indent = 2)
-    if len(hosts['results']) == 1:
-        host_id = hosts['results'][0]['id']
-        return host_id
-    elif len(hosts['results']) == 0:
-        return None
-    else:
-        print_error("Found too many hosts with same name %s" % fqdn)
-        sys.exit(2)
-
-
 def create_host():
-    myhgid = return_matching_hg_id(options.hostgroup)
-    mylocid = return_matching_location(options.location)
-    myorgid = return_matching_org(options.org)
-    mydomainid = return_matching_domain_id(DOMAIN)
-    architecture_id = return_matching_architecture_id(ARCHITECTURE)
-    host_id = return_matching_host(FQDN)
+    myhgid = return_matching_id('hostgroups', 'title=%s' % options.hostgroup, False)
+    mylocid = return_matching_id('locations', 'title=%s' % options.location, False)
+    myorgid = return_matching_id('organizations', 'name=%s' % options.org, False)
+    mydomainid = return_matching_id('domains', 'name=%s' % DOMAIN, False)
+    architecture_id = return_matching_id('architectures', 'name=%s' % ARCHITECTURE, False)
+    host_id = return_matching_id('hosts', 'name=%s' % FQDN, True)
     # create the starting json, to be filled below
     jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s", "domain_id":%s,"architecture_id":%s}}' % (HOSTNAME, myhgid, myorgid, mylocid, MAC, mydomainid, architecture_id))
     # optional parameters
     if options.operatingsystem is not None:
-      operatingsystem_id = return_matching_operatingsystem_id(options.operatingsystem)
-      jsondata['host']['operatingsystem_id'] = operatingsystem_id
+        operatingsystem_id = return_matching_id('operatingsystems', 'name=%s' % options.operatingsystem, False)
+        jsondata['host']['operatingsystem_id'] = operatingsystem_id
+    if options.partitiontable is not None:
+        partitiontable_id = return_matching_id('ptables', 'name=%s' % options.partitiontable, False)
+        jsondata['host']['ptable_id'] = partitiontable_id
     if not options.unmanaged:
         jsondata['host']['managed'] = 'true'
     else:
         jsondata['host']['managed'] = 'false'
     if options.verbose:
-        print json.dumps(jsondata, sort_keys = False, indent = 2)
+        print json.dumps(jsondata, sort_keys=False, indent=2)
     myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hosts/"
     if options.force and host_id is not None:
         delete_host(host_id)
@@ -482,7 +409,7 @@ print "This script is designed to register new systems or to migrate an existing
 
 if options.remove:
     API_PORT = get_api_port()
-    host_id = return_matching_host(FQDN)
+    host_id = return_matching_id('hosts', 'name=%s' % FQDN, True)
     if host_id is not None:
         delete_host(host_id)
     unregister_system()
