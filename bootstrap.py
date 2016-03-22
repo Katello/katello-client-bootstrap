@@ -35,7 +35,7 @@ API_PORT = "443"
 ARCHITECTURE = get_architecture()
 
 parser = OptionParser()
-parser.add_option("-s", "--server", dest="sat6_fqdn", help="FQDN of Satellite OR Satellite Capsule - omit https://", metavar="SAT6_FQDN")
+parser.add_option("-s", "--server", dest="foreman_fqdn", help="FQDN of Foreman OR Capsule - omit https://", metavar="foreman_fqdn")
 parser.add_option("-l", "--login", dest="login", default='admin', help="Login user for API Calls", metavar="LOGIN")
 parser.add_option("-p", "--password", dest="password", help="Password for specified user. Will prompt if omitted", metavar="PASSWORD")
 parser.add_option("--legacy-login", dest="legacy_login", default='admin', help="Login user for Satellite 5 API Calls", metavar="LOGIN")
@@ -43,26 +43,26 @@ parser.add_option("--legacy-password", dest="legacy_password", help="Password fo
 parser.add_option("--legacy-purge", dest="legacy_purge", action="store_true", help="Purge system from the Legacy environment (e.g. Sat5)")
 parser.add_option("-a", "--activationkey", dest="activationkey", help="Activation Key to register the system", metavar="ACTIVATIONKEY")
 parser.add_option("-P", "--skip-puppet", dest="no_puppet", action="store_true", default=False, help="Do not install Puppet")
-parser.add_option("-g", "--hostgroup", dest="hostgroup", help="Label of the Hostgroup in Satellite that the host is to be associated with", metavar="HOSTGROUP")
-parser.add_option("-L", "--location", dest="location", default='Default_Location', help="Label of the Location in Satellite that the host is to be associated with", metavar="LOCATION")
-parser.add_option("-O", "--operatingsystem", dest="operatingsystem", default=None, help="Label of the Operating System in Satellite that the host is to be associated with", metavar="OPERATINGSYSTEM")
-parser.add_option("--partitiontable", dest="partitiontable", default=None, help="Label of the Operating System in Satellite that the host is to be associated with", metavar="PARTITIONTABLE")
-parser.add_option("-o", "--organization", dest="org", default='Default_Organization', help="Label of the Organization in Satellite that the host is to be associated with", metavar="ORG")
+parser.add_option("-g", "--hostgroup", dest="hostgroup", help="Label of the Hostgroup in Foreman that the host is to be associated with", metavar="HOSTGROUP")
+parser.add_option("-L", "--location", dest="location", default='Default_Location', help="Label of the Location in Foreman that the host is to be associated with", metavar="LOCATION")
+parser.add_option("-O", "--operatingsystem", dest="operatingsystem", default=None, help="Label of the Operating System in Foreman that the host is to be associated with", metavar="OPERATINGSYSTEM")
+parser.add_option("--partitiontable", dest="partitiontable", default=None, help="Label of the Operating System in Foreman that the host is to be associated with", metavar="PARTITIONTABLE")
+parser.add_option("-o", "--organization", dest="org", default='Default_Organization', help="Label of the Organization in Foreman that the host is to be associated with", metavar="ORG")
 parser.add_option("-S", "--subscription-manager-args", dest="smargs", default="", help="Which additional arguments shall be passed to subscription-manager", metavar="ARGS")
 parser.add_option("--rhn-migrate-args", dest="rhsmargs", default="", help="Which additional arguments shall be passed to rhn-migrate-classic-to-rhsm", metavar="ARGS")
 parser.add_option("-u", "--update", dest="update", action="store_true", help="Fully Updates the System")
 parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="Verbose output")
 parser.add_option("-f", "--force", dest="force", action="store_true", help="Force registration (will erase old katello and puppet certs)")
-parser.add_option("--remove", dest="remove", action="store_true", help="Instead of registring the machine to Satellite remove it")
+parser.add_option("--remove", dest="remove", action="store_true", help="Instead of registring the machine to Foreman remove it")
 parser.add_option("-r", "--release", dest="release", default=RELEASE, help="Specify release version")
 parser.add_option("-R", "--remove-rhn-packages", dest="removepkgs", action="store_true", help="Remove old Red Hat Network Packages")
 parser.add_option("--unmanaged", dest="unmanaged", action="store_true", help="Add the server as unmanaged. Useful to skip provisioning dependencies.")
 (options, args) = parser.parse_args()
 
-if not (options.sat6_fqdn and options.login and (options.remove or (options.org and options.hostgroup and options.location and options.activationkey))):
+if not (options.foreman_fqdn and options.login and (options.remove or (options.org and options.hostgroup and options.location and options.activationkey))):
     print "Must specify server, login, hostgroup, location, and organization options.  See usage:"
     parser.print_help()
-    print "\nExample usage: ./bootstrap.py -l admin -s satellite.example.com -o Default_Organization -L Default_Location -g My_Hostgroup -a My_Activation_Key"
+    print "\nExample usage: ./bootstrap.py -l admin -s foreman.example.com -o Default_Organization -L Default_Location -g My_Hostgroup -a My_Activation_Key"
     sys.exit(1)
 
 if not options.password:
@@ -73,7 +73,7 @@ if options.verbose:
     print "DOMAIN - %s" % DOMAIN
     print "RELEASE - %s" % RELEASE
     print "MAC - %s" % MAC
-    print "SAT6_FQDN - %s" % options.sat6_fqdn
+    print "foreman_fqdn - %s" % options.foreman_fqdn
     print "LOGIN - %s" % options.login
     print "PASSWORD - %s" % options.password
     print "HOSTGROUP - %s" % options.hostgroup
@@ -147,14 +147,14 @@ def install_prereqs():
 def get_bootstrap_rpm():
     if options.force:
         clean_katello_agent()
-    print_generic("Retrieving Candlepin Consumer RPMs")
-    exec_failexit("/usr/bin/yum -y localinstall http://%s/pub/katello-ca-consumer-latest.noarch.rpm --nogpgcheck" % options.sat6_fqdn)
+    print_generic("Retrieving Client CA Certificate RPMs")
+    exec_failexit("/usr/bin/yum -y localinstall http://%s/pub/katello-ca-consumer-latest.noarch.rpm --nogpgcheck" % options.foreman_fqdn)
 
 
 def migrate_systems(org_name, activationkey):
     org_label = return_matching_org_label(org_name)
     print_generic("Calling rhn-migrate-classic-to-rhsm")
-    options.rhsmargs += " --destination-url=https://%s:%s" % (options.sat6_fqdn, API_PORT)
+    options.rhsmargs += " --destination-url=https://%s:%s" % (options.foreman_fqdn, API_PORT)
     if options.legacy_purge:
         options.rhsmargs += " --legacy-user '%s' --legacy-password '%s'" % (options.legacy_login, options.legacy_password)
     else:
@@ -162,13 +162,13 @@ def migrate_systems(org_name, activationkey):
     if options.force:
         options.rhsmargs += " --force"
     exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key %s %s" % (org_label, activationkey, options.rhsmargs))
-    exec_failexit("subscription-manager config --rhsm.baseurl=https://%s/pulp/repos" % options.sat6_fqdn)
+    exec_failexit("subscription-manager config --rhsm.baseurl=https://%s/pulp/repos" % options.foreman_fqdn)
 
 
 def register_systems(org_name, activationkey, release):
     org_label = return_matching_org_label(org_name)
     print_generic("Calling subscription-manager")
-    options.smargs += " --serverurl=https://%s:%s/rhsm --baseurl=https://%s/pulp/repos" % (options.sat6_fqdn, API_PORT, options.sat6_fqdn)
+    options.smargs += " --serverurl=https://%s:%s/rhsm --baseurl=https://%s/pulp/repos" % (options.foreman_fqdn, API_PORT, options.foreman_fqdn)
     if options.force:
         options.smargs += " --force"
     # exec_failexit("/usr/sbin/subscription-manager register --org %s --activationkey %s --release %s" % (org_label,activationkey,release))
@@ -178,12 +178,6 @@ def register_systems(org_name, activationkey, release):
 def unregister_system():
     print_generic("Unregistering")
     exec_failexit("/usr/sbin/subscription-manager unregister")
-
-
-def enable_sat_tools():
-    print_generic("Enabling the Satellite tools repositories for Puppet & Katello Agents")
-    exec_failexit("subscription-manager repos --enable=rhel-*-satellite-tools-*-rpms")
-
 
 def clean_katello_agent():
     print_generic("Removing old Katello agent and certs")
@@ -208,12 +202,12 @@ def install_puppet_agent():
     print_generic("Installing the Puppet Agent")
     exec_failexit("/usr/bin/yum -y install puppet")
     exec_failexit("/sbin/chkconfig puppet on")
-    exec_failexit("/usr/bin/puppet config set server %s --section agent" % options.sat6_fqdn)
-    exec_failexit("/usr/bin/puppet config set ca_server %s --section agent" % options.sat6_fqdn)
+    exec_failexit("/usr/bin/puppet config set server %s --section agent" % options.foreman_fqdn)
+    exec_failexit("/usr/bin/puppet config set ca_server %s --section agent" % options.foreman_fqdn)
     exec_failexit("/usr/bin/puppet config set environment %s --section agent" % puppet_env)
     # Might need this for RHEL5
     # f = open("/etc/puppet/puppet.conf","a")
-    # f.write("server=%s \n" % options.sat6_fqdn)
+    # f.write("server=%s \n" % options.foreman_fqdn)
     # f.close()
     print_generic("Running Puppet in noop mode to generate SSL certs")
     print_generic("Visit the UI and approve this certificate via Infrastructure->Capsules")
@@ -234,7 +228,7 @@ def fully_update_the_box():
 
 
 def get_json(url):
-    # Generic function to HTTP GET JSON from Satellite's API
+    # Generic function to HTTP GET JSON from Foreman's API
     try:
         request = urllib2.Request(url)
         if options.verbose:
@@ -255,7 +249,7 @@ def get_json(url):
 
 
 def post_json(url, jdata):
-    # Generic function to HTTP PUT JSON to Satellite's API.
+    # Generic function to HTTP PUT JSON to Foreman's API.
     # Had to use a couple of hacks to urllib2 to make it
     # support an HTTP PUT, which it doesn't by default.
     try:
@@ -281,7 +275,7 @@ def post_json(url, jdata):
 
 
 def delete_json(url):
-    # Generic function to HTTP DELETE JSON from Satellite's API
+    # Generic function to HTTP DELETE JSON from Foreman's API
     try:
         request = urllib2.Request(url)
         base64string = base64.encodestring('%s:%s' % (options.login, options.password)).strip()
@@ -325,7 +319,7 @@ def return_matching_id(api_name, search_key, null_result_ok=False):
 
 
 def return_puppetenv_for_hg(hg_id):
-    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hostgroups/" + str(hg_id)
+    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/hostgroups/" + str(hg_id)
     hostgroup = get_json(myurl)
     if hostgroup['environment_name']:
         return hostgroup['environment_name']
@@ -338,7 +332,7 @@ def return_puppetenv_for_hg(hg_id):
 
 def return_matching_org(organization):
     # Given an org, find its id.
-    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/organizations/"
+    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/organizations/"
     if options.verbose:
         print myurl
     organizations = get_json(myurl)
@@ -352,7 +346,7 @@ def return_matching_org(organization):
 
 def return_matching_org_label(organization):
     # Given an org name, find its label - required by subscription-manager
-    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/katello/api/organizations/" + organization
+    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/katello/api/organizations/" + organization
     if options.verbose:
         print "myurl: " + myurl
     organization = get_json(myurl)
@@ -381,17 +375,17 @@ def create_host():
     else:
         jsondata['host']['managed'] = 'false'
     if options.verbose:
-        print json.dumps(jsondata, sort_keys=False, indent=2)
-    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hosts/"
+        print json.dumps(jsondata, sort_keys = False, indent = 2)
+    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/hosts/"
     if options.force and host_id is not None:
         delete_host(host_id)
-    print_running("Calling Satellite API to create a host entry associated with the group, org & location")
+    print_running("Calling Foreman API to create a host entry associated with the group, org & location")
     post_json(myurl, jsondata)
     print_success("Successfully created host %s" % FQDN)
 
 
 def delete_host(host_id):
-    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hosts/"
+    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/hosts/"
     print_running("Deleting host id %s for host %s" % (host_id, FQDN))
     delete_json("%s/%s" % (myurl, host_id))
 
@@ -411,8 +405,8 @@ def get_api_port():
     configparser.read('/etc/rhsm/rhsm.conf')
     return configparser.get('server', 'port')
 
-print "Satellite 6 Bootstrap Script"
-print "This script is designed to register new systems or to migrate an existing system to Red Hat Satellite 6"
+print "Foreman Bootstrap Script"
+print "This script is designed to register new systems or to migrate an existing system to a Foreman server with Katello"
 
 if options.remove:
     API_PORT = get_api_port()
@@ -439,7 +433,6 @@ else:
     register_systems(options.org, options.activationkey, options.release)
 
 if not options.remove:
-    enable_sat_tools()
     install_katello_agent()
     if options.update:
         fully_update_the_box()
