@@ -301,7 +301,7 @@ def delete_json(url):
 # given a search key, return the ID
 # api_name is the key in url for API name, search_key must contain also the key for search (name=, title=, ...)
 def return_matching_id(api_name, search_key, null_result_ok=False):
-    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/" + api_name + "/?" + urlencode([('search', '' + str(search_key))])
+    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/" + api_name + "/?" + urlencode([('search', '' + str(search_key))])
     if options.verbose:
         print myurl
     return_values = get_json(myurl)
@@ -391,7 +391,7 @@ def delete_host(host_id):
 
 
 def disassociate_host(host_id):
-    myurl = "https://" + options.sat6_fqdn + ":" + API_PORT + "/api/v2/hosts/" + str(host_id) + "/disassociate"
+    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/hosts/" + str(host_id) + "/disassociate"
     print_running("Disassociating host id %s for host %s" % (host_id, FQDN))
     put_json(myurl)
 
