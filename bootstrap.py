@@ -346,7 +346,7 @@ def return_matching_org(organization):
 
 def return_matching_org_label(organization):
     # Given an org name, find its label - required by subscription-manager
-    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/katello/api/organizations/" + organization
+    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/katello/api/organizations/" + urllib2.quote(organization)
     if options.verbose:
         print "myurl: " + myurl
     organization = get_json(myurl)
