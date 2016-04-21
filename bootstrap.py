@@ -314,7 +314,7 @@ def return_matching_id(api_name, search_key, null_result_ok=False):
     elif result_len == 0 and null_result_ok is True:
         return None
     else:
-        print_error("%d element in array for search key %s in API %s. Fatal error." % result_len, search_key, api_name)
+        print_error("%d element in array for search key '%s' in API '%s'. Fatal error." % (result_len, search_key, api_name))
         sys.exit(2)
 
 
