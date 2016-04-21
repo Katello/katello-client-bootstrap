@@ -198,7 +198,7 @@ def clean_puppet():
 
 
 def install_puppet_agent():
-    puppet_env = return_puppetenv_for_hg(return_matching_id('hostgroups', 'title=%s' % options.hostgroup, False))
+    puppet_env = return_puppetenv_for_hg(return_matching_id('hostgroups', 'title="%s"' % options.hostgroup, False))
     print_generic("Installing the Puppet Agent")
     exec_failexit("/usr/bin/yum -y install puppet")
     exec_failexit("/sbin/chkconfig puppet on")
@@ -300,8 +300,9 @@ def delete_json(url):
 # Search in API
 # given a search key, return the ID
 # api_name is the key in url for API name, search_key must contain also the key for search (name=, title=, ...)
+# the search_key must be quoted in advance
 def return_matching_id(api_name, search_key, null_result_ok=False):
-    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/" + api_name + "/?" + urlencode([('search', '' + str(search_key))])
+    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/" + api_name + "/?" + urlencode([('search', str(search_key))])
     if options.verbose:
         print myurl
     return_values = get_json(myurl)
@@ -355,20 +356,20 @@ def return_matching_org_label(organization):
 
 
 def create_host():
-    myhgid = return_matching_id('hostgroups', 'title=%s' % options.hostgroup, False)
-    mylocid = return_matching_id('locations', 'title=%s' % options.location, False)
-    myorgid = return_matching_id('organizations', 'name=%s' % options.org, False)
-    mydomainid = return_matching_id('domains', 'name=%s' % DOMAIN, False)
-    architecture_id = return_matching_id('architectures', 'name=%s' % ARCHITECTURE, False)
+    myhgid = return_matching_id('hostgroups', 'title="%s"' % options.hostgroup, False)
+    mylocid = return_matching_id('locations', 'title="%s"' % options.location, False)
+    myorgid = return_matching_id('organizations', 'name="%s"' % options.org, False)
+    mydomainid = return_matching_id('domains', 'name="%s"' % DOMAIN, False)
+    architecture_id = return_matching_id('architectures', 'name="%s"' % ARCHITECTURE, False)
     host_id = return_matching_id('hosts', 'name=%s' % FQDN, True)
     # create the starting json, to be filled below
     jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s", "domain_id":%s,"architecture_id":%s}}' % (HOSTNAME, myhgid, myorgid, mylocid, MAC, mydomainid, architecture_id))
     # optional parameters
     if options.operatingsystem is not None:
-        operatingsystem_id = return_matching_id('operatingsystems', 'name=%s' % options.operatingsystem, False)
+        operatingsystem_id = return_matching_id('operatingsystems', 'name="%s"' % options.operatingsystem, False)
         jsondata['host']['operatingsystem_id'] = operatingsystem_id
     if options.partitiontable is not None:
-        partitiontable_id = return_matching_id('ptables', 'name=%s' % options.partitiontable, False)
+        partitiontable_id = return_matching_id('ptables', 'name="%s"' % options.partitiontable, False)
         jsondata['host']['ptable_id'] = partitiontable_id
     if not options.unmanaged:
         jsondata['host']['managed'] = 'true'
@@ -410,7 +411,7 @@ print "This script is designed to register new systems or to migrate an existing
 
 if options.remove:
     API_PORT = get_api_port()
-    host_id = return_matching_id('hosts', 'name=%s' % FQDN, True)
+    host_id = return_matching_id('hosts', 'name="%s"' % FQDN, True)
     if host_id is not None:
         disassociate_host(host_id)
         delete_host(host_id)
