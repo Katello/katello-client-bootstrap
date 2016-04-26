@@ -152,8 +152,7 @@ def get_bootstrap_rpm():
 
 
 def migrate_systems(org_name, activationkey):
-    #org_label = return_matching_org_label(org_name)
-    org_label = return_matching_foreman_key('organizations', 'name="%s"' % org_name, "label", False)
+    org_label = return_matching_katello_key('organizations', 'name="%s"' % org_name, 'label', False)
     print_generic("Calling rhn-migrate-classic-to-rhsm")
     options.rhsmargs += " --destination-url=https://%s:%s" % (options.foreman_fqdn, API_PORT)
     if options.legacy_purge:
@@ -167,13 +166,11 @@ def migrate_systems(org_name, activationkey):
 
 
 def register_systems(org_name, activationkey, release):
-    #org_id = return_matching_org_label(org_name)
-    org_label = return_matching_katello_key('organizations', 'name="%s"' % org_name, "label", False)
+    org_label = return_matching_katello_key('organizations', 'name="%s"' % org_name, 'label', False)
     print_generic("Calling subscription-manager")
     options.smargs += " --serverurl=https://%s:%s/rhsm --baseurl=https://%s/pulp/repos" % (options.foreman_fqdn, API_PORT, options.foreman_fqdn)
     if options.force:
         options.smargs += " --force"
-    # exec_failexit("/usr/sbin/subscription-manager register --org %s --activationkey %s --release %s" % (org_label,activationkey,release))
     exec_failexit("/usr/sbin/subscription-manager register --org '%s' --name '%s' --activationkey '%s' %s" % (org_label, FQDN, activationkey, options.smargs))
 
 
@@ -241,7 +238,7 @@ def get_json(url):
         return json.load(result)
     except urllib2.HTTPError, e:
         if e.code == 401:
-            print 'Error: user not authorized to perform this action. Check user/pass or permission assigned in satellite.'
+            print 'Error: user not authorized to perform this action. Check user/pass or permission assigned.'
             print "url: " + url
             sys.exit(1)
         if e.code == 422:
@@ -249,6 +246,7 @@ def get_json(url):
             print "error: " + e.read()
             print "url: " + url
             sys.exit(1)
+        raise e
     except urllib2.URLError, e:
         print "Error in API call: %s" % (e)
         print "Check your URL & try to login using the same user/pass via the WebUI and check the error!"
@@ -276,7 +274,7 @@ def post_json(url, jdata):
         reply = opener.open(request)
     except urllib2.HTTPError, e:
         if e.code == 401:
-            print 'Error: user not authorized to perform this action. Check user/pass or permission assigned in satellite.'
+            print 'Error: user not authorized to perform this action. Check user/pass or permission assigned.'
             print "url: " + url
             sys.exit(1)
         if e.code == 422:
@@ -284,6 +282,7 @@ def post_json(url, jdata):
             print "error: " + e.read()
             print "url: " + url
             sys.exit(1)
+        raise e
     except urllib2.URLError, e:
         print "Error in API call: %s" % (e)
         print "Check your URL & try to login using the same user/pass via the WebUI and check the error!"
@@ -307,7 +306,7 @@ def delete_json(url):
         return json.load(result)
     except urllib2.HTTPError, e:
         if e.code == 401:
-            print 'Error: user not authorized to perform this action. Check user/pass or permission assigned in satellite.'
+            print 'Error: user not authorized to perform this action. Check user/pass or permission assigned.'
             print "url: " + url
             sys.exit(1)
         if e.code == 422:
@@ -370,30 +369,6 @@ def return_puppetenv_for_hg(hg_id):
         return 'production'
 
 
-def return_matching_org(organization):
-    # Given an org, find its id.
-    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/organizations/"
-    if options.verbose:
-        print myurl
-    organizations = get_json(myurl)
-    for org in organizations['results']:
-        if org['name'] == organization:
-            org_id = org['id']
-            return org_id
-    print_error("Could not find organization %s" % organization)
-    sys.exit(2)
-
-
-#def return_matching_org_label(organization):
-#    # Given an org name, find its label - required by subscription-manager
-#    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/katello/api/organizations/" + urllib2.quote(organization)
-#    if options.verbose:
-#        print "myurl: " + myurl
-#    organization = get_json(myurl)
-#    org_label = organization['label']
-#    return org_label
-#
-#
 def create_host():
     myhgid = return_matching_foreman_key('hostgroups', 'title="%s"' % options.hostgroup, 'id', False)
     mylocid = return_matching_foreman_key('locations', 'title="%s"' % options.location, 'id', False)
