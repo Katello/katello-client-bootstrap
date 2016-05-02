@@ -152,7 +152,7 @@ def get_bootstrap_rpm():
 
 
 def migrate_systems(org_name, activationkey):
-    org_label = return_matching_org_label(org_name)
+    org_label = return_matching_katello_key('organizations', 'name="%s"' % org_name, 'label', False)
     print_generic("Calling rhn-migrate-classic-to-rhsm")
     options.rhsmargs += " --destination-url=https://%s:%s/rhsm" % (options.foreman_fqdn, API_PORT)
     if options.legacy_purge:
@@ -166,12 +166,11 @@ def migrate_systems(org_name, activationkey):
 
 
 def register_systems(org_name, activationkey, release):
-    org_label = return_matching_org_label(org_name)
+    org_label = return_matching_katello_key('organizations', 'name="%s"' % org_name, 'label', False)
     print_generic("Calling subscription-manager")
     options.smargs += " --serverurl=https://%s:%s/rhsm --baseurl=https://%s/pulp/repos" % (options.foreman_fqdn, API_PORT, options.foreman_fqdn)
     if options.force:
         options.smargs += " --force"
-    # exec_failexit("/usr/sbin/subscription-manager register --org %s --activationkey %s --release %s" % (org_label,activationkey,release))
     exec_failexit("/usr/sbin/subscription-manager register --org '%s' --name '%s' --activationkey '%s' %s" % (org_label, FQDN, activationkey, options.smargs))
 
 
@@ -204,7 +203,7 @@ def clean_environment():
 
 
 def install_puppet_agent():
-    puppet_env = return_puppetenv_for_hg(return_matching_id('hostgroups', 'title="%s"' % options.hostgroup, False))
+    puppet_env = return_puppetenv_for_hg(return_matching_foreman_key('hostgroups', 'title="%s"' % options.hostgroup, 'id', False))
     print_generic("Installing the Puppet Agent")
     exec_failexit("/usr/bin/yum -y install puppet")
     exec_failexit("/sbin/chkconfig puppet on")
@@ -243,8 +242,19 @@ def get_json(url):
         request.add_header("Authorization", "Basic %s" % base64string)
         result = urllib2.urlopen(request)
         return json.load(result)
+    except urllib2.HTTPError, e:
+        if e.code == 401:
+            print 'Error: user not authorized to perform this action. Check user/pass or permission assigned.'
+            print "url: " + url
+            sys.exit(1)
+        if e.code == 422:
+            print 'Error: Unprocessable entity to API. Check API syntax.'
+            print "error: " + e.read()
+            print "url: " + url
+            sys.exit(1)
+        raise e
     except urllib2.URLError, e:
-        print "Error: cannot connect to the API: %s" % (e)
+        print "Error in API call: %s" % (e)
         print "Check your URL & try to login using the same user/pass via the WebUI and check the error!"
         print "error: " + e.read()
         print "url: " + url
@@ -268,8 +278,19 @@ def post_json(url, jdata):
         request.add_header("Accept", "application/json")
         request.get_method = lambda: 'POST'
         reply = opener.open(request)
+    except urllib2.HTTPError, e:
+        if e.code == 401:
+            print 'Error: user not authorized to perform this action. Check user/pass or permission assigned.'
+            print "url: " + url
+            sys.exit(1)
+        if e.code == 422:
+            print 'Error: Unprocessable entity to API. Check API syntax.'
+            print "error: " + e.read()
+            print "url: " + url
+            sys.exit(1)
+        raise e
     except urllib2.URLError, e:
-        print "Error: cannot connect to the API: %s" % (e)
+        print "Error in API call: %s" % (e)
         print "Check your URL & try to login using the same user/pass via the WebUI and check the error!"
         print "error: " + e.read()
         print "url: " + url
@@ -290,10 +311,19 @@ def delete_json(url):
         result = urllib2.urlopen(request)
         return json.load(result)
     except urllib2.HTTPError, e:
+        if e.code == 401:
+            print 'Error: user not authorized to perform this action. Check user/pass or permission assigned.'
+            print "url: " + url
+            sys.exit(1)
+        if e.code == 422:
+            print 'Error: Unprocessable entity to API. Check API syntax.'
+            print "error: " + e.read()
+            print "url: " + url
+            sys.exit(1)
         if e.code != 404:
             raise e
     except urllib2.URLError, e:
-        print "Error: cannot connect to the API: %s" % (e)
+        print "Error in API call: %s" % (e)
         print "Check your URL & try to login using the same user/pass via the WebUI and check the error!"
         print "error: " + e.read()
         print "url: " + url
@@ -303,12 +333,20 @@ def delete_json(url):
         sys.exit(2)
 
 
+def return_matching_foreman_key(api_name, search_key, return_key, null_result_ok=False):
+    return return_matching_key("/api/v2/" + api_name, search_key, return_key, null_result_ok)
+
+
+def return_matching_katello_key(api_name, search_key, return_key, null_result_ok=False):
+    return return_matching_key("/katello/api/" + api_name, search_key, return_key, null_result_ok)
+
+
 # Search in API
 # given a search key, return the ID
-# api_name is the key in url for API name, search_key must contain also the key for search (name=, title=, ...)
+# api_path is the path in url for API name, search_key must contain also the key for search (name=, title=, ...)
 # the search_key must be quoted in advance
-def return_matching_id(api_name, search_key, null_result_ok=False):
-    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/" + api_name + "/?" + urlencode([('search', str(search_key))])
+def return_matching_key(api_path, search_key, return_key, null_result_ok=False):
+    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + api_path + "/?" + urlencode([('search', '' + str(search_key))])
     if options.verbose:
         print myurl
     return_values = get_json(myurl)
@@ -316,12 +354,12 @@ def return_matching_id(api_name, search_key, null_result_ok=False):
         print json.dumps(return_values, sort_keys=False, indent=2)
     result_len = len(return_values['results'])
     if result_len == 1:
-        return_values_id = return_values['results'][0]['id']
-        return return_values_id
+        return_values_return_key = return_values['results'][0][return_key]
+        return return_values_return_key
     elif result_len == 0 and null_result_ok is True:
         return None
     else:
-        print_error("%d element in array for search key '%s' in API '%s'. Fatal error." % (result_len, search_key, api_name))
+        print_error("%d element in array for search key '%s' in API '%s'. Fatal error." % (result_len, search_key, api_path))
         sys.exit(2)
 
 
@@ -337,48 +375,21 @@ def return_puppetenv_for_hg(hg_id):
         return 'production'
 
 
-def return_matching_org(organization):
-    # Given an org, find its id.
-    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/organizations/"
-    if options.verbose:
-        print myurl
-    organizations = get_json(myurl)
-    for org in organizations['results']:
-        if org['name'] == organization:
-            org_id = org['id']
-            return org_id
-    print_error("Could not find organization %s" % organization)
-    sys.exit(2)
-
-
-def return_matching_org_label(organization):
-    # Given an org name, find its label - required by subscription-manager
-    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/katello/api/organizations/?" + urlencode([('search', 'name="%s"' % organization)])
-    if options.verbose:
-        print "myurl: " + myurl
-    result = get_json(myurl)
-    if len(result['results']) == 1:
-        org_label = result['results'][0]['label']
-        return org_label
-    print_error("Could not find organization %s" % organization)
-    sys.exit(2)
-
-
 def create_host():
-    myhgid = return_matching_id('hostgroups', 'title="%s"' % options.hostgroup, False)
-    mylocid = return_matching_id('locations', 'title="%s"' % options.location, False)
-    myorgid = return_matching_id('organizations', 'name="%s"' % options.org, False)
-    mydomainid = return_matching_id('domains', 'name="%s"' % DOMAIN, False)
-    architecture_id = return_matching_id('architectures', 'name="%s"' % ARCHITECTURE, False)
-    host_id = return_matching_id('hosts', 'name=%s' % FQDN, True)
+    myhgid = return_matching_foreman_key('hostgroups', 'title="%s"' % options.hostgroup, 'id', False)
+    mylocid = return_matching_foreman_key('locations', 'title="%s"' % options.location, 'id', False)
+    myorgid = return_matching_foreman_key('organizations', 'name="%s"' % options.org, 'id', False)
+    mydomainid = return_matching_foreman_key('domains', 'name="%s"' % DOMAIN, 'id', False)
+    architecture_id = return_matching_foreman_key('architectures', 'name="%s"' % ARCHITECTURE, 'id', False)
+    host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', True)
     # create the starting json, to be filled below
     jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s", "domain_id":%s,"architecture_id":%s}}' % (HOSTNAME, myhgid, myorgid, mylocid, MAC, mydomainid, architecture_id))
     # optional parameters
     if options.operatingsystem is not None:
-        operatingsystem_id = return_matching_id('operatingsystems', 'name="%s"' % options.operatingsystem, False)
+        operatingsystem_id = return_matching_foreman_key('operatingsystems', 'title="%s"' % options.operatingsystem, 'id', False)
         jsondata['host']['operatingsystem_id'] = operatingsystem_id
     if options.partitiontable is not None:
-        partitiontable_id = return_matching_id('ptables', 'name="%s"' % options.partitiontable, False)
+        partitiontable_id = return_matching_foreman_key('ptables', 'name="%s"' % options.partitiontable, 'id', False)
         jsondata['host']['ptable_id'] = partitiontable_id
     if not options.unmanaged:
         jsondata['host']['managed'] = 'true'
@@ -425,7 +436,7 @@ print "This script is designed to register new systems or to migrate an existing
 clean_environment()
 if options.remove:
     API_PORT = get_api_port()
-    host_id = return_matching_id('hosts', 'name="%s"' % FQDN, True)
+    host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', True)
     if host_id is not None:
         disassociate_host(host_id)
         delete_host(host_id)
