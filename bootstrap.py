@@ -203,11 +203,7 @@ def clean_environment():
 
 
 def install_puppet_agent():
-<<<<<<< HEAD
     puppet_env = return_puppetenv_for_hg(return_matching_foreman_key('hostgroups', 'title="%s"' % options.hostgroup, 'id', False))
-=======
-    puppet_env = return_puppetenv_for_hg(return_matching_id('hostgroups', 'title="%s"' % options.hostgroup, False))
->>>>>>> 4a64d2a089c2edaa9112a90d939efcdcaaec8b47
     print_generic("Installing the Puppet Agent")
     exec_failexit("/usr/bin/yum -y install puppet")
     exec_failexit("/sbin/chkconfig puppet on")
@@ -347,17 +343,10 @@ def return_matching_katello_key(api_name, search_key, return_key, null_result_ok
 
 # Search in API
 # given a search key, return the ID
-<<<<<<< HEAD
 # api_path is the path in url for API name, search_key must contain also the key for search (name=, title=, ...)
 # the search_key must be quoted in advance
 def return_matching_key(api_path, search_key, return_key, null_result_ok=False):
     myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + api_path + "/?" + urlencode([('search', '' + str(search_key))])
-=======
-# api_name is the key in url for API name, search_key must contain also the key for search (name=, title=, ...)
-# the search_key must be quoted in advance
-def return_matching_id(api_name, search_key, null_result_ok=False):
-    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/" + api_name + "/?" + urlencode([('search', str(search_key))])
->>>>>>> 4a64d2a089c2edaa9112a90d939efcdcaaec8b47
     if options.verbose:
         print myurl
     return_values = get_json(myurl)
@@ -370,11 +359,7 @@ def return_matching_id(api_name, search_key, null_result_ok=False):
     elif result_len == 0 and null_result_ok is True:
         return None
     else:
-<<<<<<< HEAD
         print_error("%d element in array for search key '%s' in API '%s'. Fatal error." % (result_len, search_key, api_path))
-=======
-        print_error("%d element in array for search key '%s' in API '%s'. Fatal error." % (result_len, search_key, api_name))
->>>>>>> 4a64d2a089c2edaa9112a90d939efcdcaaec8b47
         sys.exit(2)
 
 
@@ -390,7 +375,6 @@ def return_puppetenv_for_hg(hg_id):
         return 'production'
 
 
-<<<<<<< HEAD
 def create_host():
     myhgid = return_matching_foreman_key('hostgroups', 'title="%s"' % options.hostgroup, 'id', False)
     mylocid = return_matching_foreman_key('locations', 'title="%s"' % options.location, 'id', False)
@@ -398,57 +382,14 @@ def create_host():
     mydomainid = return_matching_foreman_key('domains', 'name="%s"' % DOMAIN, 'id', False)
     architecture_id = return_matching_foreman_key('architectures', 'name="%s"' % ARCHITECTURE, 'id', False)
     host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', True)
-=======
-def return_matching_org(organization):
-    # Given an org, find its id.
-    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/organizations/"
-    if options.verbose:
-        print myurl
-    organizations = get_json(myurl)
-    for org in organizations['results']:
-        if org['name'] == organization:
-            org_id = org['id']
-            return org_id
-    print_error("Could not find organization %s" % organization)
-    sys.exit(2)
-
-
-def return_matching_org_label(organization):
-    # Given an org name, find its label - required by subscription-manager
-    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/katello/api/organizations/?" + urlencode([('search', 'name="%s"' % organization)])
-    if options.verbose:
-        print "myurl: " + myurl
-    result = get_json(myurl)
-    if len(result['results']) == 1:
-        org_label = result['results'][0]['label']
-        return org_label
-    print_error("Could not find organization %s" % organization)
-    sys.exit(2)
-
-
-def create_host():
-    myhgid = return_matching_id('hostgroups', 'title="%s"' % options.hostgroup, False)
-    mylocid = return_matching_id('locations', 'title="%s"' % options.location, False)
-    myorgid = return_matching_id('organizations', 'name="%s"' % options.org, False)
-    mydomainid = return_matching_id('domains', 'name="%s"' % DOMAIN, False)
-    architecture_id = return_matching_id('architectures', 'name="%s"' % ARCHITECTURE, False)
-    host_id = return_matching_id('hosts', 'name=%s' % FQDN, True)
->>>>>>> 4a64d2a089c2edaa9112a90d939efcdcaaec8b47
     # create the starting json, to be filled below
     jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s", "domain_id":%s,"architecture_id":%s}}' % (HOSTNAME, myhgid, myorgid, mylocid, MAC, mydomainid, architecture_id))
     # optional parameters
     if options.operatingsystem is not None:
-<<<<<<< HEAD
         operatingsystem_id = return_matching_foreman_key('operatingsystems', 'title="%s"' % options.operatingsystem, 'id', False)
         jsondata['host']['operatingsystem_id'] = operatingsystem_id
     if options.partitiontable is not None:
         partitiontable_id = return_matching_foreman_key('ptables', 'name="%s"' % options.partitiontable, 'id', False)
-=======
-        operatingsystem_id = return_matching_id('operatingsystems', 'name="%s"' % options.operatingsystem, False)
-        jsondata['host']['operatingsystem_id'] = operatingsystem_id
-    if options.partitiontable is not None:
-        partitiontable_id = return_matching_id('ptables', 'name="%s"' % options.partitiontable, False)
->>>>>>> 4a64d2a089c2edaa9112a90d939efcdcaaec8b47
         jsondata['host']['ptable_id'] = partitiontable_id
     if not options.unmanaged:
         jsondata['host']['managed'] = 'true'
@@ -495,11 +436,7 @@ print "This script is designed to register new systems or to migrate an existing
 clean_environment()
 if options.remove:
     API_PORT = get_api_port()
-<<<<<<< HEAD
     host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', True)
-=======
-    host_id = return_matching_id('hosts', 'name="%s"' % FQDN, True)
->>>>>>> 4a64d2a089c2edaa9112a90d939efcdcaaec8b47
     if host_id is not None:
         disassociate_host(host_id)
         delete_host(host_id)
