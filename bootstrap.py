@@ -148,7 +148,7 @@ def get_bootstrap_rpm():
     if options.force:
         clean_katello_agent()
     print_generic("Retrieving Client CA Certificate RPMs")
-    exec_failexit("/usr/bin/yum -y localinstall http://%s/pub/katello-ca-consumer-latest.noarch.rpm --nogpgcheck" % options.foreman_fqdn)
+    exec_failexit("rpm -Uvh http://%s/pub/katello-ca-consumer-latest.noarch.rpm" % options.foreman_fqdn)
 
 
 def migrate_systems(org_name, activationkey):
@@ -178,6 +178,7 @@ def register_systems(org_name, activationkey, release):
 def unregister_system():
     print_generic("Unregistering")
     exec_failexit("/usr/sbin/subscription-manager unregister")
+
 
 def clean_katello_agent():
     print_generic("Removing old Katello agent and certs")
@@ -380,7 +381,7 @@ def create_host():
     else:
         jsondata['host']['managed'] = 'false'
     if options.verbose:
-        print json.dumps(jsondata, sort_keys = False, indent = 2)
+        print json.dumps(jsondata, sort_keys=False, indent=2)
     myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/hosts/"
     if options.force and host_id is not None:
         delete_host(host_id)
