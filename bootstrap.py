@@ -402,7 +402,11 @@ def disassociate_host(host_id):
 
 
 def check_rhn_registration():
-    return os.path.exists('/etc/sysconfig/rhn/systemid')
+    if os.path.exists('/etc/sysconfig/rhn/systemid'):
+        retcode = commands.getstatusoutput('rhn-channel -l')[0]
+        return retcode == 0
+    else:
+        return False
 
 
 def get_api_port():
