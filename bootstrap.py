@@ -43,6 +43,7 @@ parser.add_option("--legacy-password", dest="legacy_password", help="Password fo
 parser.add_option("--legacy-purge", dest="legacy_purge", action="store_true", help="Purge system from the Legacy environment (e.g. Sat5)")
 parser.add_option("-a", "--activationkey", dest="activationkey", help="Activation Key to register the system", metavar="ACTIVATIONKEY")
 parser.add_option("-P", "--skip-puppet", dest="no_puppet", action="store_true", default=False, help="Do not install Puppet")
+parser.add_option("--skip-foreman", dest="no_foreman", action="store_true", default=False, help="Do not create a Foreman host. Implies --skip-puppet.")
 parser.add_option("-g", "--hostgroup", dest="hostgroup", help="Label of the Hostgroup in Foreman that the host is to be associated with", metavar="HOSTGROUP")
 parser.add_option("-L", "--location", dest="location", default='Default_Location', help="Label of the Location in Foreman that the host is to be associated with", metavar="LOCATION")
 parser.add_option("-O", "--operatingsystem", dest="operatingsystem", default=None, help="Label of the Operating System in Foreman that the host is to be associated with", metavar="OPERATINGSYSTEM")
@@ -59,7 +60,7 @@ parser.add_option("-R", "--remove-rhn-packages", dest="removepkgs", action="stor
 parser.add_option("--unmanaged", dest="unmanaged", action="store_true", help="Add the server as unmanaged. Useful to skip provisioning dependencies.")
 (options, args) = parser.parse_args()
 
-if not (options.foreman_fqdn and options.login and (options.remove or (options.org and options.hostgroup and options.location and options.activationkey))):
+if not (options.foreman_fqdn and options.login and (options.remove or (options.org and options.activationkey and (options.no_foreman or (options.hostgroup and options.location))))):
     print "Must specify server, login, hostgroup, location, and organization options.  See usage:"
     parser.print_help()
     print "\nExample usage: ./bootstrap.py -l admin -s foreman.example.com -o Default_Organization -L Default_Location -g My_Hostgroup -a My_Activation_Key"
@@ -67,6 +68,9 @@ if not (options.foreman_fqdn and options.login and (options.remove or (options.o
 
 if not options.password:
     options.password = getpass.getpass("%s's password:" % options.login)
+
+if options.no_foreman:
+    options.no_puppet = True
 
 if options.verbose:
     print "HOSTNAME - %s" % HOSTNAME
@@ -449,13 +453,15 @@ elif check_rhn_registration():
     install_prereqs()
     get_bootstrap_rpm()
     API_PORT = get_api_port()
-    create_host()
+    if not options.no_foreman:
+        create_host()
     migrate_systems(options.org, options.activationkey)
 else:
     print_generic('This system is not registered to RHN. Attempting to register via subscription-manager')
     get_bootstrap_rpm()
     API_PORT = get_api_port()
-    create_host()
+    if not options.no_foreman:
+        create_host()
     register_systems(options.org, options.activationkey, options.release)
 
 if not options.remove:
