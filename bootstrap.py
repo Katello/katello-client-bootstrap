@@ -154,7 +154,7 @@ def get_bootstrap_rpm():
 def migrate_systems(org_name, activationkey):
     org_label = return_matching_org_label(org_name)
     print_generic("Calling rhn-migrate-classic-to-rhsm")
-    options.rhsmargs += " --destination-url=https://%s:%s" % (options.foreman_fqdn, API_PORT)
+    options.rhsmargs += " --destination-url=https://%s:%s/rhsm" % (options.foreman_fqdn, API_PORT)
     if options.legacy_purge:
         options.rhsmargs += " --legacy-user '%s' --legacy-password '%s'" % (options.legacy_login, options.legacy_password)
     else:
