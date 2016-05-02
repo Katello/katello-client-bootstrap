@@ -197,6 +197,11 @@ def clean_puppet():
     exec_failexit("rm -rf /var/lib/puppet/")
 
 
+def clean_environment():
+    for key in ['LD_LIBRARY_PATH', 'LD_PRELOAD']:
+        os.environ.pop(key, None)
+
+
 def install_puppet_agent():
     puppet_env = return_puppetenv_for_hg(return_matching_id('hostgroups', 'title=%s' % options.hostgroup, False))
     print_generic("Installing the Puppet Agent")
@@ -408,6 +413,7 @@ def get_api_port():
 print "Foreman Bootstrap Script"
 print "This script is designed to register new systems or to migrate an existing system to a Foreman server with Katello"
 
+clean_environment()
 if options.remove:
     API_PORT = get_api_port()
     host_id = return_matching_id('hosts', 'name=%s' % FQDN, True)
