@@ -1,6 +1,9 @@
 #!/usr/bin/python
 #
-import json
+try:
+    import json
+except ImportError:
+    import simplejson as json
 import getpass
 import urllib2
 import base64
@@ -8,6 +11,7 @@ import sys
 import commands
 import platform
 import socket
+import struct
 import os.path
 from datetime import datetime
 from optparse import OptionParser
@@ -18,11 +22,22 @@ from ConfigParser import SafeConfigParser
 
 def get_architecture():
     # May not be safe for anything apart from 32/64 bit OS
-    is_64bit = sys.maxsize > 2 ** 32
+    if sys.version_info >= (2,6):
+        is_64bit = sys.maxsize > 2 ** 32
+    else:
+        is_64bit = 8 * struct.calcsize("P")
     if is_64bit:
         return "x86_64"
     else:
         return "x86"
+
+
+def get_release():
+    if sys.version_info >= (2,6):
+        return platform.linux_distribution()[1]
+    else:
+        return platform.dist()[1]
+
 
 FQDN = socket.getfqdn()
 HOSTNAME = FQDN.split('.')[0]
@@ -30,7 +45,7 @@ DOMAIN = FQDN[FQDN.index('.')+1:]
 HEXMAC = hex(getnode())
 NOHEXMAC = HEXMAC[2:]
 MAC = NOHEXMAC.zfill(13)[0:12]
-RELEASE = platform.linux_distribution()[1]
+RELEASE = get_release()
 API_PORT = "443"
 ARCHITECTURE = get_architecture()
 
