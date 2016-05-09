@@ -480,7 +480,7 @@ def prepare_rhel5_migration():
     # add to the path if need be
     if _LIBPATH not in sys.path:
         sys.path.append(_LIBPATH)
-        from subscription_manager.migrate import migrate
+    from subscription_manager.migrate import migrate
 
     me = migrate.MigrationEngine()
     me.options.force = True
