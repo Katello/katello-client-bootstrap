@@ -476,30 +476,34 @@ print "This script is designed to register new systems or to migrate an existing
 
 def prepare_rhel5_migration():
     install_prereqs()
-    _LIBPATH = "/usr/share/rhsm"
-    # add to the path if need be
-    if _LIBPATH not in sys.path:
-        sys.path.append(_LIBPATH)
-    from subscription_manager.migrate import migrate
 
-    class MEOptions:
-        force = True
+    # only do the certificate magic if 69.pem is not present
+    # and we have active channels
+    if check_rhn_registration() and not os.path.exists('/etc/pki/product/69.pem'):
+        _LIBPATH = "/usr/share/rhsm"
+        # add to the path if need be
+        if _LIBPATH not in sys.path:
+            sys.path.append(_LIBPATH)
+        from subscription_manager.migrate import migrate
 
-    me = migrate.MigrationEngine()
-    me.options = MEOptions()
-    subscribed_channels = me.get_subscribed_channels_list()
-    me.print_banner(("System is currently subscribed to these RHNClassic Channels:"))
-    for channel in subscribed_channels:
-        print channel
-    me.check_for_conflicting_channels(subscribed_channels)
-    me.deploy_prod_certificates(subscribed_channels)
-    me.clean_up(subscribed_channels)
+        class MEOptions:
+            force = True
 
-    # check if certs are actually there..
+        me = migrate.MigrationEngine()
+        me.options = MEOptions()
+        subscribed_channels = me.get_subscribed_channels_list()
+        me.print_banner(("System is currently subscribed to these RHNClassic Channels:"))
+        for channel in subscribed_channels:
+            print channel
+        me.check_for_conflicting_channels(subscribed_channels)
+        me.deploy_prod_certificates(subscribed_channels)
+        me.clean_up(subscribed_channels)
+
+    # at this point we should have at least 69.pem available, but lets
+    # doublecheck and copy it manually if not
     if not os.path.exists('/etc/pki/product/'):
         os.mkdir("/etc/pki/product/")
     if not os.path.exists('/etc/pki/product/69.pem'):
-        # or put them there. Ugly.
         for line in open("/usr/share/rhsm/product/RHEL-5/channel-cert-mapping.txt"):
             if ("rhel-x86_64-server-5:" in line and ARCHITECTURE == "x86_64") or ("rhel-i386-server-5:" in line and ARCHITECTURE == "x86"):
                 cert=line.split(" ")[1]
