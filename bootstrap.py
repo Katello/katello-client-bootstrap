@@ -482,8 +482,11 @@ def prepare_rhel5_migration():
         sys.path.append(_LIBPATH)
     from subscription_manager.migrate import migrate
 
+    class MEOptions:
+        force = True
+
     me = migrate.MigrationEngine()
-    me.options.force = True
+    me.options = MEOptions()
     subscribed_channels = me.get_subscribed_channels_list()
     me.print_banner(("System is currently subscribed to these RHNClassic Channels:"))
     for channel in subscribed_channels:
