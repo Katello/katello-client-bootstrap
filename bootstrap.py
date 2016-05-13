@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-import json
+
 import getpass
 import urllib2
 import base64
@@ -9,16 +9,20 @@ import commands
 import platform
 import socket
 import os.path
+import glob
+import shutil
 from datetime import datetime
 from optparse import OptionParser
-from uuid import getnode
 from urllib import urlencode
 from ConfigParser import SafeConfigParser
 
 
 def get_architecture():
     # May not be safe for anything apart from 32/64 bit OS
-    is_64bit = sys.maxsize > 2 ** 32
+    try:
+        is_64bit = sys.maxsize > 2 ** 32
+    except:
+        is_64bit = platform.architecture()[0] == '64bit'
     if is_64bit:
         return "x86_64"
     else:
@@ -27,12 +31,32 @@ def get_architecture():
 FQDN = socket.getfqdn()
 HOSTNAME = FQDN.split('.')[0]
 DOMAIN = FQDN[FQDN.index('.')+1:]
-HEXMAC = hex(getnode())
-NOHEXMAC = HEXMAC[2:]
-MAC = NOHEXMAC.zfill(13)[0:12]
-RELEASE = platform.linux_distribution()[1]
+
+MAC = None
+try:
+    import uuid
+    mac1 = uuid.getnode()
+    mac2 = uuid.getnode()
+    if mac1 == mac2:
+        MAC = ':'.join(("%012X" % mac1)[i:i+2] for i in range(0, 12, 2))
+except ImportError:
+    if os.path.exists('/sys/class/net/eth0/address'):
+        address_files = ['/sys/class/net/eth0/address']
+    else:
+        address_files = glob.glob('/sys/class/net/*/address')
+    for f in address_files:
+        MAC = open(f).readline().strip().upper()
+        if MAC != "00:00:00:00:00:00":
+            break
+if not MAC:
+    MAC = "00:00:00:00:00:00"
+
 API_PORT = "443"
 ARCHITECTURE = get_architecture()
+try:
+    RELEASE = platform.linux_distribution()[1]
+except AttributeError:
+    RELEASE = platform.dist()[1]
 
 parser = OptionParser()
 parser.add_option("-s", "--server", dest="foreman_fqdn", help="FQDN of Foreman OR Capsule - omit https://", metavar="foreman_fqdn")
@@ -211,13 +235,25 @@ def install_puppet_agent():
     print_generic("Installing the Puppet Agent")
     exec_failexit("/usr/bin/yum -y install puppet")
     exec_failexit("/sbin/chkconfig puppet on")
-    exec_failexit("/usr/bin/puppet config set server %s --section agent" % options.foreman_fqdn)
-    exec_failexit("/usr/bin/puppet config set ca_server %s --section agent" % options.foreman_fqdn)
-    exec_failexit("/usr/bin/puppet config set environment %s --section agent" % puppet_env)
-    # Might need this for RHEL5
-    # f = open("/etc/puppet/puppet.conf","a")
-    # f.write("server=%s \n" % options.foreman_fqdn)
-    # f.close()
+    puppet_conf = open('/etc/puppet/puppet.conf', 'wb')
+    puppet_conf.write("""
+[main]
+vardir = /var/lib/puppet
+logdir = /var/log/puppet
+rundir = /var/run/puppet
+ssldir = \$vardir/ssl
+
+[agent]
+pluginsync      = true
+report          = true
+ignoreschedules = true
+daemon          = false
+ca_server       = %s
+certname        = %s
+environment     = %s
+server          = %s
+""" % (options.foreman_fqdn, FQDN, puppet_env, options.foreman_fqdn))
+    puppet_conf.close()
     print_generic("Running Puppet in noop mode to generate SSL certs")
     print_generic("Visit the UI and approve this certificate via Infrastructure->Capsules")
     print_generic("if auto-signing is disabled")
@@ -437,7 +473,70 @@ def get_api_port():
 print "Foreman Bootstrap Script"
 print "This script is designed to register new systems or to migrate an existing system to a Foreman server with Katello"
 
+
+def prepare_rhel5_migration():
+    install_prereqs()
+
+    # only do the certificate magic if 69.pem is not present
+    # and we have active channels
+    if check_rhn_registration() and not os.path.exists('/etc/pki/product/69.pem'):
+        _LIBPATH = "/usr/share/rhsm"
+        # add to the path if need be
+        if _LIBPATH not in sys.path:
+            sys.path.append(_LIBPATH)
+        from subscription_manager.migrate import migrate
+
+        class MEOptions:
+            force = True
+
+        me = migrate.MigrationEngine()
+        me.options = MEOptions()
+        subscribed_channels = me.get_subscribed_channels_list()
+        me.print_banner(("System is currently subscribed to these RHNClassic Channels:"))
+        for channel in subscribed_channels:
+            print channel
+        me.check_for_conflicting_channels(subscribed_channels)
+        me.deploy_prod_certificates(subscribed_channels)
+        me.clean_up(subscribed_channels)
+
+    # at this point we should have at least 69.pem available, but lets
+    # doublecheck and copy it manually if not
+    if not os.path.exists('/etc/pki/product/'):
+        os.mkdir("/etc/pki/product/")
+    if not os.path.exists('/etc/pki/product/69.pem'):
+        for line in open("/usr/share/rhsm/product/RHEL-5/channel-cert-mapping.txt"):
+            if ("rhel-x86_64-server-5:" in line and ARCHITECTURE == "x86_64") or ("rhel-i386-server-5:" in line and ARCHITECTURE == "x86"):
+                cert=line.split(" ")[1]
+                shutil.copy('/usr/share/rhsm/product/RHEL-5/'+cert.strip(), '/etc/pki/product/69.pem')
+                break
+
+    # cleanup
+    if os.path.exists('/etc/sysconfig/rhn/systemid'):
+        os.remove('/etc/sysconfig/rhn/systemid')
+
+
+# try to import json or simplejson
+# do it at this point in the code to have our custom print and exec functions available
+try:
+    import json
+except ImportError:
+    try:
+        import simplejson as json
+    except ImportError:
+        print_warning("Could neither import json nor simplejson, will try to install simplejson and re-import")
+        exec_failexit("yum install -y python-simplejson")
+        try:
+            import simplejson as json
+        except ImportError:
+            print_error("Could not install python-simplejson")
+            sys.exit(1)
+
+
 clean_environment()
+
+if not options.remove and int(RELEASE[0]) == 5:
+    prepare_rhel5_migration()
+
 if options.remove:
     API_PORT = get_api_port()
     host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', True)
