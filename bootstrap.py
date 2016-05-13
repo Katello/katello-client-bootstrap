@@ -272,105 +272,54 @@ def fully_update_the_box():
     exec_failexit("/usr/bin/yum -y update")
 
 
-def get_json(url):
-    # Generic function to HTTP GET JSON from Foreman's API
+def call_api(url, data=None, method='GET'):
     try:
         request = urllib2.Request(url)
         if options.verbose:
-            print "request: " + url
+            print 'url: %s' % url
+            print 'method: %s' % method
+            print 'data: %s' % json.dumps(data, sort_keys=False, indent=2)
         base64string = base64.encodestring('%s:%s' % (options.login, options.password)).strip()
-        request.add_header("Authorization", "Basic %s" % base64string)
-        result = urllib2.urlopen(request)
-        return json.load(result)
-    except urllib2.HTTPError, e:
-        if e.code == 401:
-            print 'Error: user not authorized to perform this action. Check user/pass or permission assigned.'
-            print "url: " + url
-            sys.exit(1)
-        if e.code == 422:
-            print 'Error: Unprocessable entity to API. Check API syntax.'
-            print "error: " + e.read()
-            print "url: " + url
-            sys.exit(1)
-        raise e
-    except urllib2.URLError, e:
-        print "Error in API call: %s" % (e)
-        print "Check your URL & try to login using the same user/pass via the WebUI and check the error!"
-        print "error: " + e.read()
-        print "url: " + url
-        sys.exit(1)
-    except Exception, e:
-        print "FATAL Error - %s" % (e)
-        sys.exit(2)
-
-
-def post_json(url, jdata):
-    # Generic function to HTTP PUT JSON to Foreman's API.
-    # Had to use a couple of hacks to urllib2 to make it
-    # support an HTTP PUT, which it doesn't by default.
-    try:
-        opener = urllib2.build_opener(urllib2.HTTPHandler)
-        request = urllib2.Request(url)
-        base64string = base64.encodestring('%s:%s' % (options.login, options.password)).strip()
-        request.add_data(json.dumps(jdata))
         request.add_header("Authorization", "Basic %s" % base64string)
         request.add_header("Content-Type", "application/json")
         request.add_header("Accept", "application/json")
-        request.get_method = lambda: 'POST'
-        reply = opener.open(request)
-    except urllib2.HTTPError, e:
-        if e.code == 401:
-            print 'Error: user not authorized to perform this action. Check user/pass or permission assigned.'
-            print "url: " + url
-            sys.exit(1)
-        if e.code == 422:
-            print 'Error: Unprocessable entity to API. Check API syntax.'
-            print "error: " + e.read()
-            print "url: " + url
-            sys.exit(1)
-        raise e
+        if data:
+           request.add_data(json.dumps(data))
+        request.get_method = lambda: method
+        result = urllib2.urlopen(request)
+        jsonresult = json.load(result)
+        if options.verbose:
+            print 'result: %s' % json.dumps(jsonresult, sort_keys=False, indent=2)
+        return jsonresult
     except urllib2.URLError, e:
-        print "Error in API call: %s" % (e)
-        print "Check your URL & try to login using the same user/pass via the WebUI and check the error!"
-        print "error: " + e.read()
-        print "url: " + url
-        print "jdata: " + str(jdata)
+        print 'Error: The following error occured while talking to the API:'
+        print 'url: %s' % url
+        if isinstance(e, urllib2.HTTPError):
+            print 'code: %s' % e.code
+        if data:
+            print 'data: %s' % json.dumps(data, sort_keys=False, indent=2)
+        try:
+            jsonerr = json.load(e)
+            print 'error: %s' % json.dumps(jsonerr, sort_keys=False, indent=2)
+        except:
+            print 'error: %s' % e
         sys.exit(1)
     except Exception, e:
         print "FATAL Error - %s" % (e)
         sys.exit(2)
+
+
+def get_json(url):
+    return call_api(url)
+
+
+def post_json(url, jdata):
+    return call_api(url, data=jdata, method='POST')
 
 
 def delete_json(url):
-    # Generic function to HTTP DELETE JSON from Foreman's API
-    try:
-        request = urllib2.Request(url)
-        base64string = base64.encodestring('%s:%s' % (options.login, options.password)).strip()
-        request.add_header("Authorization", "Basic %s" % base64string)
-        request.get_method = lambda: 'DELETE'
-        result = urllib2.urlopen(request)
-        return json.load(result)
-    except urllib2.HTTPError, e:
-        if e.code == 401:
-            print 'Error: user not authorized to perform this action. Check user/pass or permission assigned.'
-            print "url: " + url
-            sys.exit(1)
-        if e.code == 422:
-            print 'Error: Unprocessable entity to API. Check API syntax.'
-            print "error: " + e.read()
-            print "url: " + url
-            sys.exit(1)
-        if e.code != 404:
-            raise e
-    except urllib2.URLError, e:
-        print "Error in API call: %s" % (e)
-        print "Check your URL & try to login using the same user/pass via the WebUI and check the error!"
-        print "error: " + e.read()
-        print "url: " + url
-        sys.exit(1)
-    except Exception, e:
-        print "FATAL Error - %s" % (e)
-        sys.exit(2)
+    return call_api(url, method='DELETE')
+
 
 
 def return_matching_foreman_key(api_name, search_key, return_key, null_result_ok=False):
@@ -387,11 +336,7 @@ def return_matching_katello_key(api_name, search_key, return_key, null_result_ok
 # the search_key must be quoted in advance
 def return_matching_key(api_path, search_key, return_key, null_result_ok=False):
     myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + api_path + "/?" + urlencode([('search', '' + str(search_key))])
-    if options.verbose:
-        print myurl
     return_values = get_json(myurl)
-    if options.verbose:
-        print json.dumps(return_values, sort_keys=False, indent=2)
     result_len = len(return_values['results'])
     if result_len == 1:
         return_values_return_key = return_values['results'][0][return_key]
@@ -435,8 +380,6 @@ def create_host():
         jsondata['host']['managed'] = 'true'
     else:
         jsondata['host']['managed'] = 'false'
-    if options.verbose:
-        print json.dumps(jsondata, sort_keys=False, indent=2)
     myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/hosts/"
     if options.force and host_id is not None:
         delete_host(host_id)
