@@ -241,7 +241,7 @@ def install_puppet_agent():
 vardir = /var/lib/puppet
 logdir = /var/log/puppet
 rundir = /var/run/puppet
-ssldir = \$vardir/ssl
+ssldir = $vardir/ssl
 
 [agent]
 pluginsync      = true
