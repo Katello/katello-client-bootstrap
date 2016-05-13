@@ -344,7 +344,7 @@ def return_matching_key(api_path, search_key, return_key, null_result_ok=False):
     elif result_len == 0 and null_result_ok is True:
         return None
     else:
-        print_error("%d element in array for search key '%s' in API '%s'. Fatal error." % (result_len, search_key, api_path))
+        print_error("%d element in array for search key '%s' in API '%s'. Please note that all searches are case-sensitive. Fatal error." % (result_len, search_key, api_path))
         sys.exit(2)
 
 
