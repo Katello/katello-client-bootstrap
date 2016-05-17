@@ -89,9 +89,9 @@ parser.add_option("--unmanaged", dest="unmanaged", action="store_true", help="Ad
 (options, args) = parser.parse_args()
 
 if not (options.foreman_fqdn and options.login and (options.remove or (options.org and options.activationkey and (options.no_foreman or (options.hostgroup and options.location))))):
-    print "Must specify server, login, hostgroup, location, and organization options.  See usage:"
+    print "Must specify server, login, organization, location, hostgroup, and activation key.  See usage:"
     parser.print_help()
-    print "\nExample usage: ./bootstrap.py -l admin -s foreman.example.com -o Default_Organization -L Default_Location -g My_Hostgroup -a My_Activation_Key"
+    print "\nExample usage: ./bootstrap.py -l admin -s foreman.example.com -o 'Default Organization' -L 'Default Location' -g My_Hostgroup -a My_Activation_Key"
     sys.exit(1)
 
 if not DOMAIN and not (options.force or options.no_puppet):
