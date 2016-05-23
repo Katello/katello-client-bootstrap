@@ -73,7 +73,7 @@ parser.add_option("-a", "--activationkey", dest="activationkey", help="Activatio
 parser.add_option("-P", "--skip-puppet", dest="no_puppet", action="store_true", default=False, help="Do not install Puppet")
 parser.add_option("--skip-foreman", dest="no_foreman", action="store_true", default=False, help="Do not create a Foreman host. Implies --skip-puppet.")
 parser.add_option("-g", "--hostgroup", dest="hostgroup", help="Title of the Hostgroup in Foreman that the host is to be associated with", metavar="HOSTGROUP")
-parser.add_option("-L", "--location", dest="location", default='Default Location', help="Title of the Location in Foreman that the host is to be associated with", metavar="LOCATION")
+parser.add_option("-L", "--location", dest="location", help="Title of the Location in Foreman that the host is to be associated with", metavar="LOCATION")
 parser.add_option("-O", "--operatingsystem", dest="operatingsystem", default=None, help="Title of the Operating System in Foreman that the host is to be associated with", metavar="OPERATINGSYSTEM")
 parser.add_option("--partitiontable", dest="partitiontable", default=None, help="Name of the Operating System in Foreman that the host is to be associated with", metavar="PARTITIONTABLE")
 parser.add_option("-o", "--organization", dest="org", default='Default_Organization', help="Name of the Organization in Foreman that the host is to be associated with", metavar="ORG")
@@ -88,8 +88,8 @@ parser.add_option("-R", "--remove-rhn-packages", dest="removepkgs", action="stor
 parser.add_option("--unmanaged", dest="unmanaged", action="store_true", help="Add the server as unmanaged. Useful to skip provisioning dependencies.")
 (options, args) = parser.parse_args()
 
-if not (options.foreman_fqdn and options.login and (options.remove or (options.org and options.activationkey and (options.no_foreman or (options.hostgroup and options.location))))):
-    print "Must specify server, login, organization, location, hostgroup, and activation key.  See usage:"
+if not (options.foreman_fqdn and options.login and (options.remove or (options.org and options.activationkey and (options.no_foreman or options.hostgroup)))):
+    print "Must specify server, login, organization, hostgroup, and activation key.  See usage:"
     parser.print_help()
     print "\nExample usage: ./bootstrap.py -l admin -s foreman.example.com -o 'Default Organization' -L 'Default Location' -g My_Hostgroup -a My_Activation_Key"
     sys.exit(1)
@@ -375,7 +375,10 @@ def return_puppetenv_for_hg(hg_id):
 
 def create_host():
     myhgid = return_matching_foreman_key('hostgroups', 'title="%s"' % options.hostgroup, 'id', False)
-    mylocid = return_matching_foreman_key('locations', 'title="%s"' % options.location, 'id', False)
+    if options.location:
+        mylocid = return_matching_foreman_key('locations', 'title="%s"' % options.location, 'id', False)
+    else:
+        mylocid = None
     myorgid = return_matching_foreman_key('organizations', 'name="%s"' % options.org, 'id', False)
     if DOMAIN:
         mydomainid = return_matching_foreman_key('domains', 'name="%s"' % DOMAIN, 'id', False)
@@ -384,7 +387,7 @@ def create_host():
     architecture_id = return_matching_foreman_key('architectures', 'name="%s"' % ARCHITECTURE, 'id', False)
     host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', True)
     # create the starting json, to be filled below
-    jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s,"location_id": %s,"mac":"%s","architecture_id":%s}}' % (HOSTNAME, myhgid, myorgid, mylocid, MAC, architecture_id))
+    jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s, "mac":"%s","architecture_id":%s}}' % (HOSTNAME, myhgid, myorgid, MAC, architecture_id))
     # optional parameters
     if options.operatingsystem is not None:
         operatingsystem_id = return_matching_foreman_key('operatingsystems', 'title="%s"' % options.operatingsystem, 'id', False)
@@ -396,13 +399,15 @@ def create_host():
         jsondata['host']['managed'] = 'true'
     else:
         jsondata['host']['managed'] = 'false'
+    if mylocid:
+        jsondata['host']['location_id'] = mylocid
     if mydomainid:
         jsondata['host']['domain_id'] = mydomainid
     myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/hosts/"
     if options.force and host_id is not None:
         disassociate_host(host_id)
         delete_host(host_id)
-    print_running("Calling Foreman API to create a host entry associated with the group, org & location")
+    print_running("Calling Foreman API to create a host entry associated with the group & org")
     post_json(myurl, jsondata)
     print_success("Successfully created host %s" % FQDN)
 
