@@ -72,11 +72,11 @@ parser.add_option("--legacy-purge", dest="legacy_purge", action="store_true", he
 parser.add_option("-a", "--activationkey", dest="activationkey", help="Activation Key to register the system", metavar="ACTIVATIONKEY")
 parser.add_option("-P", "--skip-puppet", dest="no_puppet", action="store_true", default=False, help="Do not install Puppet")
 parser.add_option("--skip-foreman", dest="no_foreman", action="store_true", default=False, help="Do not create a Foreman host. Implies --skip-puppet.")
-parser.add_option("-g", "--hostgroup", dest="hostgroup", help="Label of the Hostgroup in Foreman that the host is to be associated with", metavar="HOSTGROUP")
-parser.add_option("-L", "--location", dest="location", default='Default_Location', help="Label of the Location in Foreman that the host is to be associated with", metavar="LOCATION")
-parser.add_option("-O", "--operatingsystem", dest="operatingsystem", default=None, help="Label of the Operating System in Foreman that the host is to be associated with", metavar="OPERATINGSYSTEM")
-parser.add_option("--partitiontable", dest="partitiontable", default=None, help="Label of the Operating System in Foreman that the host is to be associated with", metavar="PARTITIONTABLE")
-parser.add_option("-o", "--organization", dest="org", default='Default_Organization', help="Label of the Organization in Foreman that the host is to be associated with", metavar="ORG")
+parser.add_option("-g", "--hostgroup", dest="hostgroup", help="Title of the Hostgroup in Foreman that the host is to be associated with", metavar="HOSTGROUP")
+parser.add_option("-L", "--location", dest="location", default='Default Location', help="Title of the Location in Foreman that the host is to be associated with", metavar="LOCATION")
+parser.add_option("-O", "--operatingsystem", dest="operatingsystem", default=None, help="Title of the Operating System in Foreman that the host is to be associated with", metavar="OPERATINGSYSTEM")
+parser.add_option("--partitiontable", dest="partitiontable", default=None, help="Name of the Operating System in Foreman that the host is to be associated with", metavar="PARTITIONTABLE")
+parser.add_option("-o", "--organization", dest="org", default='Default_Organization', help="Name of the Organization in Foreman that the host is to be associated with", metavar="ORG")
 parser.add_option("-S", "--subscription-manager-args", dest="smargs", default="", help="Which additional arguments shall be passed to subscription-manager", metavar="ARGS")
 parser.add_option("--rhn-migrate-args", dest="rhsmargs", default="", help="Which additional arguments shall be passed to rhn-migrate-classic-to-rhsm", metavar="ARGS")
 parser.add_option("-u", "--update", dest="update", action="store_true", help="Fully Updates the System")
@@ -89,9 +89,9 @@ parser.add_option("--unmanaged", dest="unmanaged", action="store_true", help="Ad
 (options, args) = parser.parse_args()
 
 if not (options.foreman_fqdn and options.login and (options.remove or (options.org and options.activationkey and (options.no_foreman or (options.hostgroup and options.location))))):
-    print "Must specify server, login, hostgroup, location, and organization options.  See usage:"
+    print "Must specify server, login, organization, location, hostgroup, and activation key.  See usage:"
     parser.print_help()
-    print "\nExample usage: ./bootstrap.py -l admin -s foreman.example.com -o Default_Organization -L Default_Location -g My_Hostgroup -a My_Activation_Key"
+    print "\nExample usage: ./bootstrap.py -l admin -s foreman.example.com -o 'Default Organization' -L 'Default Location' -g My_Hostgroup -a My_Activation_Key"
     sys.exit(1)
 
 if not DOMAIN and not (options.force or options.no_puppet):
