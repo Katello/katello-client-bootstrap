@@ -36,12 +36,16 @@ Network Classic and get it registered to Foreman & Katello.
   those explicitly required for Katello management, on the client
   system.  (i.e., I could have used the python-requests module to make the
   API calls a lot more pleasant, but I couldn't justify the dependencies)
-* The activation key that provides access to a Content View
-  which provides Puppet and other client side tooling.
 * The system in question has python.
 * The administrator can approve puppet certificates if using Puppet.
   Alternatively, autosigning can be enabled for the system in question.  (And be careful,
   auto-signing isnt one of those things you'd leave enabled forever)
+* The Foreman instance is properly prepared and is able to provision systems,
+  especially the following is true:
+** The activation key provides access to a Content View
+   which provides Puppet and other client side tooling.
+** The domain of the system is known to Foreman.
+** The hostgroup has the "Host Group" and "Operating System" tabs filled out completelly.
 
 # Dependencies
 
