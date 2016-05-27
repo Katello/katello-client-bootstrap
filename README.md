@@ -77,33 +77,51 @@ Usage: bootstrap.py [options]
 
 Options:
   -h, --help            show this help message and exit
-  -s FOREMAN_FQDN, --server=FOREMAN_FQDN
+  -s foreman_fqdn, --server=foreman_fqdn
                         FQDN of Foreman OR Capsule - omit https://
   -l LOGIN, --login=LOGIN
                         Login user for API Calls
   -p PASSWORD, --password=PASSWORD
                         Password for specified user. Will prompt if omitted
+  --legacy-login=LOGIN  Login user for Satellite 5 API Calls
+  --legacy-password=PASSWORD
+                        Password for specified Satellite 5 user. Will prompt
+                        if omitted
+  --legacy-purge        Purge system from the Legacy environment (e.g. Sat5)
   -a ACTIVATIONKEY, --activationkey=ACTIVATIONKEY
                         Activation Key to register the system
   -P, --skip-puppet     Do not install Puppet
+  --skip-foreman        Do not create a Foreman host. Implies --skip-puppet.
   -g HOSTGROUP, --hostgroup=HOSTGROUP
-                        Label of the Hostgroup in Foreman that the host is
-                        to be associated with
-  -L HOSTGROUP, --location=HOSTGROUP
-                        Label of the Location in Foreman that the host is to
+                        Title of the Hostgroup in Foreman that the host is to
                         be associated with
-  -o ORG, --organization=ORG
-                        Label of the Organization in Foreman that the host
+  -L LOCATION, --location=LOCATION
+                        Title of the Location in Foreman that the host is to
+                        be associated with
+  -O OPERATINGSYSTEM, --operatingsystem=OPERATINGSYSTEM
+                        Title of the Operating System in Foreman that the host
                         is to be associated with
+  --partitiontable=PARTITIONTABLE
+                        Name of the Operating System in Foreman that the host
+                        is to be associated with
+  -o ORG, --organization=ORG
+                        Name of the Organization in Foreman that the host is
+                        to be associated with
   -S ARGS, --subscription-manager-args=ARGS
                         Which additional arguments shall be passed to
                         subscription-manager
+  --rhn-migrate-args=ARGS
+                        Which additional arguments shall be passed to rhn-
+                        migrate-classic-to-rhsm
   -u, --update          Fully Updates the System
   -v, --verbose         Verbose output
-  -f, --force           Force registration (will erase old Foreman and Puppet
+  -f, --force           Force registration (will erase old katello and puppet
                         certs)
+  --remove              Instead of registring the machine to Foreman remove it
   -r RELEASE, --release=RELEASE
                         Specify release version
   -R, --remove-rhn-packages
                         Remove old Red Hat Network Packages
+  --unmanaged           Add the server as unmanaged. Useful to skip
+                        provisioning dependencies.
 ~~~
