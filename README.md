@@ -63,8 +63,8 @@ Network Classic and get it registered to Foreman & Katello.
 ~~~
 # ./bootstrap.py -l admin \
   -s foreman.example.com \
-  -o Default_Organization \
-  -L Default_Location \
+  -o 'Default Organization' \
+  -L 'Default Location' \
   -g My_Hostgroup \
   -a My_Activation_Key
 ~~~
