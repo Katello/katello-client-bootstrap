@@ -36,12 +36,21 @@ Network Classic and get it registered to Foreman & Katello.
   those explicitly required for Katello management, on the client
   system.  (i.e., I could have used the python-requests module to make the
   API calls a lot more pleasant, but I couldn't justify the dependencies)
-* The activation key that provides access to a Content View
-  which provides Puppet and other client side tooling.
 * The system in question has python.
 * The administrator can approve puppet certificates if using Puppet.
   Alternatively, autosigning can be enabled for the system in question.  (And be careful,
   auto-signing isnt one of those things you'd leave enabled forever)
+* The Foreman instance is properly prepared and is able to provision systems,
+  especially the following is true:
+** The activation key provides access to a Content View
+   which provides Puppet and other client side tooling.
+** The domain of the system is known to Foreman.
+** The hostgroup has the "Host Group" and "Operating System" tabs filled out completelly.
+
+# Dependencies
+
+* Python2 >= 2.5 or 2.4 with python-simplejson installed
+* subscription-manager (if the machine has no previous subscription)
 
 # User required inputs
 
@@ -58,8 +67,8 @@ Network Classic and get it registered to Foreman & Katello.
 ~~~
 # ./bootstrap.py -l admin \
   -s foreman.example.com \
-  -o Default_Organization \
-  -L Default_Location \
+  -o 'Default Organization' \
+  -L 'Default Location' \
   -g My_Hostgroup \
   -a My_Activation_Key
 ~~~
@@ -72,33 +81,51 @@ Usage: bootstrap.py [options]
 
 Options:
   -h, --help            show this help message and exit
-  -s FOREMAN_FQDN, --server=FOREMAN_FQDN
+  -s foreman_fqdn, --server=foreman_fqdn
                         FQDN of Foreman OR Capsule - omit https://
   -l LOGIN, --login=LOGIN
                         Login user for API Calls
   -p PASSWORD, --password=PASSWORD
                         Password for specified user. Will prompt if omitted
+  --legacy-login=LOGIN  Login user for Satellite 5 API Calls
+  --legacy-password=PASSWORD
+                        Password for specified Satellite 5 user. Will prompt
+                        if omitted
+  --legacy-purge        Purge system from the Legacy environment (e.g. Sat5)
   -a ACTIVATIONKEY, --activationkey=ACTIVATIONKEY
                         Activation Key to register the system
   -P, --skip-puppet     Do not install Puppet
+  --skip-foreman        Do not create a Foreman host. Implies --skip-puppet.
   -g HOSTGROUP, --hostgroup=HOSTGROUP
-                        Label of the Hostgroup in Foreman that the host is
-                        to be associated with
-  -L HOSTGROUP, --location=HOSTGROUP
-                        Label of the Location in Foreman that the host is to
+                        Title of the Hostgroup in Foreman that the host is to
                         be associated with
-  -o ORG, --organization=ORG
-                        Label of the Organization in Foreman that the host
+  -L LOCATION, --location=LOCATION
+                        Title of the Location in Foreman that the host is to
+                        be associated with
+  -O OPERATINGSYSTEM, --operatingsystem=OPERATINGSYSTEM
+                        Title of the Operating System in Foreman that the host
                         is to be associated with
+  --partitiontable=PARTITIONTABLE
+                        Name of the Operating System in Foreman that the host
+                        is to be associated with
+  -o ORG, --organization=ORG
+                        Name of the Organization in Foreman that the host is
+                        to be associated with
   -S ARGS, --subscription-manager-args=ARGS
                         Which additional arguments shall be passed to
                         subscription-manager
+  --rhn-migrate-args=ARGS
+                        Which additional arguments shall be passed to rhn-
+                        migrate-classic-to-rhsm
   -u, --update          Fully Updates the System
   -v, --verbose         Verbose output
-  -f, --force           Force registration (will erase old Foreman and Puppet
+  -f, --force           Force registration (will erase old katello and puppet
                         certs)
+  --remove              Instead of registring the machine to Foreman remove it
   -r RELEASE, --release=RELEASE
                         Specify release version
   -R, --remove-rhn-packages
                         Remove old Red Hat Network Packages
+  --unmanaged           Add the server as unmanaged. Useful to skip
+                        provisioning dependencies.
 ~~~
