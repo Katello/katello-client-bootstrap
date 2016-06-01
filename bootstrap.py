@@ -331,6 +331,9 @@ def delete_json(url):
     return call_api(url, method='DELETE')
 
 
+def put_json(url):
+    return call_api(url, method='PUT')
+
 
 def return_matching_foreman_key(api_name, search_key, return_key, null_result_ok=False):
     return return_matching_key("/api/v2/" + api_name, search_key, return_key, null_result_ok)
