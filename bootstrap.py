@@ -400,6 +400,7 @@ def create_host():
         jsondata['host']['domain_id'] = mydomainid
     myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/hosts/"
     if options.force and host_id is not None:
+        disassociate_host(host_id)
         delete_host(host_id)
     print_running("Calling Foreman API to create a host entry associated with the group, org & location")
     post_json(myurl, jsondata)
