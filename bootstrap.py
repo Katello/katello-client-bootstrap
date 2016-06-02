@@ -331,6 +331,9 @@ def delete_json(url):
     return call_api(url, method='DELETE')
 
 
+def put_json(url):
+    return call_api(url, method='PUT')
+
 
 def return_matching_foreman_key(api_name, search_key, return_key, null_result_ok=False):
     return return_matching_key("/api/v2/" + api_name, search_key, return_key, null_result_ok)
@@ -397,6 +400,7 @@ def create_host():
         jsondata['host']['domain_id'] = mydomainid
     myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/hosts/"
     if options.force and host_id is not None:
+        disassociate_host(host_id)
         delete_host(host_id)
     print_running("Calling Foreman API to create a host entry associated with the group, org & location")
     post_json(myurl, jsondata)
@@ -497,11 +501,11 @@ if not options.remove and int(RELEASE[0]) == 5:
 
 if options.remove:
     API_PORT = get_api_port()
+    unregister_system()
     host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', True)
     if host_id is not None:
         disassociate_host(host_id)
         delete_host(host_id)
-    unregister_system()
     clean_katello_agent()
     if not options.no_puppet:
         clean_puppet()
