@@ -199,6 +199,7 @@ def migrate_systems(org_name, activationkey):
         options.rhsmargs += " --keep"
     if options.force:
         options.rhsmargs += " --force"
+    exec_failexit("/sbin/service rhsmcertd restart")
     exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key %s %s" % (org_label, activationkey, options.rhsmargs))
     exec_failexit("subscription-manager config --rhsm.baseurl=https://%s/pulp/repos" % options.foreman_fqdn)
 
@@ -209,6 +210,7 @@ def register_systems(org_name, activationkey, release):
     options.smargs += " --serverurl=https://%s:%s/rhsm --baseurl=https://%s/pulp/repos" % (options.foreman_fqdn, API_PORT, options.foreman_fqdn)
     if options.force:
         options.smargs += " --force"
+    exec_failexit("/sbin/service rhsmcertd restart")
     exec_failexit("/usr/sbin/subscription-manager register --org '%s' --name '%s' --activationkey '%s' %s" % (org_label, FQDN, activationkey, options.smargs))
 
 
