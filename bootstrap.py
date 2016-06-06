@@ -82,6 +82,7 @@ parser.add_option("--rhn-migrate-args", dest="rhsmargs", default="", help="Which
 parser.add_option("-u", "--update", dest="update", action="store_true", help="Fully Updates the System")
 parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="Verbose output")
 parser.add_option("-f", "--force", dest="force", action="store_true", help="Force registration (will erase old katello and puppet certs)")
+parser.add_option("-d", "--add-domain", dest="add_domain", action="store_true", help="Automatically add the clients domain to Satellite6")
 parser.add_option("--remove", dest="remove", action="store_true", help="Instead of registring the machine to Foreman remove it")
 parser.add_option("-r", "--release", dest="release", default=RELEASE, help="Specify release version")
 parser.add_option("-R", "--remove-rhn-packages", dest="removepkgs", action="store_true", help="Remove old Red Hat Network Packages")
@@ -369,13 +370,29 @@ def return_puppetenv_for_hg(hg_id):
     else:
         return 'production'
 
+def create_domain(domain, orgid, locid):
+    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/domains"
+    domid = return_matching_foreman_key('domains', 'name="%s"' % domain, 'id', True)
+    if not domid:
+        jsondata = json.loads('{"domain": {"name": "%s", "organization_ids": [%s], "location_ids": [%s]}}' % (domain, orgid, locid))
+        print_running("Calling Foreman API to create domain %s associated with the org & location" % domain)
+        post_json(myurl, jsondata)
+        return domain
+    else:
+        return domain
 
 def create_host():
     myhgid = return_matching_foreman_key('hostgroups', 'title="%s"' % options.hostgroup, 'id', False)
     mylocid = return_matching_foreman_key('locations', 'title="%s"' % options.location, 'id', False)
     myorgid = return_matching_foreman_key('organizations', 'name="%s"' % options.org, 'id', False)
     if DOMAIN:
-        mydomainid = return_matching_foreman_key('domains', 'name="%s"' % DOMAIN, 'id', False)
+        if options.add_domain:
+            create_domain(DOMAIN, myorgid, mylocid)
+        try:
+            mydomainid = return_matching_foreman_key('domains', 'name="%s"' % DOMAIN, 'id', False)
+        except:
+            print_generic("Domain %s doesn't exist in Foreman, consider using the --add-domain option." % DOMAIN)
+            sys.exit(2)
     else:
         mydomainid = None
     architecture_id = return_matching_foreman_key('architectures', 'name="%s"' % ARCHITECTURE, 'id', False)
