@@ -100,7 +100,7 @@ if not DOMAIN and not (options.force or options.no_puppet):
     print "You can override this by passing --force or --skip-puppet"
     sys.exit(1)
 
-if not options.password:
+if not options.password and not options.no_foreman:
     options.password = getpass.getpass("%s's password:" % options.login)
 
 if options.no_foreman:
