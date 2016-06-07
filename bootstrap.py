@@ -502,10 +502,11 @@ if not options.remove and int(RELEASE[0]) == 5:
 if options.remove:
     API_PORT = get_api_port()
     unregister_system()
-    host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', True)
-    if host_id is not None:
-        disassociate_host(host_id)
-        delete_host(host_id)
+    if not options.no_foreman:
+        host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', True)
+        if host_id is not None:
+            disassociate_host(host_id)
+            delete_host(host_id)
     clean_katello_agent()
     if not options.no_puppet:
         clean_puppet()
