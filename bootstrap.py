@@ -84,7 +84,8 @@ parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="
 parser.add_option("-f", "--force", dest="force", action="store_true", help="Force registration (will erase old katello and puppet certs)")
 parser.add_option("--remove", dest="remove", action="store_true", help="Instead of registring the machine to Foreman remove it")
 parser.add_option("-r", "--release", dest="release", default=RELEASE, help="Specify release version")
-parser.add_option("-R", "--remove-rhn-packages", dest="removepkgs", action="store_true", help="Remove old Red Hat Network Packages")
+parser.add_option("-R", "--remove-obsolete-packages", dest="removepkgs", action="store_true", help="Remove old Red Hat Network and RHUI Packages (default)", default=True)
+parser.add_option("--no-remove-obsolete-packages", dest="removepkgs", action="store_false", help="Don't remove old Red Hat Network and RHUI Packages")
 parser.add_option("--unmanaged", dest="unmanaged", action="store_true", help="Add the server as unmanaged. Useful to skip provisioning dependencies.")
 (options, args) = parser.parse_args()
 
@@ -271,8 +272,8 @@ server          = %s
     exec_failexit("/sbin/service puppet restart")
 
 
-def remove_old_rhn_packages():
-    pkg_list = "rhn-setup rhn-client-tools yum-rhn-plugin rhnsd rhn-check rhnlib spacewalk-abrt spacewalk-oscap osad"
+def remove_obsolete_packages():
+    pkg_list = "rhn-setup rhn-client-tools yum-rhn-plugin rhnsd rhn-check rhnlib spacewalk-abrt spacewalk-oscap osad rh-*-rhui-client"
     print_generic("Removing old RHN packages")
     exec_failexit("/usr/bin/yum -y remove %s" % pkg_list)
 
@@ -536,4 +537,4 @@ if not options.remove:
         install_puppet_agent()
 
     if options.removepkgs:
-        remove_old_rhn_packages()
+        remove_obsolete_packages()
