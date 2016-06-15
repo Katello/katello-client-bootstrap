@@ -80,6 +80,7 @@ def exec_failok(command):
     if retcode != 0:
         print_warning(command)
     print output[1]
+    print "[return code=%d]" % retcode
     print ""
 
 
@@ -91,8 +92,13 @@ def exec_failexit(command):
     if retcode != 0:
         print_error(command)
         print output[1]
-        sys.exit(retcode)
+        print "[return code=%d]" % retcode
+        if (retcode < 256):
+            sys.exit(retcode)
+        else: # else Linux exits with modulo 256 i.e. possibly zero
+            sys.exit((retcode-1) % 255 + 1) # make sure not zero return
     print output[1]
+    print "[return code=%d]" % retcode
     print_success(command)
     print ""
 
