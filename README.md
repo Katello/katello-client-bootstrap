@@ -51,6 +51,7 @@ Network Classic and get it registered to Foreman & Katello.
 
 * Python2 >= 2.5 or 2.4 with python-simplejson installed
 * subscription-manager (if the machine has no previous subscription)
+* subscription-manager-migration >= 1.14.2 (if the machine is subscribed to Satellite 5 or Red Hat Classic)
 
 # User required inputs
 
