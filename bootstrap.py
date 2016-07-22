@@ -11,6 +11,8 @@ import socket
 import os.path
 import glob
 import shutil
+import rpm
+import rpmUtils.miscutils
 from datetime import datetime
 from optparse import OptionParser
 from urllib import urlencode
@@ -174,6 +176,23 @@ def exec_failexit(command):
     print output[1]
     print_success(command)
     print ""
+
+
+def check_migration_version():
+    required_version = rpmUtils.miscutils.stringToVersion('1.14.2')
+    err = "subscription-manager-migration not found"
+
+    ts = rpm.TransactionSet()
+    mi = ts.dbMatch('name', 'subscription-manager-migration')
+    for h in mi:
+        if rpmUtils.miscutils.compareEVR(rpmUtils.miscutils.stringToVersion(h['evr']), required_version) < 0:
+            err = "%s-%s is too old" % (h['name'], h['evr'])
+        else:
+            err = None
+
+    if err:
+       print_error(err)
+       sys.exit(1)
 
 
 def install_prereqs():
@@ -513,6 +532,7 @@ if options.remove:
 elif check_rhn_registration():
     print_generic('This system is registered to RHN. Attempting to migrate via rhn-classic-migrate-to-rhsm')
     install_prereqs()
+    check_migration_version()
     get_bootstrap_rpm()
     API_PORT = get_api_port()
     if not options.no_foreman:
