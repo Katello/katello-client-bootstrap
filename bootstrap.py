@@ -1,5 +1,4 @@
 #!/usr/bin/python
-#
 
 import getpass
 import urllib2
@@ -16,17 +15,8 @@ from optparse import OptionParser
 from urllib import urlencode
 from ConfigParser import SafeConfigParser
 
-
 def get_architecture():
-    # May not be safe for anything apart from 32/64 bit OS
-    try:
-        is_64bit = sys.maxsize > 2 ** 32
-    except:
-        is_64bit = platform.architecture()[0] == '64bit'
-    if is_64bit:
-        return "x86_64"
-    else:
-        return "x86"
+    return os.uname()[4]
 
 FQDN = socket.getfqdn()
 if FQDN.find(".") != -1:
@@ -161,6 +151,7 @@ def exec_failok(command):
         print_warning(command)
     print output[1]
     print ""
+    return retcode
 
 
 def exec_failexit(command):
@@ -175,12 +166,14 @@ def exec_failexit(command):
     print_success(command)
     print ""
 
+def yum(command, pkgs = ""):
+    exec_failexit("/usr/bin/yum -y %s %s" % (command, pkgs))
 
 def install_prereqs():
     print_generic("Installing subscription manager prerequisites")
-    exec_failexit("/usr/bin/yum -y remove subscription-manager-gnome")
-    exec_failexit("/usr/bin/yum -y install subscription-manager subscription-manager-migration-*")
-    exec_failexit("/usr/bin/yum -y update yum openssl")
+    yum("remove", "subscription-manager-gnome")
+    yum("install", "subscription-manager subscription-manager-migration-*")
+    yum("update", "yum openssl")
 
 
 def get_bootstrap_rpm():
@@ -220,19 +213,19 @@ def unregister_system():
 
 def clean_katello_agent():
     print_generic("Removing old Katello agent and certs")
-    exec_failexit("/usr/bin/yum -y erase katello-ca-consumer-* katello-agent gofer")
+    yum("erase", "katello-ca-consumer-* katello-agent gofer")
 
 
 def install_katello_agent():
     print_generic("Installing the Katello agent")
-    exec_failexit("/usr/bin/yum -y install katello-agent")
+    yum("install", "katello-agent")
     exec_failexit("/sbin/chkconfig goferd on")
     exec_failexit("/sbin/service goferd restart")
 
 
 def clean_puppet():
     print_generic("Cleaning old Puppet Agent")
-    exec_failexit("/usr/bin/yum -y erase puppet")
+    yum("erase", "puppet")
     exec_failexit("rm -rf /var/lib/puppet/")
 
 
@@ -244,7 +237,7 @@ def clean_environment():
 def install_puppet_agent():
     puppet_env = return_puppetenv_for_hg(return_matching_foreman_key('hostgroups', 'title="%s"' % options.hostgroup, 'id', False))
     print_generic("Installing the Puppet Agent")
-    exec_failexit("/usr/bin/yum -y install puppet")
+    yum("install", "puppet")
     exec_failexit("/sbin/chkconfig puppet on")
     puppet_conf = open('/etc/puppet/puppet.conf', 'wb')
     puppet_conf.write("""
@@ -273,21 +266,31 @@ server          = %s
 
 
 def remove_obsolete_packages():
-    pkg_list = "rhn-setup rhn-client-tools yum-rhn-plugin rhnsd rhn-check rhnlib spacewalk-abrt spacewalk-oscap osad rh-*-rhui-client"
     print_generic("Removing old RHN packages")
-    exec_failexit("/usr/bin/yum -y remove %s" % pkg_list)
+    yum("remove", "rhn-setup rhn-client-tools yum-rhn-plugin rhnsd rhn-check rhnlib spacewalk-abrt spacewalk-oscap osad rh-*-rhui-client")
 
 
 def fully_update_the_box():
     print_generic("Fully Updating The Box")
-    exec_failexit("/usr/bin/yum -y update")
+    yum("update")
 
+# a substitute/supplement to urllib2.HTTPErrorProcessor
+# that doesn't raise exceptions on status codes 201,204,206
+class BetterHTTPErrorProcessor(urllib2.BaseHandler):
+    def http_error_201(self, request, response, code, msg, hdrs):
+        return response
+    def http_error_204(self, request, response, code, msg, hdrs):
+        return response
+    def http_error_206(self, request, response, code, msg, hdrs):
+        return response
+opener = urllib2.build_opener(BetterHTTPErrorProcessor)
+urllib2.install_opener(opener)
 
 def call_api(url, data=None, method='GET'):
     try:
         request = urllib2.Request(url)
         if options.verbose:
-            print 'url: %s' % url
+            print 'error: %s - url: %s' % [e, url]
             print 'method: %s' % method
             print 'data: %s' % json.dumps(data, sort_keys=False, indent=2)
         base64string = base64.encodestring('%s:%s' % (options.login, options.password)).strip()
@@ -303,7 +306,7 @@ def call_api(url, data=None, method='GET'):
             print 'result: %s' % json.dumps(jsonresult, sort_keys=False, indent=2)
         return jsonresult
     except urllib2.URLError, e:
-        print 'Error: The following error occured while talking to the API:'
+        print 'An error occured: %s' % e
         print 'url: %s' % url
         if isinstance(e, urllib2.HTTPError):
             print 'code: %s' % e.code
@@ -466,9 +469,10 @@ def prepare_rhel5_migration():
     # doublecheck and copy it manually if not
     if not os.path.exists('/etc/pki/product/'):
         os.mkdir("/etc/pki/product/")
-    if not os.path.exists('/etc/pki/product/69.pem'):
-        for line in open("/usr/share/rhsm/product/RHEL-5/channel-cert-mapping.txt"):
-            if ("rhel-x86_64-server-5:" in line and ARCHITECTURE == "x86_64") or ("rhel-i386-server-5:" in line and ARCHITECTURE == "x86"):
+    mapping_file = "/usr/share/rhsm/product/RHEL-5/channel-cert-mapping.txt"
+    if not os.path.exists('/etc/pki/product/69.pem') and os.path.exists(mapping_file):
+        for line in open(mapping_file):
+            if line.startswith('rhel-%s-server-5' % ARCHITECTURE):
                 cert=line.split(" ")[1]
                 shutil.copy('/usr/share/rhsm/product/RHEL-5/'+cert.strip(), '/etc/pki/product/69.pem')
                 break
@@ -487,7 +491,7 @@ except ImportError:
         import simplejson as json
     except ImportError:
         print_warning("Could neither import json nor simplejson, will try to install simplejson and re-import")
-        exec_failexit("yum install -y python-simplejson")
+        yum("install", "python-simplejson")
         try:
             import simplejson as json
         except ImportError:
