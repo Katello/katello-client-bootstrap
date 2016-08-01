@@ -42,10 +42,10 @@ Network Classic and get it registered to Foreman & Katello.
   auto-signing isnt one of those things you'd leave enabled forever)
 * The Foreman instance is properly prepared and is able to provision systems,
   especially the following is true:
-** The activation key provides access to a Content View
-   which provides Puppet and other client side tooling.
-** The domain of the system is known to Foreman.
-** The hostgroup has the "Host Group" and "Operating System" tabs filled out completelly.
+  * The activation key provides access to a Content View
+    which provides Puppet and other client side tooling.
+  * The domain of the system is known to Foreman.
+  * The hostgroup has the "Host Group" and "Operating System" tabs filled out completelly.
 
 # Dependencies
 
