@@ -514,6 +514,11 @@ def prepare_rhel5_migration():
     if os.path.exists('/etc/sysconfig/rhn/systemid'):
         os.remove('/etc/sysconfig/rhn/systemid')
 
+# Add check for root user. Done here to allow an unprivileged user to run the script
+# to see its various options. 
+if os.getuid() != 0:
+    print_error("This script requires root-level access")
+    sys.exit(1)
 
 # try to import json or simplejson
 # do it at this point in the code to have our custom print and exec functions available
