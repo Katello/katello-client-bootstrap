@@ -310,7 +310,7 @@ def call_api(url, data=None, method='GET'):
     try:
         request = urllib2.Request(url)
         if options.verbose:
-            print 'error: %s - url: %s' % [e, url]
+            print 'url: %s' % url
             print 'method: %s' % method
             print 'data: %s' % json.dumps(data, sort_keys=False, indent=2)
         base64string = base64.encodestring('%s:%s' % (options.login, options.password)).strip()
