@@ -8,6 +8,7 @@ import commands
 import platform
 import socket
 import os.path
+import pwd
 import glob
 import shutil
 import rpm
@@ -80,6 +81,8 @@ parser.add_option("-r", "--release", dest="release", default=RELEASE, help="Spec
 parser.add_option("-R", "--remove-obsolete-packages", dest="removepkgs", action="store_true", help="Remove old Red Hat Network and RHUI Packages (default)", default=True)
 parser.add_option("--no-remove-obsolete-packages", dest="removepkgs", action="store_false", help="Don't remove old Red Hat Network and RHUI Packages")
 parser.add_option("--unmanaged", dest="unmanaged", action="store_true", help="Add the server as unmanaged. Useful to skip provisioning dependencies.")
+parser.add_option("--rex", dest="remote_exec", action="store_true", help="Install Foreman's SSH key for remote execution.", default=False)
+parser.add_option("--rex-user", dest="remote_exec_user", default="root", help="Local user used by Foreman's remote execution feature.")
 (options, args) = parser.parse_args()
 
 if not (options.foreman_fqdn and options.login and (options.remove or (options.org and options.activationkey and (options.no_foreman or (options.hostgroup and options.location))))):
@@ -293,6 +296,33 @@ def remove_obsolete_packages():
 def fully_update_the_box():
     print_generic("Fully Updating The Box")
     yum("update")
+
+
+# curl https://satellite.example.com:9090/ssh/pubkey >> ~/.ssh/authorized_keys
+# sort -u ~/.ssh/authorized_keys
+def install_foreman_ssh_key():
+    userpw = pwd.getpwnam(options.remote_exec_user)
+    foreman_ssh_dir = os.sep.join([userpw.pw_dir,'.ssh'])
+    foreman_ssh_authfile = os.sep.join([foreman_ssh_dir,'authorized_keys'])
+    if not os.path.isdir(foreman_ssh_dir):
+        os.mkdir(foreman_ssh_dir, 0700)
+        os.chown(foreman_ssh_dir, userpw.pw_uid, userpw.pw_gid)
+    try:
+        foreman_ssh_key = urllib2.urlopen("https://%s:9090/ssh/pubkey" % options.foreman_fqdn).read()
+    except HTTPError as e:
+        print_generic("The server was unable to fulfill the request. Error: %s" % e.code)
+    except URLError as e:
+        print_generic("Could not reach the server. Error: %s" % e.reason)
+        return 
+    if os.path.isfile(foreman_ssh_authfile):
+        if foreman_ssh_key in open(foreman_ssh_authfile, 'r').read():
+            print_generic("Foreman's SSH key is already present in %s" % foreman_ssh_authfile)
+            return 
+    with os.fdopen(os.open(foreman_ssh_authfile, os.O_WRONLY | os.O_CREAT, 0600), 'a') as output:
+        output.write(foreman_ssh_key)
+        os.chown(foreman_ssh_authfile, userpw.pw_uid, userpw.pw_gid)
+        print_generic("Foreman's SSH key was added to %s" % foreman_ssh_authfile)
+
 
 # a substitute/supplement to urllib2.HTTPErrorProcessor
 # that doesn't raise exceptions on status codes 201,204,206
@@ -581,3 +611,7 @@ if not options.remove:
 
     if options.removepkgs:
         remove_obsolete_packages()
+
+    if options.remote_exec:
+        install_foreman_ssh_key()
+

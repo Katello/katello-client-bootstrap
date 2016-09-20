@@ -129,4 +129,7 @@ Options:
                         Remove old Red Hat Network Packages
   --unmanaged           Add the server as unmanaged. Useful to skip
                         provisioning dependencies.
+  --rex                 Install Foreman's SSH key for remote execution.
+  --rex-user=REMOTE_EXEC_USER
+                        Local user used by Foreman's remote execution feature.
 ~~~
