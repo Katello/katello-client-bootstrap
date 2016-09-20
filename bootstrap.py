@@ -247,9 +247,10 @@ def install_katello_agent():
 
 
 def clean_puppet():
-    print_generic("Cleaning old Puppet Agent")
-    yum("erase", "puppet")
-    exec_failexit("rm -rf /var/lib/puppet/")
+    print_generic("Cleaning old Puppet Repo")
+    #yum("erase", "puppet")
+    #exec_failexit("rm -rf /var/lib/puppet/")
+    exec_failexit("mv /etc/yum.repos.d/pe_repo.repo{,.bak}")
 
 
 def clean_environment():
@@ -258,27 +259,31 @@ def clean_environment():
 
 
 def install_puppet_agent():
-    puppet_env = return_puppetenv_for_hg(return_matching_foreman_key('hostgroups', 'title="%s"' % options.hostgroup, 'id', False))
+    #puppet_env = return_puppetenv_for_hg(return_matching_foreman_key('hostgroups', 'title="%s"' % options.hostgroup, 'id', False))
     print_generic("Installing the Puppet Agent")
-    yum("install", "puppet")
-    exec_failexit("/sbin/chkconfig puppet on")
+    yum("install", "pe-agent")
+    exec_failexit("/sbin/chkconfig pe-puppet on")
     puppet_conf = open('/etc/puppet/puppet.conf', 'wb')
     puppet_conf.write("""
-[main]
-vardir = /var/lib/puppet
-logdir = /var/log/puppet
-rundir = /var/run/puppet
-ssldir = $vardir/ssl
-
-[agent]
-pluginsync      = true
-report          = true
-ignoreschedules = true
-daemon          = false
-ca_server       = %s
-certname        = %s
-environment     = %s
-server          = %s
+[main]  
+   vardir = /var/opt/lib/pe-puppet  
+   logdir = /var/log/pe-puppet  
+   rundir = /var/run/pe-puppet  
+   basemodulepath = /etc/puppetlabs/puppet/modules:/opt/puppet/share/puppet/modules  
+   user  = pe-puppet  
+   group = pe-puppet  
+   archive_files = true  
+ 
+[agent]  
+   report = true  
+   classfile = \$vardir/classes.txt  
+   localconfig = \$vardir/localconfig  
+   graph = true  
+   pluginsync = true  
+   environment = production  
+   ca_server       = %s  
+   certname        = %s  
+   server          = %s
 """ % (options.foreman_fqdn, FQDN, puppet_env, options.foreman_fqdn))
     puppet_conf.close()
     print_generic("Running Puppet in noop mode to generate SSL certs")
