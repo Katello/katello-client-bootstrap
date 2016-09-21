@@ -252,10 +252,9 @@ def install_katello_agent():
 
 
 def clean_puppet():
-    print_generic("Cleaning old Puppet Repo")
-    #yum("erase", "puppet")
-    #exec_failexit("rm -rf /var/lib/puppet/")
-    exec_failexit("mv /etc/yum.repos.d/pe_repo.repo{,.bak}")
+    print_generic("Cleaning old Puppet Agent")
+    yum("erase", "puppet")
+    exec_failexit("rm -rf /var/lib/puppet/")
 
 
 def clean_environment():
@@ -264,42 +263,33 @@ def clean_environment():
 
 
 def install_puppet_agent():
-    #puppet_env = return_puppetenv_for_hg(return_matching_foreman_key('hostgroups', 'title="%s"' % options.hostgroup, 'id', False))
+    puppet_env = return_puppetenv_for_hg(return_matching_foreman_key('hostgroups', 'title="%s"' % options.hostgroup, 'id', False))
     print_generic("Installing the Puppet Agent")
-    exec_failexit("/usr/sbin/subscription-manager attach --pool=$(/usr/sbin/subscription-manager list --available --matches='Puppet Enterprise' --pool-only) \
-        && /usr/sbin/subscription-manager repos --disable=*-pe-* \
-        && /usr/sbin/subscription-manager repos --enable=%s_Puppet_Enterprise_$(/bin/uname -r | cut -d. -f6)-pe-$(/bin/uname -r | cut -d. -f7) \
-        && /bin/rpm --import https://%s/pub/GPG-KEY-puppetlabs % ( org_label, options.foreman_fqdn ) ")
-    yum("install", "pe-agent")
-    exec_failexit("/sbin/chkconfig pe-puppet on")
-    #systems should already be configured for pe.  if not uncomment this section.
-    #puppet_conf = open('/etc/puppet/puppet.conf', 'wb')
-    #puppet_conf.write("""
-#[main]  
-#   vardir = /var/opt/lib/pe-puppet  
-#   logdir = /var/log/pe-puppet  
-#   rundir = /var/run/pe-puppet  
-#   basemodulepath = /etc/puppetlabs/puppet/modules:/opt/puppet/share/puppet/modules  
-#   user  = pe-puppet  
-#   group = pe-puppet  
-#   archive_files = true  
-# 
-#[agent]  
-#   report = true  
-#   classfile = \$vardir/classes.txt  
-#   localconfig = \$vardir/localconfig  
-#   graph = true  
-#   pluginsync = true  
-#   environment = production  
-#   ca_server       = %s  
-#   certname        = %s  
-#   server          = %s
-#""" % (options.foreman_fqdn, FQDN, puppet_env, options.foreman_fqdn))
-    #puppet_conf.close()
-    #print_generic("Running Puppet in noop mode to generate SSL certs")
-    #print_generic("Visit the UI and approve this certificate via Infrastructure->Capsules")
-    #print_generic("if auto-signing is disabled")
-    #exec_failexit("/usr/bin/puppet agent --test --noop --tags no_such_tag --waitforcert 10")
+    yum("install", "puppet")
+    exec_failexit("/sbin/chkconfig puppet on")
+    puppet_conf = open('/etc/puppet/puppet.conf', 'wb')
+    puppet_conf.write("""
+[main]
+vardir = /var/lib/puppet
+logdir = /var/log/puppet
+rundir = /var/run/puppet
+ssldir = $vardir/ssl
+
+[agent]
+pluginsync      = true
+report          = true
+ignoreschedules = true
+daemon          = false
+ca_server       = %s
+certname        = %s
+environment     = %s
+server          = %s
+""" % (options.foreman_fqdn, FQDN, puppet_env, options.foreman_fqdn))
+    puppet_conf.close()
+    print_generic("Running Puppet in noop mode to generate SSL certs")
+    print_generic("Visit the UI and approve this certificate via Infrastructure->Capsules")
+    print_generic("if auto-signing is disabled")
+    exec_failexit("/usr/bin/puppet agent --test --noop --tags no_such_tag --waitforcert 10")
     exec_failexit("/sbin/service puppet restart")
 
 
