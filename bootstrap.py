@@ -13,6 +13,7 @@ import glob
 import shutil
 import rpm
 import rpmUtils.miscutils
+import os.path
 from datetime import datetime
 from optparse import OptionParser
 from urllib import urlencode
@@ -83,6 +84,7 @@ parser.add_option("--no-remove-obsolete-packages", dest="removepkgs", action="st
 parser.add_option("--unmanaged", dest="unmanaged", action="store_true", help="Add the server as unmanaged. Useful to skip provisioning dependencies.")
 parser.add_option("--rex", dest="remote_exec", action="store_true", help="Install Foreman's SSH key for remote execution.", default=False)
 parser.add_option("--rex-user", dest="remote_exec_user", default="root", help="Local user used by Foreman's remote execution feature.")
+parser.add_option("--pe-server", dest="pe_server_fqdn", help="FQDN of PE Server", metavar="pe_server_fqdn")
 (options, args) = parser.parse_args()
 
 if not (options.foreman_fqdn and options.login and (options.remove or (options.org and options.activationkey and (options.no_foreman or (options.hostgroup and options.location))))):
@@ -118,6 +120,7 @@ if options.verbose:
     print "ORG - %s" % options.org
     print "ACTIVATIONKEY - %s" % options.activationkey
     print "UPDATE - %s" % options.update
+    print "PE Server - %s" % options.pe_server_fqdn
 
 error_colors = {
     'HEADER': '\033[95m',
@@ -232,6 +235,11 @@ def register_systems(org_name, activationkey, release):
 def unregister_system():
     print_generic("Unregistering")
     exec_failexit("/usr/sbin/subscription-manager unregister")
+    
+    
+def enable_satellite_tools():
+    print_generic("Enabling satellite-tools repository for Puppet and Katello agents")
+    exec_failexit("subscription-manager repos --enable=rhel-*-satellite-tools-*-rpms")    
 
 
 def clean_katello_agent():
@@ -250,6 +258,10 @@ def clean_puppet():
     print_generic("Cleaning old Puppet Agent")
     yum("erase", "puppet")
     exec_failexit("rm -rf /var/lib/puppet/")
+    if os.path.isfile('/etc/yum.repos.d/pe_repo.repo.bak'):
+        print_generic("Restoring local PE repo")
+        exec_failexit("mv /etc/yum.repos.d/pe_repo.repo{.bak,}")
+
 
 
 def clean_environment():
@@ -288,10 +300,23 @@ server          = %s
     exec_failexit("/sbin/service puppet restart")
 
 
+def install_pe_agent(org_name):
+    org_label = return_matching_katello_key('organizations', 'name="%s"' % org_name, 'label', False)
+    if os.path.isfile('/etc/yum.repos.d/pe_repo.repo'):
+        exec_failexit("mv /etc/yum.repos.d/pe_repo.repo{,.bak}")
+    exec_failexit("subscription-manager attach --pool=$(subscription-manager list --available --matches='Puppet Enterprise' --pool-only)" )
+    exec_failexit("subscription-manager repos --disable=*-pe-*")
+    exec_failexit("subscription-manager repos --enable=%s_Puppet_Enterprise_$(uname -r | cut -d. -f6)-pe-$(uname -r | cut -d. -f7)" % ( org_label ))
+    print_generic("Installing the PE Agent")
+    yum("install", "pe-agent")
+    exec_failexit("/sbin/chkconfig pe-puppet on")
+    exec_failexit("/usr/local/bin/puppet agent -t --server %s || true" % (options.pe_server_fqdn))
+    exec_failexit("/sbin/service pe-puppet restart")
+
+
 def remove_obsolete_packages():
     print_generic("Removing old RHN packages")
     yum("remove", "rhn-setup rhn-client-tools yum-rhn-plugin rhnsd rhn-check rhnlib spacewalk-abrt spacewalk-oscap osad rh-*-rhui-client")
-
 
 def fully_update_the_box():
     print_generic("Fully Updating The Box")
@@ -600,14 +625,22 @@ else:
     register_systems(options.org, options.activationkey, options.release)
 
 if not options.remove:
+    enable_satellite_tools()
     install_katello_agent()
     if options.update:
         fully_update_the_box()
 
     if not options.no_puppet:
-        if options.force:
-            clean_puppet()
-        install_puppet_agent()
+        if not options.pe_server_fqdn:
+            if options.force:
+                clean_puppet()
+            install_puppet_agent()
+
+    if not options.no_puppet:
+        if options.pe_server_fqdn:
+            if options.force:
+                clean_puppet()
+            install_pe_agent(options.org)
 
     if options.removepkgs:
         remove_obsolete_packages()
