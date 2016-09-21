@@ -302,21 +302,24 @@ def install_pe_agent():
     puppet_conf = open('/etc/puppet/puppet.conf', 'wb')
     puppet_conf.write("""
 [main]
-vardir = /var/lib/puppet
-logdir = /var/log/puppet
-rundir = /var/run/puppet
-ssldir = $vardir/ssl
+vardir = /var/opt/lib/puppet
+logdir = /var/log/pe-puppet
+rundir = /var/run/pe-puppet
+basemodulepath  =   /etc/puppetlabs/puppet/modules:/opt/puppet/share/puppet/modules
+user    =   pe-puppet
+group   =   pe-puppet
+archrive_files = true
 
 [agent]
 pluginsync      = true
 report          = true
 ignoreschedules = true
 daemon          = false
+environment     = production
 ca_server       = %s
 certname        = %s
-environment     = %s
 server          = %s
-""" % (options.foreman_fqdn, FQDN, puppet_env, options.foreman_fqdn))
+""" % (options.pe_server_fqdn, FQDN, options.pe_server_fqdn))
     puppet_conf.close()
     print_generic("Running Puppet in noop mode to generate SSL certs")
     print_generic("Visit the UI and approve this certificate via Infrastructure->Capsules")
