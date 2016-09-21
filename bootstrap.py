@@ -296,6 +296,9 @@ server          = %s
 
 
 def install_pe_agent():
+    pe_repo = Path('/etc/yum.repos.d/pe_repo.repo')
+    if pe_repo.is_file():
+        exec_failexit("mv /etc/yum.repos.d/pe_repo.repo{,.bak}")
     pe_conf = Path('/etc/puppetlabs/puppet/puppet.conf')
     if pe_conf.is_file():
         conf_exists = True
