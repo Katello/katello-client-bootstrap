@@ -85,6 +85,7 @@ parser.add_option("--unmanaged", dest="unmanaged", action="store_true", help="Ad
 parser.add_option("--rex", dest="remote_exec", action="store_true", help="Install Foreman's SSH key for remote execution.", default=False)
 parser.add_option("--rex-user", dest="remote_exec_user", default="root", help="Local user used by Foreman's remote execution feature.")
 parser.add_option("--pe-server", dest="pe_server_fqdn", help="FQDN of PE Server", metavar="pe_server_fqdn")
+parser.add_option("--is-hypervisor", dest="hypervisor", action="store_true", help="Used if system is a RHEV/RHV hypervisor")
 (options, args) = parser.parse_args()
 
 if not (options.foreman_fqdn and options.login and (options.remove or (options.org and options.activationkey and (options.no_foreman or (options.hostgroup and options.location))))):
@@ -348,6 +349,20 @@ def install_foreman_ssh_key():
         os.chown(foreman_ssh_authfile, userpw.pw_uid, userpw.pw_gid)
         print_generic("Foreman's SSH key was added to %s" % foreman_ssh_authfile)
 
+def install_virt_who():
+    print_generic("Installing virt-who")
+    yum("install", "virt-who")
+    exec_failexit("/sbin/chkconfig virt-who on")
+    exec_failexit("/bin/mv /etc/sysconfig/virt-who{,.bak}")
+    virt_who_conf = open('/etc/sysconfig/virt-who', 'wb')
+    virt_who_conf.write("""
+VIRTWHO_DEBUG=0
+VIRTWHO_SATELLITE6=1
+VIRTWHO_LIBVIRT=1
+""")
+    virt_who_conf.close()
+    exec_failexit("/bin/virt-who --one-shot")
+    exec_failexit("/sbin/service virt-who start")
 
 # a substitute/supplement to urllib2.HTTPErrorProcessor
 # that doesn't raise exceptions on status codes 201,204,206
@@ -647,4 +662,7 @@ if not options.remove:
 
     if options.remote_exec:
         install_foreman_ssh_key()
+        
+    if options.hypervisor:
+        install_virt_who()
 
