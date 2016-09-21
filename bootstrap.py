@@ -300,41 +300,15 @@ def install_pe_agent(org_name):
     org_label = return_matching_katello_key('organizations', 'name="%s"' % org_name, 'label', False)
     if os.path.isfile('/etc/yum.repos.d/pe_repo.repo'):
         exec_failexit("mv /etc/yum.repos.d/pe_repo.repo{,.bak}")
-    if os.path.isfile('/etc/puppetlabs/puppet/puppet.conf'):
-        conf_exists = True
     exec_failexit("subscription-manager attach --pool=$(subscription-manager list --available --matches='Puppet Enterprise' --pool-only)" )
     exec_failexit("subscription-manager repos --disable=*-pe-*")
     exec_failexit("subscription-manager repos --enable=%s_Puppet_Enterprise_$(uname -r | cut -d. -f6)-pe-$(uname -r | cut -d. -f7)" % ( org_label ))
     print_generic("Installing the PE Agent")
     yum("install", "pe-agent")
     exec_failexit("/sbin/chkconfig pe-puppet on")
-    if not conf_exists:
-        setup_pe_conf()
+    exec_failexit("/usr/local/bin/puppet agent -t --server %s || true" % (options.pe_server_fqdn))
     exec_failexit("/sbin/service pe-puppet restart")
 
-def setup_pe_conf():
-    puppet_conf = open('/etc/puppetlabs/puppet/puppet.conf', 'wb')
-    puppet_conf.write("""
-[main]
-vardir = /var/opt/lib/puppet
-logdir = /var/log/pe-puppet
-rundir = /var/run/pe-puppet
-basemodulepath  =   /etc/puppetlabs/puppet/modules:/opt/puppet/share/puppet/modules
-user    =   pe-puppet
-group   =   pe-puppet
-archrive_files = true
-
-[agent]
-pluginsync      = true
-report          = true
-ignoreschedules = true
-daemon          = false
-environment     = production
-ca_server       = %s
-certname        = %s
-server          = %s
-""" % (options.pe_server_fqdn, FQDN, options.pe_server_fqdn))
-    puppet_conf.close()
 
 def remove_obsolete_packages():
     print_generic("Removing old RHN packages")
