@@ -353,6 +353,7 @@ def install_virt_who():
     print_generic("Installing virt-who")
     yum("install", "virt-who")
     exec_failexit("/sbin/chkconfig virt-who on")
+    exec_failexit("/bin/mv /etc/sysconfig/virt-who{,.bak}")
     virt_who_conf = open('/etc/sysconfig/virt-who', 'wb')
     puppet_conf.write("""
 VIRTWHO_DEBUG=0
