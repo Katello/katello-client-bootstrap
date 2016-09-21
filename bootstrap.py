@@ -661,7 +661,7 @@ if not options.remove:
     if not options.no_puppet:
         if options.pe_server_fqdn:
             if options.force:
-                clean puppet()
+                clean_puppet()
             install_pe_agent()
 
     if options.removepkgs:
