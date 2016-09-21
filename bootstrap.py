@@ -355,11 +355,11 @@ def install_virt_who():
     exec_failexit("/sbin/chkconfig virt-who on")
     exec_failexit("/bin/mv /etc/sysconfig/virt-who{,.bak}")
     virt_who_conf = open('/etc/sysconfig/virt-who', 'wb')
-    puppet_conf.write("""
+    virt_who_conf.write("""
 VIRTWHO_DEBUG=0
 VIRTWHO_SATELLITE6=1
 VIRTWHO_LIBVIRT=1
-"""
+""")
     virt_who_conf.close()
     exec_failexit("/bin/virt-who --one-shot")
     exec_failexit("/sbin/service virt-who start")
