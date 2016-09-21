@@ -13,6 +13,7 @@ import glob
 import shutil
 import rpm
 import rpmUtils.miscutils
+import os.path
 from datetime import datetime
 from optparse import OptionParser
 from urllib import urlencode
@@ -296,13 +297,11 @@ server          = %s
 
 
 def install_pe_agent():
-    pe_repo = Path('/etc/yum.repos.d/pe_repo.repo')
-    if pe_repo.is_file():
+    if os.path.isfile('/etc/yum.repos.d/pe_repo.repo'):
         exec_failexit("mv /etc/yum.repos.d/pe_repo.repo{,.bak}")
-    pe_conf = Path('/etc/puppetlabs/puppet/puppet.conf')
-    if pe_conf.is_file():
+    if os.path.isfile('/etc/puppetlabs/puppet/puppet.conf'):
         conf_exists = True
-    exec_failexit("subscription-manager attach --pool=$(subscription-manager list --available --match='Puppet Enterprise' --pool-only)" )
+    exec_failexit("subscription-manager attach --pool=$(subscription-manager list --available --matches='Puppet Enterprise' --pool-only)" )
     exec_failexit("subscription-manager repos --disable=*-pe-*")
     exec_failexit("subscription-manager repos --enable=%s_Puppet_Enterprise_$(uname -r | cut -d. -f6)-pe-$(uname -r | cut -d. -f7)" % ( org_label ))
     print_generic("Installing the PE Agent")
