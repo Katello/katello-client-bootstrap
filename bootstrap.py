@@ -302,28 +302,6 @@ def install_pe_agent():
     print_generic("Installing the PE Agent")
     yum("install", "pe-agent")
     exec_failexit("/sbin/chkconfig pe-puppet on")
-    puppet_conf = open('/etc/puppetlabs/puppet/puppet.conf', 'wb')
-    puppet_conf.write("""
-[main]
-vardir = /var/opt/lib/puppet
-logdir = /var/log/pe-puppet
-rundir = /var/run/pe-puppet
-basemodulepath  =   /etc/puppetlabs/puppet/modules:/opt/puppet/share/puppet/modules
-user    =   pe-puppet
-group   =   pe-puppet
-archrive_files = true
-
-[agent]
-pluginsync      = true
-report          = true
-ignoreschedules = true
-daemon          = false
-environment     = production
-ca_server       = %s
-certname        = %s
-server          = %s
-""" % (options.pe_server_fqdn, FQDN, options.pe_server_fqdn))
-    puppet_conf.close()
     exec_failexit("/sbin/service pe-puppet restart")
 
 
