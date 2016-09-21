@@ -137,4 +137,5 @@ Options:
                         Local user used by Foreman's remote execution feature.
   --pe-server=pe_server_fqdn
                         FQDN of PE Server
+  --is-hypervisor       Used if system is a RHEV/RHV hypervisor
 ~~~
