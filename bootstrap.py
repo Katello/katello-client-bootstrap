@@ -296,7 +296,8 @@ server          = %s
     exec_failexit("/sbin/service puppet restart")
 
 
-def install_pe_agent():
+def install_pe_agent(org_name):
+    org_label = return_matching_katello_key('organizations', 'name="%s"' % org_name, 'label', False)
     if os.path.isfile('/etc/yum.repos.d/pe_repo.repo'):
         exec_failexit("mv /etc/yum.repos.d/pe_repo.repo{,.bak}")
     if os.path.isfile('/etc/puppetlabs/puppet/puppet.conf'):
@@ -661,7 +662,7 @@ if not options.remove:
         if options.pe_server_fqdn:
             if options.force:
                 clean_puppet()
-            install_pe_agent()
+            install_pe_agent(options.org)
 
     if options.removepkgs:
         remove_obsolete_packages()
