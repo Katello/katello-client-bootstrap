@@ -295,11 +295,10 @@ server          = %s
     exec_failexit("/sbin/service puppet restart")
 
 def install_pe_agent():
-    puppet_env = return_puppetenv_for_hg(return_matching_foreman_key('hostgroups', 'title="%s"' % options.hostgroup, 'id', False))
-    print_generic("Installing the Puppet Agent")
-    yum("install", "puppet")
-    exec_failexit("/sbin/chkconfig puppet on")
-    puppet_conf = open('/etc/puppet/puppet.conf', 'wb')
+    print_generic("Installing the PE Agent")
+    yum("install", "pe-agent")
+    exec_failexit("/sbin/chkconfig pe-puppet on")
+    puppet_conf = open('/etc/puppetlabs/puppet/puppet.conf', 'wb')
     puppet_conf.write("""
 [main]
 vardir = /var/opt/lib/puppet
@@ -321,11 +320,7 @@ certname        = %s
 server          = %s
 """ % (options.pe_server_fqdn, FQDN, options.pe_server_fqdn))
     puppet_conf.close()
-    print_generic("Running Puppet in noop mode to generate SSL certs")
-    print_generic("Visit the UI and approve this certificate via Infrastructure->Capsules")
-    print_generic("if auto-signing is disabled")
-    exec_failexit("/usr/bin/puppet agent --test --noop --tags no_such_tag --waitforcert 10")
-    exec_failexit("/sbin/service puppet restart")
+    exec_failexit("/sbin/service pe-puppet restart")
 
 
 def remove_obsolete_packages():
