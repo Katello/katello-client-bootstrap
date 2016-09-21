@@ -135,4 +135,6 @@ Options:
   --rex                 Install Foreman's SSH key for remote execution.
   --rex-user=REMOTE_EXEC_USER
                         Local user used by Foreman's remote execution feature.
+  --pe-server=pe_server_fqdn
+                        FQDN of PE Server
 ~~~
