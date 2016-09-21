@@ -83,6 +83,7 @@ parser.add_option("--no-remove-obsolete-packages", dest="removepkgs", action="st
 parser.add_option("--unmanaged", dest="unmanaged", action="store_true", help="Add the server as unmanaged. Useful to skip provisioning dependencies.")
 parser.add_option("--rex", dest="remote_exec", action="store_true", help="Install Foreman's SSH key for remote execution.", default=False)
 parser.add_option("--rex-user", dest="remote_exec_user", default="root", help="Local user used by Foreman's remote execution feature.")
+parser.add_option("--pe-server", dest="pe_server_fqdn", help="FQDN of PE Server", metavar="pe_server_fqdn")
 (options, args) = parser.parse_args()
 
 if not (options.foreman_fqdn and options.login and (options.remove or (options.org and options.activationkey and (options.no_foreman or (options.hostgroup and options.location))))):
@@ -118,6 +119,7 @@ if options.verbose:
     print "ORG - %s" % options.org
     print "ACTIVATIONKEY - %s" % options.activationkey
     print "UPDATE - %s" % options.update
+    print "PE Server - %s" % options.pe_server_fqdn
 
 error_colors = {
     'HEADER': '\033[95m',
@@ -263,6 +265,36 @@ def clean_environment():
 
 
 def install_puppet_agent():
+    puppet_env = return_puppetenv_for_hg(return_matching_foreman_key('hostgroups', 'title="%s"' % options.hostgroup, 'id', False))
+    print_generic("Installing the Puppet Agent")
+    yum("install", "puppet")
+    exec_failexit("/sbin/chkconfig puppet on")
+    puppet_conf = open('/etc/puppet/puppet.conf', 'wb')
+    puppet_conf.write("""
+[main]
+vardir = /var/lib/puppet
+logdir = /var/log/puppet
+rundir = /var/run/puppet
+ssldir = $vardir/ssl
+
+[agent]
+pluginsync      = true
+report          = true
+ignoreschedules = true
+daemon          = false
+ca_server       = %s
+certname        = %s
+environment     = %s
+server          = %s
+""" % (options.foreman_fqdn, FQDN, puppet_env, options.foreman_fqdn))
+    puppet_conf.close()
+    print_generic("Running Puppet in noop mode to generate SSL certs")
+    print_generic("Visit the UI and approve this certificate via Infrastructure->Capsules")
+    print_generic("if auto-signing is disabled")
+    exec_failexit("/usr/bin/puppet agent --test --noop --tags no_such_tag --waitforcert 10")
+    exec_failexit("/sbin/service puppet restart")
+
+def install_pe_agent():
     puppet_env = return_puppetenv_for_hg(return_matching_foreman_key('hostgroups', 'title="%s"' % options.hostgroup, 'id', False))
     print_generic("Installing the Puppet Agent")
     yum("install", "puppet")
@@ -611,9 +643,16 @@ if not options.remove:
         fully_update_the_box()
 
     if not options.no_puppet:
-        if options.force:
-            clean_puppet()
-        install_puppet_agent()
+        if not options.pe_server_fqdn:
+            if options.force:
+                clean_puppet()
+            install_puppet_agent()
+
+    if not options.no_puppet:
+        if options.pe_server_fqdn:
+            if options.force:
+                clean puppet()
+            install_pe_agent()
 
     if options.removepkgs:
         remove_obsolete_packages()
