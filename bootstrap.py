@@ -258,6 +258,10 @@ def clean_puppet():
     print_generic("Cleaning old Puppet Agent")
     yum("erase", "puppet")
     exec_failexit("rm -rf /var/lib/puppet/")
+    if os.path.isfile('/etc/yum.repos.d/pe_repo.repo.bak'):
+        print_generic("Restoring local PE repo")
+        exec_failexit("mv /etc/yum.repos.d/pe_repo.repo{.bak,}")
+
 
 
 def clean_environment():
