@@ -48,6 +48,7 @@ Network Classic and get it registered to Foreman & Katello.
   * The hostgroup has the "Host Group" and "Operating System" tabs filled out completelly.
 * Puppet Enterprise product has been create, with repos synchronized from PE server
   * PE repos should follow the naming convention: el7-pe-x86_64
+* Puppet Enterprise is configured to for auto-sign and deployment of puppet.conf
 
 # Dependencies
 
