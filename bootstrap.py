@@ -294,7 +294,11 @@ server          = %s
     exec_failexit("/usr/bin/puppet agent --test --noop --tags no_such_tag --waitforcert 10")
     exec_failexit("/sbin/service puppet restart")
 
+
 def install_pe_agent():
+    exec_failexit("subscription-manager attach --pool=$(subscription-manager list --available --match='Puppet Enterprise' --pool-only))
+    exec_failexit("subscription-manager repos --disable=*-pe-*")
+    exec_failexit("subscription-manager repos --enable=%s_Puppet_Enterprise_$(uname -r | cut -d. -f6)-pe-$(uname -r | cut -d. -f7)" % ( org_label ))
     print_generic("Installing the PE Agent")
     yum("install", "pe-agent")
     exec_failexit("/sbin/chkconfig pe-puppet on")
@@ -326,7 +330,6 @@ server          = %s
 def remove_obsolete_packages():
     print_generic("Removing old RHN packages")
     yum("remove", "rhn-setup rhn-client-tools yum-rhn-plugin rhnsd rhn-check rhnlib spacewalk-abrt spacewalk-oscap osad rh-*-rhui-client")
-
 
 def fully_update_the_box():
     print_generic("Fully Updating The Box")
