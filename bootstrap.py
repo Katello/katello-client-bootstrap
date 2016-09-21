@@ -296,7 +296,7 @@ server          = %s
 
 
 def install_pe_agent():
-    exec_failexit("subscription-manager attach --pool=$(subscription-manager list --available --match='Puppet Enterprise' --pool-only))
+    exec_failexit("subscription-manager attach --pool=$(subscription-manager list --available --match='Puppet Enterprise' --pool-only)" )
     exec_failexit("subscription-manager repos --disable=*-pe-*")
     exec_failexit("subscription-manager repos --enable=%s_Puppet_Enterprise_$(uname -r | cut -d. -f6)-pe-$(uname -r | cut -d. -f7)" % ( org_label ))
     print_generic("Installing the PE Agent")
