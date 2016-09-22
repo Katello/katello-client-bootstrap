@@ -256,6 +256,11 @@ def clean_environment():
     for key in ['LD_LIBRARY_PATH', 'LD_PRELOAD']:
         os.environ.pop(key, None)
 
+    if FQDN.find(".") != -1 and not os.path.exists('/etc/rhsm/facts/katello.facts'):
+       print_generic("Workaround for FQDN")
+       katellofacts = open('/etc/rhsm/facts/katello.facts','w')
+       katellofacts.write('{"network.hostname":"%s"}\n' % (FQDN))
+       katellofacts.close()
 
 def install_puppet_agent():
     puppet_env = return_puppetenv_for_hg(return_matching_foreman_key('hostgroups', 'title="%s"' % options.hostgroup, 'id', False))
