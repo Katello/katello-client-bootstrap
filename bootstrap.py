@@ -361,7 +361,7 @@ VIRTWHO_SATELLITE6=1
 VIRTWHO_LIBVIRT=1
 """)
     virt_who_conf.close()
-    exec_failexit("/bin/virt-who --one-shot")
+    #exec_failexit("/bin/virt-who --one-shot")
     exec_failexit("/sbin/service virt-who start")
 
 # a substitute/supplement to urllib2.HTTPErrorProcessor
