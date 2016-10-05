@@ -502,6 +502,24 @@ def disassociate_host(host_id):
     print_running("Disassociating host id %s for host %s" % (host_id, FQDN))
     put_json(myurl)
 
+def configure_subscription_manager():
+    configparser = SafeConfigParser()
+    configparser.read('/etc/yum/pluginconf.d/product-id.conf')
+    configparser.get('main', 'enabled')
+    if configparser.get('main','enabled') == '0':
+      print_generic("Product-id yum plugin was disabled. Enabling...")
+      configparser.set('main', 'enabled', '1')
+      with open('/etc/yum/pluginconf.d/product-id.conf','w') as configfile:
+        configparser.write(configfile)
+
+    configparser = SafeConfigParser()
+    configparser.read('/etc/yum/pluginconf.d/subscription-manager.conf')
+    configparser.get('main', 'enabled')
+    if configparser.get('main','enabled') == '0':
+      print_generic("subscription-manager yum plugin was disabled. Enabling...")
+      configparser.set('main', 'enabled', '1')
+      with open('/etc/yum/pluginconf.d/product-id.conf','w') as configfile:
+        configparser.write(configfile)
 
 def check_rhn_registration():
     """Helper function to check if host is registered to legacy RHN."""
@@ -741,6 +759,7 @@ if __name__ == '__main__':
         API_PORT = get_api_port()
         if not options.no_foreman:
             create_host()
+        configure_subscription_manager()
         migrate_systems(options.org, options.activationkey)
         if options.enablerepos:
             enable_repos()
@@ -752,6 +771,7 @@ if __name__ == '__main__':
         API_PORT = get_api_port()
         if not options.no_foreman:
             create_host()
+        configure_subscription_manager()
         register_systems(options.org, options.activationkey, options.release)
         if options.enablerepos:
             enable_repos()
