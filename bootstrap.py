@@ -498,7 +498,6 @@ def disassociate_host(host_id):
 def configure_subscription_manager():
     configparser = SafeConfigParser()
     configparser.read('/etc/yum/pluginconf.d/product-id.conf')
-    configparser.get('main', 'enabled')
     if configparser.get('main','enabled') == '0':
       print_generic("Product-id yum plugin was disabled. Enabling...")
       configparser.set('main', 'enabled', '1')
@@ -507,7 +506,6 @@ def configure_subscription_manager():
 
     configparser = SafeConfigParser()
     configparser.read('/etc/yum/pluginconf.d/subscription-manager.conf')
-    configparser.get('main', 'enabled')
     if configparser.get('main','enabled') == '0':
       print_generic("subscription-manager yum plugin was disabled. Enabling...")
       configparser.set('main', 'enabled', '1')
