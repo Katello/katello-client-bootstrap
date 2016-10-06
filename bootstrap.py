@@ -196,7 +196,7 @@ def install_prereqs():
     print_generic("Installing subscription manager prerequisites")
     yum("remove", "subscription-manager-gnome")
     yum("install", "subscription-manager subscription-manager-migration-*")
-    yum("update", "yum openssl")
+    yum("update", "yum openssl python")
 
 
 def get_bootstrap_rpm():
