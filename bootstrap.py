@@ -503,21 +503,19 @@ def disassociate_host(host_id):
     put_json(myurl)
 
 def configure_subscription_manager():
-    configparser = SafeConfigParser()
-    configparser.read('/etc/yum/pluginconf.d/product-id.conf')
-    if configparser.get('main','enabled') == '0':
+    productidconfig = SafeConfigParser()
+    productidconfig.read('/etc/yum/pluginconf.d/product-id.conf')
+    if productidconfig.get('main','enabled') == '0':
       print_generic("Product-id yum plugin was disabled. Enabling...")
-      configparser.set('main', 'enabled', '1')
-      with open('/etc/yum/pluginconf.d/product-id.conf','w') as configfile:
-        configparser.write(configfile)
-
-    configparser = SafeConfigParser()
-    configparser.read('/etc/yum/pluginconf.d/subscription-manager.conf')
-    if configparser.get('main','enabled') == '0':
+      productidconfig.set('main', 'enabled', '1')
+      productidconfig.write(open('/etc/yum/pluginconf.d/product-id.conf','w')) 
+      
+    submanconfig = SafeConfigParser()
+    submanconfig.read('/etc/yum/pluginconf.d/subscription-manager.conf')
+    if submanconfig.get('main','enabled') == '0':
       print_generic("subscription-manager yum plugin was disabled. Enabling...")
-      configparser.set('main', 'enabled', '1')
-      with open('/etc/yum/pluginconf.d/product-id.conf','w') as configfile:
-        configparser.write(configfile)
+      submanconfig.set('main', 'enabled', '1')
+      submanconfig.write(open('/etc/yum/pluginconf.d/subscription-manager.conf','w')) 
 
 def check_rhn_registration():
     """Helper function to check if host is registered to legacy RHN."""
