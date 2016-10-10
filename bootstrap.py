@@ -83,6 +83,7 @@ parser.add_option("--no-remove-obsolete-packages", dest="removepkgs", action="st
 parser.add_option("--unmanaged", dest="unmanaged", action="store_true", help="Add the server as unmanaged. Useful to skip provisioning dependencies.")
 parser.add_option("--rex", dest="remote_exec", action="store_true", help="Install Foreman's SSH key for remote execution.", default=False)
 parser.add_option("--rex-user", dest="remote_exec_user", default="root", help="Local user used by Foreman's remote execution feature.")
+parser.add_option("--enablerepos", dest="enablerepos", help="Repositories to be enabled via subscription-manager - comma separated", metavar="enablerepos")
 (options, args) = parser.parse_args()
 
 if not (options.foreman_fqdn and options.login and (options.remove or (options.org and options.activationkey and (options.no_foreman or options.hostgroup)))):
@@ -503,6 +504,12 @@ def check_rhn_registration():
     else:
         return False
 
+def enable_repos():
+    for repo in options.enablerepos.split(','):
+      print_running("Enabling repo - %s" % repo)
+      exec_failok("/usr/sbin/subscription-manager repos --enable %s" % repo)
+
+
 
 def get_api_port():
     configparser = SafeConfigParser()
@@ -602,6 +609,8 @@ elif check_rhn_registration():
     if not options.no_foreman:
         create_host()
     migrate_systems(options.org, options.activationkey)
+    if options.enablerepos:
+        enable_repos()
 else:
     print_generic('This system is not registered to RHN. Attempting to register via subscription-manager')
     get_bootstrap_rpm()
@@ -609,6 +618,8 @@ else:
     if not options.no_foreman:
         create_host()
     register_systems(options.org, options.activationkey, options.release)
+    if options.enablerepos:
+        enable_repos()
 
 if not options.remove:
     install_katello_agent()
