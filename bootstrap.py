@@ -505,11 +505,9 @@ def check_rhn_registration():
         return False
 
 def enable_repos():
-    for repo in options.enablerepos.split(','):
-      print_running("Enabling repo - %s" % repo)
-      exec_failok("/usr/sbin/subscription-manager repos --enable %s" % repo)
-
-
+    repostoenable = " ".join(['--enable=%s' % i for i in options.enablerepos.split(',')])
+    print_running("Enabling repositories - %s" % option.enablerepos)
+    exec_failok("subscription-manager repos %s" % repostoenable)
 
 def get_api_port():
     configparser = SafeConfigParser()
