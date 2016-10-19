@@ -506,7 +506,7 @@ def check_rhn_registration():
 
 def enable_repos():
     repostoenable = " ".join(['--enable=%s' % i for i in options.enablerepos.split(',')])
-    print_running("Enabling repositories - %s" % option.enablerepos)
+    print_running("Enabling repositories - %s" % options.enablerepos)
     exec_failok("subscription-manager repos %s" % repostoenable)
 
 def get_api_port():
