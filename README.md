@@ -133,3 +133,10 @@ Options:
   --rex-user=REMOTE_EXEC_USER
                         Local user used by Foreman's remote execution feature.
 ~~~
+
+# For developers:
+
+Use `pydoc ./bootstrap.py` to get the code documentation.
+
+Use `awk -F'# >' 'NF>1 {print $2}' ./bootstrap.py` to see the flow of the script.
+
