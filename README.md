@@ -138,5 +138,5 @@ Options:
 
 Use `pydoc ./bootstrap.py` to get the code documentation.
 
-Use `awk -F\#\# 'NF>1 {print $2}' ./bootstrap.py` to see the flow of the script.
+Use `awk -F'# >' 'NF>1 {print $2}' ./bootstrap.py` to see the flow of the script.
 
