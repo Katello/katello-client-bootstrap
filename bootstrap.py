@@ -4,7 +4,7 @@ Script to register a new host to Foreman/Satellite
 or move it from Satellite 5 to 6.
 
 Use `pydoc ./bootstrap.py` to get the documentation.
-Use `awk -F\#\# 'NF>1 {print $2}' ./bootstrap.py` to see the flow.
+Use `awk -F'# >' 'NF>1 {print $2}' ./bootstrap.py` to see the flow.
 """
 
 import getpass
@@ -24,6 +24,7 @@ from datetime import datetime
 from optparse import OptionParser
 from urllib import urlencode
 from ConfigParser import SafeConfigParser
+
 
 def get_architecture():
     """
@@ -93,9 +94,11 @@ def exec_failexit(command):
     print_success(command)
     print ""
 
-def yum(command, pkgs = ""):
+
+def yum(command, pkgs=""):
     """Helper function to call a yum command on a list of packages."""
     exec_failexit("/usr/bin/yum -y %s %s" % (command, pkgs))
+
 
 def check_migration_version():
     """
@@ -113,8 +116,8 @@ def check_migration_version():
             err = None
 
     if err:
-       print_error(err)
-       sys.exit(1)
+        print_error(err)
+        sys.exit(1)
 
 
 def install_prereqs():
@@ -214,10 +217,11 @@ def clean_environment():
         os.environ.pop(key, None)
 
     if FQDN.find(".") != -1 and not os.path.exists('/etc/rhsm/facts/katello.facts'):
-       print_generic("Workaround for FQDN")
-       katellofacts = open('/etc/rhsm/facts/katello.facts','w')
-       katellofacts.write('{"network.hostname":"%s"}\n' % (FQDN))
-       katellofacts.close()
+        print_generic("Workaround for FQDN")
+        katellofacts = open('/etc/rhsm/facts/katello.facts', 'w')
+        katellofacts.write('{"network.hostname":"%s"}\n' % (FQDN))
+        katellofacts.close()
+
 
 def install_puppet_agent():
     """Install and configure, then enable and start the Puppet Agent"""
@@ -271,8 +275,8 @@ def install_foreman_ssh_key():
     authorized keys file, so that remote execution becomes possible.
     """
     userpw = pwd.getpwnam(options.remote_exec_user)
-    foreman_ssh_dir = os.sep.join([userpw.pw_dir,'.ssh'])
-    foreman_ssh_authfile = os.sep.join([foreman_ssh_dir,'authorized_keys'])
+    foreman_ssh_dir = os.sep.join([userpw.pw_dir, '.ssh'])
+    foreman_ssh_authfile = os.sep.join([foreman_ssh_dir, 'authorized_keys'])
     if not os.path.isdir(foreman_ssh_dir):
         os.mkdir(foreman_ssh_dir, 0700)
         os.chown(foreman_ssh_dir, userpw.pw_uid, userpw.pw_gid)
@@ -282,11 +286,11 @@ def install_foreman_ssh_key():
         print_generic("The server was unable to fulfill the request. Error: %s" % e.code)
     except URLError as e:
         print_generic("Could not reach the server. Error: %s" % e.reason)
-        return 
+        return
     if os.path.isfile(foreman_ssh_authfile):
         if foreman_ssh_key in open(foreman_ssh_authfile, 'r').read():
             print_generic("Foreman's SSH key is already present in %s" % foreman_ssh_authfile)
-            return 
+            return
     with os.fdopen(os.open(foreman_ssh_authfile, os.O_WRONLY | os.O_CREAT, 0600), 'a') as output:
         output.write(foreman_ssh_key)
         os.chown(foreman_ssh_authfile, userpw.pw_uid, userpw.pw_gid)
@@ -300,10 +304,13 @@ class BetterHTTPErrorProcessor(urllib2.BaseHandler):
     """
     def http_error_201(self, request, response, code, msg, hdrs):
         return response
+
     def http_error_204(self, request, response, code, msg, hdrs):
         return response
+
     def http_error_206(self, request, response, code, msg, hdrs):
         return response
+
 
 def call_api(url, data=None, method='GET'):
     """
@@ -321,7 +328,7 @@ def call_api(url, data=None, method='GET'):
         request.add_header("Content-Type", "application/json")
         request.add_header("Accept", "application/json")
         if data:
-           request.add_data(json.dumps(data))
+            request.add_data(json.dumps(data))
         request.get_method = lambda: method
         result = urllib2.urlopen(request)
         jsonresult = json.load(result)
@@ -417,6 +424,7 @@ def return_puppetenv_for_hg(hg_id):
     else:
         return 'production'
 
+
 def create_domain(domain, orgid, locid):
     """
     Call Foreman API to create a network domain associated with the given
@@ -428,6 +436,7 @@ def create_domain(domain, orgid, locid):
         jsondata = json.loads('{"domain": {"name": "%s", "organization_ids": [%s], "location_ids": [%s]}}' % (domain, orgid, locid))
         print_running("Calling Foreman API to create domain %s associated with the org & location" % domain)
         post_json(myurl, jsondata)
+
 
 def create_host():
     """
@@ -445,7 +454,7 @@ def create_host():
             create_domain(DOMAIN, myorgid, mylocid)
 
         mydomainid = return_matching_foreman_key('domains', 'name="%s"' % DOMAIN, 'id', True)
-        if not mydomainid: 
+        if not mydomainid:
             print_generic("Domain %s doesn't exist in Foreman, consider using the --add-domain option." % DOMAIN)
             sys.exit(2)
     else:
@@ -502,11 +511,13 @@ def check_rhn_registration():
     else:
         return False
 
+
 def enable_repos():
     """Enable necessary repositories using subscription-manager."""
     repostoenable = " ".join(['--enable=%s' % i for i in options.enablerepos.split(',')])
     print_running("Enabling repositories - %s" % options.enablerepos)
     exec_failok("subscription-manager repos %s" % repostoenable)
+
 
 def get_api_port():
     """Helper function to get the server port from Subscription Manager."""
@@ -552,8 +563,9 @@ def prepare_rhel5_migration():
     if not os.path.exists('/etc/pki/product/69.pem') and os.path.exists(mapping_file):
         for line in open(mapping_file):
             if line.startswith('rhel-%s-server-5' % ARCHITECTURE):
-                cert=line.split(" ")[1]
-                shutil.copy('/usr/share/rhsm/product/RHEL-5/'+cert.strip(), '/etc/pki/product/69.pem')
+                cert = line.split(" ")[1]
+                shutil.copy('/usr/share/rhsm/product/RHEL-5/' + cert.strip(),
+                            '/etc/pki/product/69.pem')
                 break
 
     # cleanup
@@ -562,27 +574,27 @@ def prepare_rhel5_migration():
 
 if __name__ == '__main__':
 
-    ## Register our better HTTP processor as default opener for URLs.
+    # > Register our better HTTP processor as default opener for URLs.
     opener = urllib2.build_opener(BetterHTTPErrorProcessor)
     urllib2.install_opener(opener)
 
-    ## Gather FQDN, HOSTNAME and DOMAIN.
+    # > Gather FQDN, HOSTNAME and DOMAIN.
     FQDN = socket.getfqdn()
     if FQDN.find(".") != -1:
         HOSTNAME = FQDN.split('.')[0]
-        DOMAIN = FQDN[FQDN.index('.')+1:]
+        DOMAIN = FQDN[FQDN.index('.') + 1:]
     else:
         HOSTNAME = FQDN
         DOMAIN = None
 
-    ## Gather MAC Address.
+    # > Gather MAC Address.
     MAC = None
     try:
         import uuid
         mac1 = uuid.getnode()
         mac2 = uuid.getnode()
         if mac1 == mac2:
-            MAC = ':'.join(("%012X" % mac1)[i:i+2] for i in range(0, 12, 2))
+            MAC = ':'.join(("%012X" % mac1)[i:i + 2] for i in range(0, 12, 2))
     except ImportError:
         if os.path.exists('/sys/class/net/eth0/address'):
             address_files = ['/sys/class/net/eth0/address']
@@ -595,7 +607,7 @@ if __name__ == '__main__':
     if not MAC:
         MAC = "00:00:00:00:00:00"
 
-    ## Gather API port (HTTPS), ARCHITECTURE and (OS) RELEASE
+    # > Gather API port (HTTPS), ARCHITECTURE and (OS) RELEASE
     API_PORT = "443"
     ARCHITECTURE = get_architecture()
     try:
@@ -603,7 +615,7 @@ if __name__ == '__main__':
     except AttributeError:
         RELEASE = platform.dist()[1]
 
-    ## Define and parse the options
+    # > Define and parse the options
     parser = OptionParser()
     parser.add_option("-s", "--server", dest="foreman_fqdn", help="FQDN of Foreman OR Capsule - omit https://", metavar="foreman_fqdn")
     parser.add_option("-l", "--login", dest="login", default='admin', help="Login user for API Calls", metavar="LOGIN")
@@ -635,29 +647,29 @@ if __name__ == '__main__':
     parser.add_option("--enablerepos", dest="enablerepos", help="Repositories to be enabled via subscription-manager - comma separated", metavar="enablerepos")
     (options, args) = parser.parse_args()
 
-    ## Validate that the options make sense or exit with a message.
+    # > Validate that the options make sense or exit with a message.
     if not (options.foreman_fqdn and options.login and (options.remove or (options.org and options.activationkey and (options.no_foreman or options.hostgroup)))):
         print "Must specify server, login, organization, hostgroup, and activation key.  See usage:"
         parser.print_help()
         print "\nExample usage: ./bootstrap.py -l admin -s foreman.example.com -o 'Default Organization' -L 'Default Location' -g My_Hostgroup -a My_Activation_Key"
         sys.exit(1)
 
-    ## Exit if DOMAIN isn't set and Puppet must be installed (without force)
+    # > Exit if DOMAIN isn't set and Puppet must be installed (without force)
     if not DOMAIN and not (options.force or options.no_puppet):
         print "We could not determine the domain of this machine, most probably `hostname -f` does not return the FQDN."
         print "This can lead to Puppet missbehaviour and thus the script will terminate now."
         print "You can override this by passing --force or --skip-puppet"
         sys.exit(1)
 
-    ## Ask for the password if not given as option
+    # > Ask for the password if not given as option
     if not options.password and not options.no_foreman:
         options.password = getpass.getpass("%s's password:" % options.login)
 
-    ## Puppet won't be installed if Foreman Host shall not be created
+    # > Puppet won't be installed if Foreman Host shall not be created
     if options.no_foreman:
         options.no_puppet = True
 
-    ## Output all parameters if verbose.
+    # > Output all parameters if verbose.
     if options.verbose:
         print "HOSTNAME - %s" % HOSTNAME
         print "DOMAIN - %s" % DOMAIN
@@ -674,15 +686,14 @@ if __name__ == '__main__':
         print "ACTIVATIONKEY - %s" % options.activationkey
         print "UPDATE - %s" % options.update
 
-
-    ## Exit if the user isn't root.
+    # > Exit if the user isn't root.
     # Done here to allow an unprivileged user to run the script to see
-    # its various options. 
+    # its various options.
     if os.getuid() != 0:
         print_error("This script requires root-level access")
         sys.exit(1)
 
-    ## Try to import json or simplejson.
+    # > Try to import json or simplejson.
     # do it at this point in the code to have our custom print and exec
     # functions available
     try:
@@ -699,16 +710,16 @@ if __name__ == '__main__':
                 print_error("Could not install python-simplejson")
                 sys.exit(1)
 
-    ## Clean the environment from LD_... variables
+    # > Clean the environment from LD_... variables
     clean_environment()
 
-    ## IF RHEL 5 and not removing, prepare the migration.
+    # > IF RHEL 5 and not removing, prepare the migration.
     if not options.remove and int(RELEASE[0]) == 5:
         prepare_rhel5_migration()
 
     if options.remove:
-        ## IF remove, disassociate/delete host, unregister,
-        ##            uninstall katello and optionally puppet agents
+        # > IF remove, disassociate/delete host, unregister,
+        # >            uninstall katello and optionally puppet agents
         API_PORT = get_api_port()
         unregister_system()
         if not options.no_foreman:
@@ -720,9 +731,9 @@ if __name__ == '__main__':
         if not options.no_puppet:
             clean_puppet()
     elif check_rhn_registration():
-        ## ELIF registered to RHN, install subscription-manager prerequs
-        ##                         get CA RPM, optionally create host,
-        ##                         migrate via rhn-classic-migrate-to-rhsm
+        # > ELIF registered to RHN, install subscription-manager prerequs
+        # >                         get CA RPM, optionally create host,
+        # >                         migrate via rhn-classic-migrate-to-rhsm
         print_generic('This system is registered to RHN. Attempting to migrate via rhn-classic-migrate-to-rhsm')
         install_prereqs()
         check_migration_version()
@@ -734,8 +745,8 @@ if __name__ == '__main__':
         if options.enablerepos:
             enable_repos()
     else:
-        ## ELSE get CA RPM, optionally create host,
-        ##      register via subscription-manager
+        # > ELSE get CA RPM, optionally create host,
+        # >      register via subscription-manager
         print_generic('This system is not registered to RHN. Attempting to register via subscription-manager')
         get_bootstrap_rpm()
         API_PORT = get_api_port()
@@ -746,9 +757,9 @@ if __name__ == '__main__':
             enable_repos()
 
     if not options.remove:
-        ## IF not removing, install Katello agent, optionally update host,
-        ##                  optionally clean and install Puppet agent
-        ##                  optionally remove legacy RHN packages
+        # > IF not removing, install Katello agent, optionally update host,
+        # >                  optionally clean and install Puppet agent
+        # >                  optionally remove legacy RHN packages
         install_katello_agent()
         if options.update:
             fully_update_the_box()
@@ -763,4 +774,3 @@ if __name__ == '__main__':
 
         if options.remote_exec:
             install_foreman_ssh_key()
-
