@@ -101,6 +101,9 @@ if not DOMAIN and not (options.force or options.no_puppet):
 if not options.password and not options.no_foreman:
     options.password = getpass.getpass("%s's password:" % options.login)
 
+if options.legacy_purge and not options.legacy_password:
+    options.legacy_password = getpass.getpass("Legacy User %s's password:" % options.legacy_login)
+
 if options.no_foreman:
     options.no_puppet = True
 
@@ -119,6 +122,8 @@ if options.verbose:
     print "ORG - %s" % options.org
     print "ACTIVATIONKEY - %s" % options.activationkey
     print "UPDATE - %s" % options.update
+    print "LEGACY LOGIN - %s" % options.legacy_login
+    print "LEGACY PASSWORD - %s" % options.legacy_password
 
 error_colors = {
     'HEADER': '\033[95m',
