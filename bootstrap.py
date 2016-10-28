@@ -137,6 +137,15 @@ def get_bootstrap_rpm():
     """
     if options.force:
         clean_katello_agent()
+    ts = rpm.TransactionSet()
+    mi = ts.dbMatch()
+    mi.pattern('name',rpm.RPMMIRE_GLOB,'katello-ca-consumer*')
+    consumer_pkgs = sum(1 for h in mi)
+    if consumer_pkgs > 0:
+        print_generic("A katello-ca-consumer package is already installed. Assuming system is registered")
+        print_generic("To override this behavior, run the script with the --force option. Exiting.")
+        sys.exit(1)
+          
     print_generic("Retrieving Client CA Certificate RPMs")
     exec_failexit("rpm -Uvh http://%s/pub/katello-ca-consumer-latest.noarch.rpm" % options.foreman_fqdn)
 
