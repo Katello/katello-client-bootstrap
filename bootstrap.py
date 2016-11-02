@@ -201,7 +201,7 @@ def check_migration_version():
 def install_prereqs():
     print_generic("Installing subscription manager prerequisites")
     yum("remove", "subscription-manager-gnome")
-    yum("install", "subscription-manager subscription-manager-migration-*")
+    yum("install", "subscription-manager 'subscription-manager-migration-*'")
     yum("update", "yum openssl python")
 
 
@@ -248,7 +248,7 @@ def unregister_system():
 
 def clean_katello_agent():
     print_generic("Removing old Katello agent and certs")
-    yum("erase", "katello-ca-consumer-* katello-agent gofer")
+    yum("erase", "'katello-ca-consumer-*' katello-agent gofer")
 
 
 def install_katello_agent():
@@ -307,7 +307,7 @@ server          = %s
 
 def remove_obsolete_packages():
     print_generic("Removing old RHN packages")
-    yum("remove", "rhn-setup rhn-client-tools yum-rhn-plugin rhnsd rhn-check rhnlib spacewalk-abrt spacewalk-oscap osad rh-*-rhui-client")
+    yum("remove", "rhn-setup rhn-client-tools yum-rhn-plugin rhnsd rhn-check rhnlib spacewalk-abrt spacewalk-oscap osad 'rh-*-rhui-client'")
 
 
 def fully_update_the_box():
