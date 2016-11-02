@@ -64,12 +64,12 @@ parser.add_option("--legacy-password", dest="legacy_password", help="Password fo
 parser.add_option("--legacy-purge", dest="legacy_purge", action="store_true", help="Purge system from the Legacy environment (e.g. Sat5)")
 parser.add_option("-a", "--activationkey", dest="activationkey", help="Activation Key to register the system", metavar="ACTIVATIONKEY")
 parser.add_option("-P", "--skip-puppet", dest="no_puppet", action="store_true", default=False, help="Do not install Puppet")
-parser.add_option("--skip-foreman", dest="no_foreman", action="store_true", default=False, help="Do not create a Foreman host. Implies --skip-puppet.")
+parser.add_option("--skip-foreman", dest="no_foreman", action="store_true", default=False, help="Do not create a Foreman host. Implies --skip-puppet. When using --skip-foreman, you MUST pass the Organization's LABEL, not NAME")
 parser.add_option("-g", "--hostgroup", dest="hostgroup", help="Title of the Hostgroup in Foreman that the host is to be associated with", metavar="HOSTGROUP")
 parser.add_option("-L", "--location", dest="location", help="Title of the Location in Foreman that the host is to be associated with", metavar="LOCATION")
 parser.add_option("-O", "--operatingsystem", dest="operatingsystem", default=None, help="Title of the Operating System in Foreman that the host is to be associated with", metavar="OPERATINGSYSTEM")
 parser.add_option("--partitiontable", dest="partitiontable", default=None, help="Name of the Partition Table in Foreman that the host is to be associated with", metavar="PARTITIONTABLE")
-parser.add_option("-o", "--organization", dest="org", default='Default_Organization', help="Name of the Organization in Foreman that the host is to be associated with", metavar="ORG")
+parser.add_option("-o", "--organization", dest="org", default='Default Organization', help="Name of the Organization in Foreman that the host is to be associated with", metavar="ORG")
 parser.add_option("-S", "--subscription-manager-args", dest="smargs", default="", help="Which additional arguments shall be passed to subscription-manager", metavar="ARGS")
 parser.add_option("--rhn-migrate-args", dest="rhsmargs", default="", help="Which additional arguments shall be passed to rhn-migrate-classic-to-rhsm", metavar="ARGS")
 parser.add_option("-u", "--update", dest="update", action="store_true", help="Fully Updates the System")
@@ -213,7 +213,10 @@ def get_bootstrap_rpm():
 
 
 def migrate_systems(org_name, activationkey):
-    org_label = return_matching_katello_key('organizations', 'name="%s"' % org_name, 'label', False)
+    if options.no_foreman:
+        org_label = org_name
+    else:
+        org_label = return_matching_katello_key('organizations', 'name="%s"' % org_name, 'label', False)
     print_generic("Calling rhn-migrate-classic-to-rhsm")
     options.rhsmargs += " --destination-url=https://%s:%s/rhsm" % (options.foreman_fqdn, API_PORT)
     if options.legacy_purge:
@@ -227,7 +230,10 @@ def migrate_systems(org_name, activationkey):
 
 
 def register_systems(org_name, activationkey, release):
-    org_label = return_matching_katello_key('organizations', 'name="%s"' % org_name, 'label', False)
+    if options.no_foreman:
+        org_label = org_name
+    else:
+        org_label = return_matching_katello_key('organizations', 'name="%s"' % org_name, 'label', False)
     print_generic("Calling subscription-manager")
     options.smargs += " --serverurl=https://%s:%s/rhsm --baseurl=https://%s/pulp/repos" % (options.foreman_fqdn, API_PORT, options.foreman_fqdn)
     if options.force:
