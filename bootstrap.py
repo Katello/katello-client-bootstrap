@@ -258,7 +258,7 @@ server          = %s
 def remove_obsolete_packages():
     """Remove old RHN packages"""
     print_generic("Removing old RHN packages")
-    yum("remove", "rhn-setup rhn-client-tools yum-rhn-plugin rhnsd rhn-check rhnlib spacewalk-abrt spacewalk-oscap osad 'rh-*-rhui-client'")
+    yum("--disableplugin=rhnplugin remove", "rhn-setup rhn-client-tools yum-rhn-plugin rhnsd rhn-check rhnlib spacewalk-abrt spacewalk-oscap osad 'rh-*-rhui-client'")
 
 
 def fully_update_the_box():
