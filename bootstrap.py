@@ -291,10 +291,11 @@ def install_foreman_ssh_key():
         if foreman_ssh_key in open(foreman_ssh_authfile, 'r').read():
             print_generic("Foreman's SSH key is already present in %s" % foreman_ssh_authfile)
             return
-    with os.fdopen(os.open(foreman_ssh_authfile, os.O_WRONLY | os.O_CREAT, 0600), 'a') as output:
-        output.write(foreman_ssh_key)
-        os.chown(foreman_ssh_authfile, userpw.pw_uid, userpw.pw_gid)
-        print_generic("Foreman's SSH key was added to %s" % foreman_ssh_authfile)
+    output = os.fdopen(os.open(foreman_ssh_authfile, os.O_WRONLY | os.O_CREAT, 0600), 'a')
+    output.write(foreman_ssh_key)
+    os.chown(foreman_ssh_authfile, userpw.pw_uid, userpw.pw_gid)
+    print_generic("Foreman's SSH key was added to %s" % foreman_ssh_authfile)
+    output.close()
 
 
 class BetterHTTPErrorProcessor(urllib2.BaseHandler):
