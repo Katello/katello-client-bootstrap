@@ -138,7 +138,7 @@ def get_bootstrap_rpm():
     if options.force:
         clean_katello_agent()
     if os.path.exists('/etc/rhsm/ca/katello-server-ca.pem'):
-        print_generic("A katello CA certificate is already installed. Assuming system is registered")
+        print_generic("A Katello CA certificate is already installed. Assuming system is registered")
         print_generic("To override this behavior, run the script with the --force option. Exiting.")
         sys.exit(1)
           
