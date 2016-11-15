@@ -150,8 +150,10 @@ def migrate_systems(org_name, activationkey):
     """
     Call `rhn-migrate-classic-rhsm` to migrate the machine from Satellite
     5 to 6 using the organization name/label and the given activation key, and
-    configure subscription manager with the baseurl of Satellite6's pulp
-    (TODO why?).
+    configure subscription manager with the baseurl of Satellite6's pulp.
+    This allows the administrator to override the URL provided in the 
+    katello-ca-consumer-latest RPM, which is useful in scenarios where the
+    Capsules/Servers are load-balanced or using subjectAltName certificates.
     If called with "--legacy-purge", uses "legacy-user" and "legacy-password"
     to remove the machine.
     Option "--force" is given further.
@@ -217,7 +219,10 @@ def clean_puppet():
 
 
 def clean_environment():
-    """Undefine `LD_LIBRARY_PATH` and `LD_PRELOAD` (TODO why?)."""
+    """
+    Undefine `LD_LIBRARY_PATH` and `LD_PRELOAD` as many environments
+    have it defined non-sensibly. 
+    """
     for key in ['LD_LIBRARY_PATH', 'LD_PRELOAD']:
         os.environ.pop(key, None)
 
@@ -552,7 +557,12 @@ print "This script is designed to register new systems or to migrate an existing
 
 
 def prepare_rhel5_migration():
-    """Execute specific preparations steps for RHEL 5 (TODO why?)."""
+    """
+    Execute specific preparations steps for RHEL 5. Older releases of RHEL 5
+    did not have a version of rhn-classic-migrate-to-rhsm which supported
+    activation keys. This function allows those systems to get a proper 
+    product certificate.
+    """
     install_prereqs()
 
     # only do the certificate magic if 69.pem is not present
