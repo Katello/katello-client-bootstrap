@@ -94,6 +94,27 @@ def exec_failexit(command):
     print_success(command)
     print ""
 
+def delete_file(filename):
+    """Helper function to delete files."""
+    try:
+        os.remove(filename)
+        print_success("Removing %s" % filename)
+    except OSError, e:
+        print_generic("Error when removing %s - %s" % (filename, e.strerror))
+        print_error("Removing %s" % filename)
+        sys.exit(1)
+
+def delete_directory(directoryname):
+    """Helper function to delete directories."""
+    try:
+        shutil.rmtree(directoryname)
+        print_success("Removing %s" % directoryname)
+    except OSError, e:
+        print_generic("Error when removing %s - %s" % (directoryname, e.strerror))
+        print_error("Removing %s" % directoryname)
+        sys.exit(1)
+
+
 
 def yum(command, pkgs=""):
     """Helper function to call a yum command on a list of packages."""
@@ -198,7 +219,7 @@ def unregister_system():
 def clean_katello_agent():
     """Remove old Katello agent (aka Gofer) and certificate RPMs."""
     print_generic("Removing old Katello agent and certs")
-    exec_failexit("rm -f /etc/rhsm/ca/katello-server-ca.pem")
+    delete_file("/etc/rhsm/ca/katello-server-ca.pem")
     yum("erase", "'katello-ca-consumer-*' katello-agent gofer")
 
 
@@ -214,7 +235,7 @@ def clean_puppet():
     """Remove old Puppet Agent and its configuration"""
     print_generic("Cleaning old Puppet Agent")
     yum("erase", "puppet")
-    exec_failexit("rm -rf /var/lib/puppet/")
+    delete_directory("/var/lib/puppet/")
 
 
 def clean_environment():
@@ -593,7 +614,7 @@ def prepare_rhel5_migration():
 
     # cleanup
     if os.path.exists('/etc/sysconfig/rhn/systemid'):
-        os.remove('/etc/sysconfig/rhn/systemid')
+        delete_file('/etc/sysconfig/rhn/systemid')
 
 if __name__ == '__main__':
 
