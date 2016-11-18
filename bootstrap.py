@@ -170,7 +170,7 @@ def get_bootstrap_rpm():
 
 def migrate_systems(org_name, activationkey):
     """
-    Call `rhn-migrate-classic-rhsm` to migrate the machine from Satellite
+    Call `rhn-migrate-classic-to-rhsm` to migrate the machine from Satellite
     5 to 6 using the organization name/label and the given activation key, and
     configure subscription manager with the baseurl of Satellite6's pulp.
     This allows the administrator to override the URL provided in the 
@@ -178,20 +178,20 @@ def migrate_systems(org_name, activationkey):
     Capsules/Servers are load-balanced or using subjectAltName certificates.
     If called with "--legacy-purge", uses "legacy-user" and "legacy-password"
     to remove the machine.
-    Option "--force" is given further.
+    Option "--force" is always passed so that `rhn-migrate-classic-to-rhsm`
+    does not fail on channels which cannot be mapped either because they
+    are cloned channels, custom channels, or do not exist in the destination.
     """
     if options.no_foreman:
         org_label = org_name
     else:
         org_label = return_matching_katello_key('organizations', 'name="%s"' % org_name, 'label', False)
     print_generic("Calling rhn-migrate-classic-to-rhsm")
-    options.rhsmargs += " --destination-url=https://%s:%s/rhsm" % (options.foreman_fqdn, API_PORT)
+    options.rhsmargs += " --force --destination-url=https://%s:%s/rhsm" % (options.foreman_fqdn, API_PORT)
     if options.legacy_purge:
         options.rhsmargs += " --legacy-user '%s' --legacy-password '%s'" % (options.legacy_login, options.legacy_password)
     else:
         options.rhsmargs += " --keep"
-    if options.force:
-        options.rhsmargs += " --force"
     exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key '%s' %s" % (org_label, activationkey, options.rhsmargs))
     exec_failexit("subscription-manager config --rhsm.baseurl=https://%s/pulp/repos" % options.foreman_fqdn)
 
