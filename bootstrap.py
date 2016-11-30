@@ -14,7 +14,7 @@ import sys
 import commands
 import platform
 import socket
-import os.path
+import os
 import pwd
 import glob
 import shutil
