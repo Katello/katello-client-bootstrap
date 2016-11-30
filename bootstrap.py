@@ -97,6 +97,9 @@ def exec_failexit(command):
 
 def delete_file(filename):
     """Helper function to delete files."""
+    if not os.path.exists(filename):
+        print_generic("%s does not exist - not removing" % filename)
+        return
     try:
         os.remove(filename)
         print_success("Removing %s" % filename)
@@ -108,6 +111,9 @@ def delete_file(filename):
 
 def delete_directory(directoryname):
     """Helper function to delete directories."""
+    if not os.path.exists(directoryname):
+        print_generic("%s does not exist - not removing" % directoryname)
+        return
     try:
         shutil.rmtree(directoryname)
         print_success("Removing %s" % directoryname)
