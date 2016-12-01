@@ -201,6 +201,12 @@ def migrate_systems(org_name, activationkey):
     exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key '%s' %s" % (org_label, activationkey, options.rhsmargs))
     exec_failexit("subscription-manager config --rhsm.baseurl=https://%s/pulp/repos" % options.foreman_fqdn)
 
+    # When rhn-migrate-classic-to-rhsm is called with --keep, it will leave the systemid
+    # file intact, which might confuse the (not yet removed) yum-rhn-plugin.
+    # Move the file to a backup name, so the user can still restore it if needed.
+    if os.path.exists('/etc/sysconfig/rhn/systemid'):
+        os.rename('/etc/sysconfig/rhn/systemid', '/etc/sysconfig/rhn/systemid.bootstrap-bak')
+
 
 def register_systems(org_name, activationkey, release):
     """
