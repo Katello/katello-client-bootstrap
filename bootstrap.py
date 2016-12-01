@@ -175,12 +175,13 @@ def get_bootstrap_rpm():
 
 
 def disable_rhn_plugin():
-    rhnpluginconfig = SafeConfigParser()
-    rhnpluginconfig.read('/etc/yum/pluginconf.d/rhnplugin.conf')
-    if rhnpluginconfig.get('main', 'enabled') == '1':
-        print_generic("RHN yum plugin was enabled. Disabling...")
-        rhnpluginconfig.set('main', 'enabled', '0')
-        rhnpluginconfig.write(open('/etc/yum/pluginconf.d/rhnplugin.conf', 'w'))
+    if os.path.exists('/etc/yum/pluginconf.d/rhnplugin.conf'):
+        rhnpluginconfig = SafeConfigParser()
+        rhnpluginconfig.read('/etc/yum/pluginconf.d/rhnplugin.conf')
+        if rhnpluginconfig.get('main', 'enabled') == '1':
+            print_generic("RHN yum plugin was enabled. Disabling...")
+            rhnpluginconfig.set('main', 'enabled', '0')
+            rhnpluginconfig.write(open('/etc/yum/pluginconf.d/rhnplugin.conf', 'w'))
     if os.path.exists('/etc/sysconfig/rhn/systemid'):
         os.rename('/etc/sysconfig/rhn/systemid', '/etc/sysconfig/rhn/systemid.bootstrap-bak')
 
