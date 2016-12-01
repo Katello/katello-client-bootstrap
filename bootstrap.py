@@ -174,6 +174,17 @@ def get_bootstrap_rpm():
     exec_failexit("rpm -Uvh http://%s/pub/katello-ca-consumer-latest.noarch.rpm" % options.foreman_fqdn)
 
 
+def disable_rhn_plugin():
+    rhnpluginconfig = SafeConfigParser()
+    rhnpluginconfig.read('/etc/yum/pluginconf.d/rhnplugin.conf')
+    if rhnpluginconfig.get('main', 'enabled') == '1':
+        print_generic("RHN yum plugin was enabled. Disabling...")
+        rhnpluginconfig.set('main', 'enabled', '0')
+        rhnpluginconfig.write(open('/etc/yum/pluginconf.d/rhnplugin.conf', 'w'))
+    if os.path.exists('/etc/sysconfig/rhn/systemid'):
+        os.rename('/etc/sysconfig/rhn/systemid', '/etc/sysconfig/rhn/systemid.bootstrap-bak')
+
+
 def migrate_systems(org_name, activationkey):
     """
     Call `rhn-migrate-classic-to-rhsm` to migrate the machine from Satellite
@@ -200,6 +211,11 @@ def migrate_systems(org_name, activationkey):
         options.rhsmargs += " --keep"
     exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key '%s' %s" % (org_label, activationkey, options.rhsmargs))
     exec_failexit("subscription-manager config --rhsm.baseurl=https://%s/pulp/repos" % options.foreman_fqdn)
+
+    # When rhn-migrate-classic-to-rhsm is called with --keep, it will leave the systemid
+    # file intact, which might confuse the (not yet removed) yum-rhn-plugin.
+    # Move the file to a backup name & disable the RHN plugin, so the user can still restore it if needed.
+    disable_rhn_plugin()
 
 
 def register_systems(org_name, activationkey, release):
@@ -630,8 +646,7 @@ def prepare_rhel5_migration():
                 break
 
     # cleanup
-    if os.path.exists('/etc/sysconfig/rhn/systemid'):
-        delete_file('/etc/sysconfig/rhn/systemid')
+    disable_rhn_plugin()
 
 if __name__ == '__main__':
 
