@@ -8,5 +8,5 @@ setup(name='katello-client-bootstrap',
       author='Rich Jerrido',
       author_email='rjerrido@outsidaz.org',
       url='https://github.com/Katello/katello-client-bootstrap',
-      packages=['bootstrap'],
+      scripts=['bootstrap.py'],
      )
