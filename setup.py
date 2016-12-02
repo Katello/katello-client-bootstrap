@@ -2,7 +2,7 @@
 
 from distutils.core import setup
 
-setup(name='Katello Client Bootstrap',
+setup(name='katello-client-bootstrap',
       version='1.2.0',
       description='Bootstrap Script for migrating systems to Foreman & Katello',
       author='Rich Jerrido',
