@@ -742,6 +742,10 @@ if __name__ == '__main__':
     if not options.password and not options.no_foreman:
         options.password = getpass.getpass("%s's password:" % options.login)
 
+    # > If user wants to purge profile from RHN/Satellite 5, credentials are needed.
+    if options.legacy_purge and not options.legacy_password:
+        options.legacy_password = getpass.getpass("Legacy User %s's password:" % options.legacy_login)
+
     # > Puppet won't be installed if Foreman Host shall not be created
     if options.no_foreman:
         options.no_puppet = True
@@ -762,6 +766,8 @@ if __name__ == '__main__':
         print "ORG - %s" % options.org
         print "ACTIVATIONKEY - %s" % options.activationkey
         print "UPDATE - %s" % options.update
+        print "LEGACY LOGIN - %s" % options.legacy_login
+        print "LEGACY PASSWORD - %s" % options.legacy_password
 
     # > Exit if the user isn't root.
     # Done here to allow an unprivileged user to run the script to see
