@@ -62,6 +62,35 @@ Network Classic and get it registered to Foreman & Katello.
 * hostgroup that the client is to be associated with.
 * An Activation Key that provides a content view with access to Puppet and other tools
 
+# Permissions
+
+The script requires certain permissions to work properly. These heavily depend on the amount of enabled features.
+
+By default you will need the following permissions:
+
+* View organizations
+* View locations
+* View domains
+* View subnets
+* View hostgroups
+* View hosts
+* View architectures
+* View partitiontables
+* View operatingsystems
+* Create hosts
+
+These can be easily achieved by giving the user the 'Edit hosts' and 'Viewer' roles.
+
+When using the `--remove` or `--force` options, the following additional permissions (which are part of the 'Edit hosts' role above) are needed:
+
+* Delete hosts
+* Edit hosts
+
+When using the `--add-domain` option, the following additional permission is needed:
+
+* Create domains
+
+When using the `--skip-foreman` option, no user account in Foreman is needed at all.
 
 # Usage:
 
