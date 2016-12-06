@@ -92,6 +92,12 @@ When using the `--add-domain` option, the following additional permission is nee
 
 When using the `--skip-foreman` option, no user account in Foreman is needed at all.
 
+When using the `--legacy-purge` option, a user account on the legacy environment (RHN/Satellite5) is required. The user needs to be an admin of the system in the legacy environment by having any of the following roles:
+
+* organization administrator
+* system group administrator for a system group that the system is a member of
+* granted permissions to the system explicitly via Users-> account-> 'Systems Administered by this User'
+
 # Usage:
 
 ~~~
