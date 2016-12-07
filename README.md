@@ -79,9 +79,9 @@ By default you will need the following permissions:
 * View operatingsystems
 * Create hosts
 
-These can be easily achieved by giving the user the 'Edit hosts' and 'Viewer' roles.
+These can be easily achieved by giving the user the 'Viewer' and 'Edit hosts' roles. Please note that the 'Edit hosts' role also allows to edit and delete hosts (see below), so it might be too permissive, depending on the environment.
 
-When using the `--remove` or `--force` options, the following additional permissions (which are part of the 'Edit hosts' role above) are needed:
+When using the `--remove` or `--force` options, the following additional permissions are needed:
 
 * Delete hosts
 * Edit hosts
