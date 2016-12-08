@@ -62,6 +62,41 @@ Network Classic and get it registered to Foreman & Katello.
 * hostgroup that the client is to be associated with.
 * An Activation Key that provides a content view with access to Puppet and other tools
 
+# Permissions
+
+The script requires certain permissions to work properly. These heavily depend on the amount of enabled features.
+
+By default you will need the following permissions:
+
+* View organizations
+* View locations
+* View domains
+* View subnets
+* View hostgroups
+* View hosts
+* View architectures
+* View partitiontables
+* View operatingsystems
+* Create hosts
+
+These can be easily achieved by giving the user the 'Viewer' and 'Edit hosts' roles. Please note that the 'Edit hosts' role also allows to edit and delete hosts (see below), so it might be too permissive, depending on the environment.
+
+When using the `--remove` or `--force` options, the following additional permissions are needed:
+
+* Delete hosts
+* Edit hosts
+
+When using the `--add-domain` option, the following additional permission is needed:
+
+* Create domains
+
+When using the `--skip-foreman` option, no user account in Foreman is needed at all.
+
+When using the `--legacy-purge` option, a user account on the legacy environment (RHN/Satellite5) is required. The user needs to be an admin of the system in the legacy environment by having any of the following roles:
+
+* organization administrator
+* system group administrator for a system group that the system is a member of
+* granted permissions to the system explicitly via Users-> account-> 'Systems Administered by this User'
 
 # Usage:
 
