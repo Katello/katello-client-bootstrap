@@ -191,7 +191,7 @@ def migrate_systems(org_name, activationkey):
     Call `rhn-migrate-classic-to-rhsm` to migrate the machine from Satellite
     5 to 6 using the organization name/label and the given activation key, and
     configure subscription manager with the baseurl of Satellite6's pulp.
-    This allows the administrator to override the URL provided in the 
+    This allows the administrator to override the URL provided in the
     katello-ca-consumer-latest RPM, which is useful in scenarios where the
     Capsules/Servers are load-balanced or using subjectAltName certificates.
     If called with "--legacy-purge", uses "legacy-user" and "legacy-password"
@@ -267,13 +267,17 @@ def clean_puppet():
 def clean_environment():
     """
     Undefine `LD_LIBRARY_PATH` and `LD_PRELOAD` as many environments
-    have it defined non-sensibly. 
+    have it defined non-sensibly.
     """
     for key in ['LD_LIBRARY_PATH', 'LD_PRELOAD']:
         os.environ.pop(key, None)
 
     if FQDN.find(".") != -1 and not os.path.exists('/etc/rhsm/facts/katello.facts'):
         print_generic("Workaround for FQDN")
+        if not os.path.isdir('/etc/rhsm'):
+            os.mkdir('/etc/rhsm', 0755)
+        if not os.path.isdir('/etc/rhsm/facts'):
+            os.mkdir('/etc/rhsm/facts', 0755)
         katellofacts = open('/etc/rhsm/facts/katello.facts', 'w')
         katellofacts.write('{"network.hostname":"%s"}\n' % (FQDN))
         katellofacts.close()
@@ -606,7 +610,7 @@ def prepare_rhel5_migration():
     """
     Execute specific preparations steps for RHEL 5. Older releases of RHEL 5
     did not have a version of rhn-classic-migrate-to-rhsm which supported
-    activation keys. This function allows those systems to get a proper 
+    activation keys. This function allows those systems to get a proper
     product certificate.
     """
     install_prereqs()
