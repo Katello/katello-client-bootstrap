@@ -156,6 +156,7 @@ def install_prereqs():
     yum("remove", "subscription-manager-gnome")
     yum("install", "subscription-manager 'subscription-manager-migration-*'")
     yum("update", "yum openssl python")
+    exec_failexit("/sbin/chkconfig rhsmcertd on")
     generate_katello_facts()
 
 
