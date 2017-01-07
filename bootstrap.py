@@ -569,6 +569,8 @@ def create_host():
         jsondata['host']['location_id'] = mylocid
     if mydomainid:
         jsondata['host']['domain_id'] = mydomainid
+    if options.ip:
+        jsondata['host']['ip'] = options.ip
     myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/hosts/"
     if options.force and host_id is not None:
         disassociate_host(host_id)
@@ -754,6 +756,7 @@ if __name__ == '__main__':
     parser.add_option("--rex-user", dest="remote_exec_user", default="root", help="Local user used by Foreman's remote execution feature.")
     parser.add_option("--enablerepos", dest="enablerepos", help="Repositories to be enabled via subscription-manager - comma separated", metavar="enablerepos")
     parser.add_option("--skip", dest="skip", action="append", help="Skip the listed steps (choices: %s)" % SKIP_STEPS, choices=SKIP_STEPS, default=[])
+    parser.add_option("--ip", dest="ip", help="IP address")
     (options, args) = parser.parse_args()
 
     if options.no_foreman:
