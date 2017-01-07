@@ -808,6 +808,18 @@ if __name__ == '__main__':
         print "\t--skip-puppet - to omit installing the puppet agent"
         sys.exit(1)
 
+    # > Gather primary IP address if none was given
+    # we do this *after* parsing options to find the IP on the interface
+    # towards the Foreman instance in the case the machine has multiple
+    if not options.ip:
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect((options.foreman_fqdn, 80))
+            options.ip = s.getsockname()[0]
+            s.close()
+        except:
+            options.ip = None
+
     # > Ask for the password if not given as option
     if not options.password and 'foreman' not in options.skip:
         options.password = getpass.getpass("%s's password:" % options.login)
@@ -829,6 +841,7 @@ if __name__ == '__main__':
         print "FQDN - %s" % FQDN
         print "RELEASE - %s" % RELEASE
         print "MAC - %s" % MAC
+        print "IP - %s" % options.ip
         print "foreman_fqdn - %s" % options.foreman_fqdn
         print "LOGIN - %s" % options.login
         print "PASSWORD - %s" % options.password
