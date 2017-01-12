@@ -187,6 +187,14 @@ def disable_rhn_plugin():
         os.rename('/etc/sysconfig/rhn/systemid', '/etc/sysconfig/rhn/systemid.bootstrap-bak')
 
 
+def enable_rhsmcertd():
+    """
+    Enable and restart the rhsmcertd service
+    """
+    exec_failexit("/sbin/chkconfig rhsmcertd on")
+    exec_failexit("/sbin/service rhsmcertd restart")
+
+
 def migrate_systems(org_name, activationkey):
     """
     Call `rhn-migrate-classic-to-rhsm` to migrate the machine from Satellite
@@ -213,6 +221,7 @@ def migrate_systems(org_name, activationkey):
         options.rhsmargs += " --keep"
     exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key '%s' %s" % (org_label, activationkey, options.rhsmargs))
     exec_failexit("subscription-manager config --rhsm.baseurl=https://%s/pulp/repos" % options.foreman_fqdn)
+    enable_rhsmcertd()
 
     # When rhn-migrate-classic-to-rhsm is called with --keep, it will leave the systemid
     # file intact, which might confuse the (not yet removed) yum-rhn-plugin.
@@ -235,6 +244,7 @@ def register_systems(org_name, activationkey, release):
     if options.force:
         options.smargs += " --force"
     exec_failexit("/usr/sbin/subscription-manager register --org '%s' --name '%s' --activationkey '%s' %s" % (org_label, FQDN, activationkey, options.smargs))
+    enable_rhsmcertd()
 
 
 def unregister_system():
