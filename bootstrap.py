@@ -73,7 +73,7 @@ def exec_failok(command):
     """Helper function to call a command with only warning if failing."""
     print_running(command)
     output = commands.getstatusoutput(command)
-    retcode = output[0]
+    retcode = output[0] >> 8
     if retcode != 0:
         print_warning(command)
     print output[1]
@@ -85,7 +85,7 @@ def exec_failexit(command):
     """Helper function to call a command with error and exit if failing."""
     print_running(command)
     output = commands.getstatusoutput(command)
-    retcode = output[0]
+    retcode = output[0] >> 8
     if retcode != 0:
         print_error(command)
         print output[1]
@@ -582,7 +582,7 @@ def configure_subscription_manager():
 def check_rhn_registration():
     """Helper function to check if host is registered to legacy RHN."""
     if os.path.exists('/etc/sysconfig/rhn/systemid'):
-        retcode = commands.getstatusoutput('rhn-channel -l')[0]
+        retcode = commands.getstatusoutput('rhn-channel -l')[0] >> 8
         return retcode == 0
     else:
         return False
