@@ -723,7 +723,7 @@ if __name__ == '__main__':
     except AttributeError:
         RELEASE = platform.dist()[1]
 
-    SKIP_STEPS = ['foreman', 'puppet']
+    SKIP_STEPS = ['foreman', 'puppet', 'migration']
 
     # > Define and parse the options
     parser = OptionParser()
@@ -866,7 +866,7 @@ if __name__ == '__main__':
         clean_katello_agent()
         if not 'puppet' in options.skip:
             clean_puppet()
-    elif check_rhn_registration():
+    elif check_rhn_registration() and not 'migration' in options.skip:
         # > ELIF registered to RHN, install subscription-manager prerequs
         # >                         get CA RPM, optionally create host,
         # >                         migrate via rhn-classic-migrate-to-rhsm
