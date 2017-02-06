@@ -156,7 +156,8 @@ def install_prereqs():
     print_generic("Installing subscription manager prerequisites")
     yum("remove", "subscription-manager-gnome")
     yum("install", "subscription-manager 'subscription-manager-migration-*'")
-    yum("update", "yum openssl python")
+    if not 'prereq-update' in options.skip:
+        yum("update", "yum openssl python")
     generate_katello_facts()
 
 
@@ -723,7 +724,7 @@ if __name__ == '__main__':
     except AttributeError:
         RELEASE = platform.dist()[1]
 
-    SKIP_STEPS = ['foreman', 'puppet', 'migration']
+    SKIP_STEPS = ['foreman', 'puppet', 'migration', 'prereq-update']
 
     # > Define and parse the options
     parser = OptionParser()
