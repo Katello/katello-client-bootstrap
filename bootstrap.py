@@ -156,7 +156,7 @@ def install_prereqs():
     print_generic("Installing subscription manager prerequisites")
     yum("remove", "subscription-manager-gnome")
     yum("install", "subscription-manager 'subscription-manager-migration-*'")
-    if not 'prereq-update' in options.skip:
+    if 'prereq-update' not in options.skip:
         yum("update", "yum openssl python")
     generate_katello_facts()
 
@@ -794,7 +794,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     # > Ask for the password if not given as option
-    if not options.password and not 'foreman' in options.skip:
+    if not options.password and 'foreman' not in options.skip:
         options.password = getpass.getpass("%s's password:" % options.login)
 
     # > If user wants to purge profile from RHN/Satellite 5, credentials are needed.
@@ -864,15 +864,15 @@ if __name__ == '__main__':
         # >            uninstall katello and optionally puppet agents
         API_PORT = get_api_port()
         unregister_system()
-        if not 'foreman' in options.skip:
+        if 'foreman' not in options.skip:
             host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', True)
             if host_id is not None:
                 disassociate_host(host_id)
                 delete_host(host_id)
         clean_katello_agent()
-        if not 'puppet' in options.skip:
+        if 'puppet' not in options.skip:
             clean_puppet()
-    elif check_rhn_registration() and not 'migration' in options.skip:
+    elif check_rhn_registration() and 'migration' not in options.skip:
         # > ELIF registered to RHN, install subscription-manager prerequs
         # >                         get CA RPM, optionally create host,
         # >                         migrate via rhn-classic-migrate-to-rhsm
@@ -881,7 +881,7 @@ if __name__ == '__main__':
         check_migration_version()
         get_bootstrap_rpm()
         API_PORT = get_api_port()
-        if not 'foreman' in options.skip:
+        if 'foreman' not in options.skip:
             create_host()
         configure_subscription_manager()
         migrate_systems(options.org, options.activationkey)
@@ -893,7 +893,7 @@ if __name__ == '__main__':
         print_generic('This system is not registered to RHN. Attempting to register via subscription-manager')
         get_bootstrap_rpm()
         API_PORT = get_api_port()
-        if not 'foreman' in options.skip:
+        if 'foreman' not in options.skip:
             create_host()
         configure_subscription_manager()
         register_systems(options.org, options.activationkey, options.release)
@@ -908,7 +908,7 @@ if __name__ == '__main__':
         if options.update:
             fully_update_the_box()
 
-        if not 'puppet' in options.skip:
+        if 'puppet' not in options.skip:
             if options.force:
                 clean_puppet()
             install_puppet_agent()
