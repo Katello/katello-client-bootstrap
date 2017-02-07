@@ -351,9 +351,9 @@ def install_foreman_ssh_key():
         os.chown(foreman_ssh_dir, userpw.pw_uid, userpw.pw_gid)
     try:
         foreman_ssh_key = urllib2.urlopen("https://%s:9090/ssh/pubkey" % options.foreman_fqdn).read()
-    except HTTPError, e:
+    except urllib2.HTTPError, e:
         print_generic("The server was unable to fulfill the request. Error: %s" % e.code)
-    except URLError, e:
+    except urllib2.URLError, e:
         print_generic("Could not reach the server. Error: %s" % e.reason)
         return
     if os.path.isfile(foreman_ssh_authfile):
