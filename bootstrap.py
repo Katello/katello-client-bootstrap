@@ -724,7 +724,7 @@ if __name__ == '__main__':
     except AttributeError:
         RELEASE = platform.dist()[1]
 
-    SKIP_STEPS = ['foreman', 'puppet', 'migration', 'prereq-update']
+    SKIP_STEPS = ['foreman', 'puppet', 'migration', 'prereq-update', 'katello-agent']
 
     # > Define and parse the options
     parser = OptionParser()
@@ -869,7 +869,8 @@ if __name__ == '__main__':
             if host_id is not None:
                 disassociate_host(host_id)
                 delete_host(host_id)
-        clean_katello_agent()
+        if 'katello-agent' not in options.skip:
+            clean_katello_agent()
         if 'puppet' not in options.skip:
             clean_puppet()
     elif check_rhn_registration() and 'migration' not in options.skip:
@@ -904,7 +905,8 @@ if __name__ == '__main__':
         # > IF not removing, install Katello agent, optionally update host,
         # >                  optionally clean and install Puppet agent
         # >                  optionally remove legacy RHN packages
-        install_katello_agent()
+        if 'katello-agent' not in options.skip:
+            install_katello_agent()
         if options.update:
             fully_update_the_box()
 
