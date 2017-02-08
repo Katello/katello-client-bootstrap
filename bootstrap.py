@@ -750,7 +750,10 @@ if __name__ == '__main__':
     #        foreman_fqdn
     if not ((options.remove and (options.no_foreman or options.foreman_fqdn)) or
             (options.foreman_fqdn and options.org and options.activationkey and (options.no_foreman or options.hostgroup))):
-        print "Must specify server, login, organization, hostgroup, and activation key.  See usage:"
+        if not options.remove:
+            print "Must specify server, login, organization, hostgroup and activation key.  See usage:"
+        else:
+            print "Must specify server.  See usage:"
         parser.print_help()
         print "\nExample usage: ./bootstrap.py -l admin -s foreman.example.com -o 'Default Organization' -L 'Default Location' -g My_Hostgroup -a My_Activation_Key"
         sys.exit(1)
