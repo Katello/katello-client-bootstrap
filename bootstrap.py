@@ -174,7 +174,7 @@ def get_bootstrap_rpm():
         sys.exit(1)
 
     if options.download_method == "https":
-        print_generic("Writing custom Curl configuration to allow download via HTTPS without certificate verification")
+        print_generic("Writing custom cURL configuration to allow download via HTTPS without certificate verification")
         curl_config_dir = tempfile.mkdtemp()
         curl_config = open(("%s/.curlrc" % curl_config_dir),'wb')
         curl_config.write("insecure")
@@ -182,7 +182,7 @@ def get_bootstrap_rpm():
         os.environ["CURL_HOME"] = curl_config_dir
         print_generic("Retrieving Client CA Certificate RPMs")
         exec_failexit("rpm -Uvh https://%s/pub/katello-ca-consumer-latest.noarch.rpm" % options.foreman_fqdn)
-        print_generic("Deleting Curl configuration")
+        print_generic("Deleting cURL configuration")
         delete_directory(curl_config_dir)
         os.environ.pop("CURL_HOME", None)
     else:
