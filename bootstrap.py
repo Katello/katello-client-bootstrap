@@ -20,6 +20,7 @@ import glob
 import shutil
 import rpm
 import rpmUtils.miscutils
+import tempfile
 from datetime import datetime
 from optparse import OptionParser
 from urllib import urlencode
@@ -162,6 +163,7 @@ def install_prereqs():
 def get_bootstrap_rpm():
     """
     Retrieve Client CA Certificate RPMs from the Satellite 6 server.
+    Uses --insecure options to curl(1) if instructed to download via HTTPS
     If called with --force, calls clean_katello_agent().
     """
     if options.force:
@@ -171,8 +173,21 @@ def get_bootstrap_rpm():
         print_generic("To override this behavior, run the script with the --force option. Exiting.")
         sys.exit(1)
 
-    print_generic("Retrieving Client CA Certificate RPMs")
-    exec_failexit("rpm -Uvh http://%s/pub/katello-ca-consumer-latest.noarch.rpm" % options.foreman_fqdn)
+    if options.download_method == "https":
+        print_generic("Writing custom cURL configuration to allow download via HTTPS without certificate verification")
+        curl_config_dir = tempfile.mkdtemp()
+        curl_config = open((os.path.join(curl_config_dir, '.curlrc'), 'wb')
+        curl_config.write("insecure")
+        curl_config.close()
+        os.environ["CURL_HOME"] = curl_config_dir
+        print_generic("Retrieving Client CA Certificate RPMs")
+        exec_failexit("rpm -Uvh https://%s/pub/katello-ca-consumer-latest.noarch.rpm" % options.foreman_fqdn)
+        print_generic("Deleting cURL configuration")
+        delete_directory(curl_config_dir)
+        os.environ.pop("CURL_HOME", None)
+    else:
+        print_generic("Retrieving Client CA Certificate RPMs")
+        exec_failexit("rpm -Uvh http://%s/pub/katello-ca-consumer-latest.noarch.rpm" % options.foreman_fqdn)
 
 
 def disable_rhn_plugin():
@@ -733,6 +748,7 @@ if __name__ == '__main__':
     parser.add_option("--remove", dest="remove", action="store_true", help="Instead of registring the machine to Foreman remove it")
     parser.add_option("-r", "--release", dest="release", default=RELEASE, help="Specify release version")
     parser.add_option("-R", "--remove-obsolete-packages", dest="removepkgs", action="store_true", help="Remove old Red Hat Network and RHUI Packages (default)", default=True)
+    parser.add_option("--download-method", dest="download_method", default="http", help="Method to download katello-ca-consumer package (e.g. http or https)", metavar="DOWNLOADMETHOD", choices=['http', 'https'])
     parser.add_option("--no-remove-obsolete-packages", dest="removepkgs", action="store_false", help="Don't remove old Red Hat Network and RHUI Packages")
     parser.add_option("--unmanaged", dest="unmanaged", action="store_true", help="Add the server as unmanaged. Useful to skip provisioning dependencies.")
     parser.add_option("--rex", dest="remote_exec", action="store_true", help="Install Foreman's SSH key for remote execution.", default=False)
@@ -798,6 +814,7 @@ if __name__ == '__main__':
         print "UPDATE - %s" % options.update
         print "LEGACY LOGIN - %s" % options.legacy_login
         print "LEGACY PASSWORD - %s" % options.legacy_password
+        print "DOWNLOAD METHOD - %s" % options.download_method
 
     # > Exit if the user isn't root.
     # Done here to allow an unprivileged user to run the script to see
