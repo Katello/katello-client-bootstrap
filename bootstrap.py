@@ -20,6 +20,7 @@ import glob
 import shutil
 import rpm
 import rpmUtils.miscutils
+import tempfile
 from datetime import datetime
 from optparse import OptionParser
 from urllib import urlencode
@@ -162,6 +163,7 @@ def install_prereqs():
 def get_bootstrap_rpm():
     """
     Retrieve Client CA Certificate RPMs from the Satellite 6 server.
+    Uses --insecure options to curl(1) to download via HTTPS
     If called with --force, calls clean_katello_agent().
     """
     if options.force:
@@ -171,8 +173,17 @@ def get_bootstrap_rpm():
         print_generic("To override this behavior, run the script with the --force option. Exiting.")
         sys.exit(1)
 
+    print_generic("Writing custom Curl configuration to allow download via HTTPS without certificate verification")
+    curl_config_dir = tempfile.mkdtemp()
+    curl_config = open(("%s/.curlrc" % curl_config_dir),'wb')
+    curl_config.write("insecure")
+    curl_config.close()
+    os.environ["CURL_HOME"] = curl_config_dir
     print_generic("Retrieving Client CA Certificate RPMs")
-    exec_failexit("rpm -Uvh http://%s/pub/katello-ca-consumer-latest.noarch.rpm" % options.foreman_fqdn)
+    exec_failexit("rpm -Uvh https://%s/pub/katello-ca-consumer-latest.noarch.rpm" % options.foreman_fqdn)
+    print_generic("Deleting Curl configuration")
+    delete_directory(curl_config_dir)
+    os.environ.pop("CURL_HOME", None)
 
 
 def disable_rhn_plugin():
