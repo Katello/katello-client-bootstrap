@@ -741,8 +741,22 @@ if __name__ == '__main__':
     (options, args) = parser.parse_args()
 
     # > Validate that the options make sense or exit with a message.
-    if not (options.foreman_fqdn and options.login and (options.remove or (options.org and options.activationkey and (options.no_foreman or options.hostgroup)))):
-        print "Must specify server, login, organization, hostgroup, and activation key.  See usage:"
+    # the logic is as follows:
+    #   if mode = create:
+    #     foreman_fqdn
+    #     org
+    #     activation_key
+    #     if foreman:
+    #       hostgroup
+    #   else if mode = remove:
+    #     if removing from foreman:
+    #        foreman_fqdn
+    if not ((options.remove and (options.no_foreman or options.foreman_fqdn)) or
+            (options.foreman_fqdn and options.org and options.activationkey and (options.no_foreman or options.hostgroup))):
+        if not options.remove:
+            print "Must specify server, login, organization, hostgroup and activation key.  See usage:"
+        else:
+            print "Must specify server.  See usage:"
         parser.print_help()
         print "\nExample usage: ./bootstrap.py -l admin -s foreman.example.com -o 'Default Organization' -L 'Default Location' -g My_Hostgroup -a My_Activation_Key"
         sys.exit(1)
