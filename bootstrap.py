@@ -163,7 +163,7 @@ def install_prereqs():
 def get_bootstrap_rpm():
     """
     Retrieve Client CA Certificate RPMs from the Satellite 6 server.
-    Uses --insecure options to curl(1) to download via HTTPS
+    Uses --insecure options to curl(1) if instructed to download via HTTPS
     If called with --force, calls clean_katello_agent().
     """
     if options.force:
@@ -176,7 +176,7 @@ def get_bootstrap_rpm():
     if options.download_method == "https":
         print_generic("Writing custom cURL configuration to allow download via HTTPS without certificate verification")
         curl_config_dir = tempfile.mkdtemp()
-        curl_config = open(("%s/.curlrc" % curl_config_dir),'wb')
+        curl_config = open((os.path.join(curl_config_dir, '.curlrc'), 'wb')
         curl_config.write("insecure")
         curl_config.close()
         os.environ["CURL_HOME"] = curl_config_dir
