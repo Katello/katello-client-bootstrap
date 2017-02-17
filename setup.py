@@ -10,4 +10,4 @@ setup(name='katello-client-bootstrap',
       license='GPL-2',
       url='https://github.com/Katello/katello-client-bootstrap',
       scripts=['bootstrap.py'],
-     )
+      )
