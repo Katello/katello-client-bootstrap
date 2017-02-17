@@ -176,7 +176,7 @@ def get_bootstrap_rpm():
     if options.download_method == "https":
         print_generic("Writing custom cURL configuration to allow download via HTTPS without certificate verification")
         curl_config_dir = tempfile.mkdtemp()
-        curl_config = open((os.path.join(curl_config_dir, '.curlrc'), 'wb')
+        curl_config = open((os.path.join(curl_config_dir, '.curlrc'), 'wb'))
         curl_config.write("insecure")
         curl_config.close()
         os.environ["CURL_HOME"] = curl_config_dir
