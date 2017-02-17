@@ -629,6 +629,7 @@ def get_api_port():
     configparser.read('/etc/rhsm/rhsm.conf')
     return configparser.get('server', 'port')
 
+
 print "Foreman Bootstrap Script"
 print "This script is designed to register new systems or to migrate an existing system to a Foreman server with Katello"
 
@@ -679,6 +680,7 @@ def prepare_rhel5_migration():
 
     # cleanup
     disable_rhn_plugin()
+
 
 if __name__ == '__main__':
 
