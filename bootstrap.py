@@ -302,6 +302,10 @@ def clean_environment():
 def generate_katello_facts():
     if FQDN.find(".") != -1 and not os.path.exists('/etc/rhsm/facts/katello.facts'):
         print_generic("Workaround for FQDN")
+        if not os.path.isdir('/etc/rhsm'):
+            os.mkdir('/etc/rhsm', 0755)
+        if not os.path.isdir('/etc/rhsm/facts'):
+            os.mkdir('/etc/rhsm/facts', 0755)
         katellofacts = open('/etc/rhsm/facts/katello.facts', 'w')
         katellofacts.write('{"network.hostname":"%s"}\n' % (FQDN))
         katellofacts.close()
