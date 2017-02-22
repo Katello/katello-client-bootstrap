@@ -301,7 +301,11 @@ def clean_environment():
 
 
 def generate_katello_facts():
-    """Write katello_facts file based on FQDN"""
+    """
+    Write katello_facts file based on FQDN. Done after installation
+    of katello-ca-consumer RPM in case the script is overriding the
+    FQDN
+    """
     print_generic("Writing FQDN katello-fact")
     katellofacts = open('/etc/rhsm/facts/katello.facts', 'w')
     katellofacts.write('{"network.hostname-override":"%s"}\n' % (FQDN))
