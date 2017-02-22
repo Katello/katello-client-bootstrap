@@ -724,7 +724,7 @@ if __name__ == '__main__':
     except AttributeError:
         RELEASE = platform.dist()[1]
 
-    SKIP_STEPS = ['foreman', 'puppet', 'migration', 'prereq-update', 'katello-agent']
+    SKIP_STEPS = ['foreman', 'puppet', 'migration', 'prereq-update', 'katello-agent', 'remove-obsolete-packages']
 
     # > Define and parse the options
     parser = OptionParser()
@@ -764,6 +764,8 @@ if __name__ == '__main__':
         options.skip.append('foreman')
     if options.no_puppet:
         options.skip.append('puppet')
+    if not options.removepkgs:
+        options.skip.append('remove-obsolete-packages')
 
     # > Validate that the options make sense or exit with a message.
     # the logic is as follows:
@@ -915,7 +917,7 @@ if __name__ == '__main__':
                 clean_puppet()
             install_puppet_agent()
 
-        if options.removepkgs:
+        if 'remove-obsolete-packages' not in options.skip:
             remove_obsolete_packages()
 
         if options.remote_exec:
