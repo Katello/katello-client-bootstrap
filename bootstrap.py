@@ -728,7 +728,7 @@ if __name__ == '__main__':
     parser.add_option("-l", "--login", dest="login", default='admin', help="Login user for API Calls", metavar="LOGIN")
     parser.add_option("-p", "--password", dest="password", help="Password for specified user. Will prompt if omitted", metavar="PASSWORD")
     parser.add_option("--legacy-login", dest="legacy_login", default='admin', help="Login user for Satellite 5 API Calls", metavar="LOGIN")
-    parser.add_option("--override-fqdn", dest="override_fqdn", help="Set an explicit FQDN, overriding detected FQDN", metavar="OVERRIDE_FQDN")
+    parser.add_option("--fqdn", dest="fqdn", help="Set an explicit FQDN, overriding detected FQDN from socket.getfqdn()", metavar="OVERRIDE_FQDN", default=socket.getfqdn())
     parser.add_option("--legacy-password", dest="legacy_password", help="Password for specified Satellite 5 user. Will prompt if omitted", metavar="PASSWORD")
     parser.add_option("--legacy-purge", dest="legacy_purge", action="store_true", help="Purge system from the Legacy environment (e.g. Sat5)")
     parser.add_option("-a", "--activationkey", dest="activationkey", help="Activation Key to register the system", metavar="ACTIVATIONKEY")
@@ -785,22 +785,17 @@ if __name__ == '__main__':
         print "\nExample usage: ./bootstrap.py -l admin -s foreman.example.com -o 'Default Organization' -L 'Default Location' -g My_Hostgroup -a My_Activation_Key"
         sys.exit(1)
 
-    # > Gather FQDN, HOSTNAME and DOMAIN using socket.getfqdn()
+    # > Gather FQDN, HOSTNAME and DOMAIN using options.fqdn
     # > If socket.fqdn() returns an FQDN, derive HOSTNAME & DOMAIN using FQDN
     # > else, HOSTNAME isn't an FQDN
     # > if user passes --override-fqdn set FQDN, HOSTNAME and DOMAIN to the parameter that is given.
-    FQDN = socket.getfqdn()
+    FQDN = options.fqdn
     if FQDN.find(".") != -1:
         HOSTNAME = FQDN.split('.')[0]
         DOMAIN = FQDN[FQDN.index('.') + 1:]
     else:
         HOSTNAME = FQDN
         DOMAIN = None
-
-    if options.override_fqdn:
-        HOSTNAME = options.override_fqdn
-        FQDN = options.override_fqdn
-        DOMAIN = FQDN[FQDN.index('.') + 1:]
 
     # > Exit if DOMAIN isn't set and Puppet must be installed (without force)
     if not DOMAIN and not (options.force or 'puppet' in options.skip):
