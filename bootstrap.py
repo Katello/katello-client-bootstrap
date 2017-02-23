@@ -787,7 +787,7 @@ if __name__ == '__main__':
     # > Gather FQDN, HOSTNAME and DOMAIN using options.fqdn
     # > If socket.fqdn() returns an FQDN, derive HOSTNAME & DOMAIN using FQDN
     # > else, HOSTNAME isn't an FQDN
-    # > if user passes --override-fqdn set FQDN, HOSTNAME and DOMAIN to the parameter that is given.
+    # > if user passes --fqdn set FQDN, HOSTNAME and DOMAIN to the parameter that is given.
     FQDN = options.fqdn
     if FQDN.find(".") != -1:
         HOSTNAME = FQDN.split('.')[0]
