@@ -16,7 +16,7 @@ Network Classic and get it registered to Foreman & Katello.
 * Installing subscription-manager and its pre-reqs (updated yum & openssl)
 * Make an API call to Katello to create the Foreman Host associated with the user specified Org/Location
 * Install the Katello consumer RPM
-* Running rhn-migrate-classic-to-rhsm (with the user provisded activation key) to get product certs on a system
+* Running rhn-migrate-classic-to-rhsm (with the user provisioned activation key) to get product certs on a system
 * registering the system to Foreman
 * Configuring the system with a proper puppet configuration pointing at Foreman
 * Removing/disabling old RHN Classic packages/daemons (rhnsd, osad, etc)
@@ -250,6 +250,79 @@ cat ~/.ssh/authorized_keys
 ssh-rsa AAAAB3Nz.... foreman-proxy@foreman.example.com
 ~~~
 
+### Skipping particular steps:
+
+Sometimes, you may want to skip certain steps of the bootstrapping process. the `--skip` switch provides this. It currently has the following parameters
+
+* `foreman` - Skips any Foreman setup steps. (equivalent to the `--skip-foreman` option)
+* `puppet` - Does not install puppet (equivalent to the `--skip-puppet` option)
+* `migration` - Skips RHN/Spacewalk registration detection. This option prevents `rhn-classic-migrate-to-rhsm` from timing out and failing on RHN/Spacewalk systems that aren't available.
+* `prereq-update` - Skips update of `yum`, `openssl` and `python`
+* `katello-agent` - Does not install the `katello-agent` package
+* `remove-obsolete-packages` - Does not remove the Classic/RHN/Spacewalk/RHUI packages.  (equivalent to `--no-remove-obsolete-packages`)
+
+
+~~~
+# ./bootstrap.py -l admin \
+    -s foreman.example.com \
+    -o "Red Hat" \
+    -L RDU \
+    -g "RHEL7/Crash" \
+    -a ak-Reg_To_Crash \
+    --skip prereq-update --skip migration
+~~~
+
+### Providing an arbitrary Fully Qualified Domain Name.
+
+Many users have either hostnames that are short (`hostname -f` or python's `socket.getfqdn` returns a hostname that isn't an FQDN) or non-RFC compliant (containing a character such as an underscore `-` which fails Foreman's hostname validation.
+
+In many cases, the user cannot update his/her system to provide a FQDN. Bootstrap.py provides the `--fqdn` which allows the user to specify the FQDN that will be reported to Foreman
+
+**Prerequisites**
+
+The user needs to set to **False** the `create_new_host_when_facts_are_uploaded` and ` create_new_host_when_reports_are_uploaded` options. If these options are not set, a host entry will be created based upon the facts provided by facter.  This can be done with hammer.
+
+~~~
+hammer settings set \
+  --name  create_new_host_when_facts_are_uploaded \
+  --value false
+hammer settings set \
+  --name  create_new_host_when_reports_are_uploaded \
+  --value false
+~~~
+
+Example Usage
+~~~
+# hostname -f
+node-100
+
+# python -c 'import socket; print socket.getfqdn()'
+node-100
+
+# ./bootstrap.py -l admin \
+    -s foreman.example.com \
+    -o "Red Hat" \
+    -L RDU \
+    -g "RHEL7/Crash" \
+    -a ak-Reg_To_Crash \
+    --fqdn node-100.example.com
+
+~~~
+
+### Changing the method bootstrap uses to download the katello-ca-consumer RPM
+
+By default, the bootstrap script uses HTTP to download the `katello-ca-consumer` RPM. In some environments, it is desired to only allow HTTPS between the client and Foreman. the `--download-method` option can be used to change the download method that bootstrap uses from HTTP to HTTPS.
+
+~~~
+./bootstrap.py -l admin \
+    -s foreman.example.com \
+    -o "Red Hat" \
+    -L RDU \
+    -g "RHEL7/Crash" \
+    -a ak-Reg_To_Crash \
+    --download-method https
+~~~
+
 # Help / Available options:
 
 ~~~
@@ -265,6 +338,9 @@ Options:
                         Login user for API Calls
   -p PASSWORD, --password=PASSWORD
                         Password for specified user. Will prompt if omitted
+  --fqdn=FQDN           Set an explicit FQDN, overriding detected FQDN from
+                        socket.getfqdn(), currently detected as
+                        calypso.auroracloud.com
   --legacy-login=LOGIN  Login user for Satellite 5 API Calls
   --legacy-password=PASSWORD
                         Password for specified Satellite 5 user. Will prompt
@@ -320,6 +396,9 @@ Options:
   --enablerepos=enablerepos
                         Repositories to be enabled via subscription-manager -
                         comma separated
+  --skip=SKIP           Skip the listed steps (choices: ['foreman', 'puppet',
+                        'migration', 'prereq-update', 'katello-agent',
+                        'remove-obsolete-packages'])
 
 ~~~
 
