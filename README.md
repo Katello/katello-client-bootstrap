@@ -1,5 +1,5 @@
 # Foreman Bootstrap Script
-Bootstrap Script for migrating existing running systems to Foreman with the Katello plugin
+bootstrap Script for migrating existing running systems to Foreman with the Katello plugin
 
 # Overview
 
@@ -16,9 +16,9 @@ Network Classic and get it registered to Foreman & Katello.
 * Installing subscription-manager and its pre-reqs (updated yum & openssl)
 * Make an API call to Katello to create the Foreman Host associated with the user specified Org/Location
 * Install the Katello consumer RPM
-* Running rhn-migrate-classic-to-rhsm (with the user provisioned activation key) to get product certs on a system
+* Running rhn-migrate-classic-to-rhsm (with the user provided activation key) to get product certs on a system
 * registering the system to Foreman
-* Configuring the system with a proper puppet configuration pointing at Foreman
+* Configuring the system with a proper Puppet configuration pointing at Foreman
 * Removing/disabling old RHN Classic packages/daemons (rhnsd, osad, etc)
 
 ## System not registered to any Red Hat Systems Management Platform:
@@ -26,7 +26,7 @@ Network Classic and get it registered to Foreman & Katello.
 * Make an API call to Foreman to create the Foreman Host associated with the user specified Org/Location
 * Install the Katello consumer RPM
 * Running subscription-manager (with the user provided activation key) to register the system.
-* Configuring the system with a proper puppet configuration pointing at Foreman
+* Configuring the system with a proper Puppet configuration pointing at Foreman
 * Removing/disabling old RHN Classic packages/daemons (rhnsd, osad, etc)
 
 # Assumptions
@@ -37,7 +37,7 @@ Network Classic and get it registered to Foreman & Katello.
   system.  (i.e., I could have used the python-requests module to make the
   API calls a lot more pleasant, but I couldn't justify the dependencies)
 * The system in question has python.
-* The administrator can approve puppet certificates if using Puppet.
+* The administrator can approve Puppet certificates if using Puppet.
   Alternatively, autosigning can be enabled for the system in question.  (And be careful,
   auto-signing isnt one of those things you'd leave enabled forever)
 * The Foreman instance is properly prepared and is able to provision systems,
@@ -100,9 +100,9 @@ When using the `--legacy-purge` option, a user account on the legacy environment
 
 # Usages:
 
-### Registering a system to Foreman
+### Registering a system to Foreman + Katello
 
-This is one of the most standard workflows with bootstrap.py. This sets up the system for content / configuration (via puppet) & provisioning.
+This is one of the most standard workflows with bootstrap.py. This sets up the system for content / configuration (via Puppet) & provisioning.
 ~~~
 # ./bootstrap.py -l admin \
     -s foreman.example.com \
@@ -112,9 +112,9 @@ This is one of the most standard workflows with bootstrap.py. This sets up the s
     -a ak-Reg_To_Crash
 ~~~
 
-### Registering a system omitting puppet setup.
+### Registering a system omitting Puppet setup.
 
-There are times where you wish to not install puppet, perhaps you have a differing or existing configuration management system.
+There are times where you wish to not install Puppet, perhaps you have a differing or existing configuration management system.
 
 ~~~
 # ./bootstrap.py -l admin \
@@ -126,7 +126,7 @@ There are times where you wish to not install puppet, perhaps you have a differi
     --skip-puppet
 ~~~
 
-### Registering a system to Foreman, for content only.
+### Registering a system to Foreman + Katello, for content only.
 
 This usage leverages the `--skip-foreman` switch, which does not require username/password authentication.
 
@@ -145,7 +145,7 @@ This usage leverages the `--skip-foreman` switch, which does not require usernam
 
 ### Migrating a system from Red Hat Network (RHN) or Satellite 5 to Foreman
 
-Bootstrap.py detects the presence of `/etc/syconfig/rhn/systemid` and a valid connection to RHN/Satellite 5 as an indicator that the system is registered to a legacy platform. In these use-cases, bootstrap will call `rhn-classic-migrate-to-rhsm` to ensure the system is migrated properly from RHN or Satellite 5.
+bootstrap.py detects the presence of `/etc/syconfig/rhn/systemid` and a valid connection to RHN/Satellite 5 as an indicator that the system is registered to a legacy platform. In these use-cases, bootstrap will call `rhn-classic-migrate-to-rhsm` to ensure the system is migrated properly from RHN or Satellite 5.
 
 By default, bootstrap.py does not delete the system's profile from the legacy platform. This is done to keep the systems record for audit/accounting reasons. If it is desired to remove the legacy profile from RHN/Satellite 5, the `--legacy-purge` switch can be used.
 
@@ -166,9 +166,9 @@ By default, bootstrap.py does not delete the system's profile from the legacy pl
     --legacy-purge \
     --legacy-login rhn-user
 ~~~
-### Migrating a system from one Foreman installation to another.
+### Migrating a system from one Foreman + Katello installation to another.
 
-There are times where it is necessary to migrate clients from one Foreman installation to another. For instance, in lieu of upgrading an older Foreman installation, you choose to build a new installation in parallel. Bootstrap.py can then be used to migrate clients from one Foreman installation to another. Simply provide the `--force` option, and bootstrap.py will remove the previous `katello-ca-consumer-*` package (from the old system), and will install the `katello-ca-consumer-*` package (from the new system), and continue registration as usual.
+There are times where it is necessary to migrate clients from one Foreman + Katello installation to another. For instance, in lieu of upgrading an older Foreman + Katello installation, you choose to build a new installation in parallel. bootstrap.py can then be used to migrate clients from one Foreman + Katello installation to another. Simply provide the `--force` option, and bootstrap.py will remove the previous `katello-ca-consumer-*` package (from the old system), and will install the `katello-ca-consumer-*` package (from the new system), and continue registration as usual.
 
 ### Enabling additional repositories at registration time.
 
@@ -181,7 +181,7 @@ It is recommended to set which repositories that you want enabled on your activa
     -L RDU \
     -g "RHEL7/Crash" \
     -a ak-Reg_To_Crash \
-    --enablerepos=rhel-7-server-extras-rpms, rhel-7-server-optional-rpms
+    --enablerepos=rhel-7-server-extras-rpms,rhel-7-server-optional-rpms
 ~~~
 
 ### Creating a domain for a host at registration time.
@@ -224,7 +224,7 @@ client.linux.example.com], completed successfully.
 
 ### Enabling Remote Execution
 
-Bootstrap.py now includes the `--rex` & `--rex-user` features which allow the administrator to deploy the required SSH keys.
+bootstrap.py now includes the `--rex` & `--rex-user` features which allow the administrator to deploy the required SSH keys.
 
 ~~~
 
@@ -261,6 +261,7 @@ Sometimes, you may want to skip certain steps of the bootstrapping process. the 
 * `katello-agent` - Does not install the `katello-agent` package
 * `remove-obsolete-packages` - Does not remove the Classic/RHN/Spacewalk/RHUI packages.  (equivalent to `--no-remove-obsolete-packages`)
 
+**Note:** it is strongly preferred to use the `--skip` option in lieu of the individual `--skip-foreman`, `--skip-puppet`, and `--no-remove-obsolete-packages` options. 
 
 ~~~
 # ./bootstrap.py -l admin \
@@ -276,7 +277,7 @@ Sometimes, you may want to skip certain steps of the bootstrapping process. the 
 
 Many users have either hostnames that are short (`hostname -f` or python's `socket.getfqdn` returns a hostname that isn't an FQDN) or non-RFC compliant (containing a character such as an underscore `-` which fails Foreman's hostname validation.
 
-In many cases, the user cannot update his/her system to provide a FQDN. Bootstrap.py provides the `--fqdn` which allows the user to specify the FQDN that will be reported to Foreman
+In many cases, the user cannot update his/her system to provide a FQDN. bootstrap.py provides the `--fqdn` which allows the user to specify the FQDN that will be reported to Foreman
 
 **Prerequisites**
 
@@ -306,7 +307,6 @@ node-100
     -g "RHEL7/Crash" \
     -a ak-Reg_To_Crash \
     --fqdn node-100.example.com
-
 ~~~
 
 ### Changing the method bootstrap uses to download the katello-ca-consumer RPM
@@ -340,7 +340,7 @@ Options:
                         Password for specified user. Will prompt if omitted
   --fqdn=FQDN           Set an explicit FQDN, overriding detected FQDN from
                         socket.getfqdn(), currently detected as
-                        calypso.auroracloud.com
+                        client.example.com
   --legacy-login=LOGIN  Login user for Satellite 5 API Calls
   --legacy-password=PASSWORD
                         Password for specified Satellite 5 user. Will prompt
@@ -378,7 +378,7 @@ Options:
   -f, --force           Force registration (will erase old katello and puppet
                         certs)
   --add-domain          Automatically add the clients domain to Foreman
-  --remove              Instead of registring the machine to Foreman remove it
+  --remove              Instead of registering the machine to Foreman remove it
   -r RELEASE, --release=RELEASE
                         Specify release version
   -R, --remove-obsolete-packages
