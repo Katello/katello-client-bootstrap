@@ -158,7 +158,6 @@ def install_prereqs():
     yum("install", "subscription-manager 'subscription-manager-migration-*'")
     if 'prereq-update' not in options.skip:
         yum("update", "yum openssl python")
-    generate_katello_facts()
 
 
 def get_bootstrap_rpm():
@@ -804,7 +803,6 @@ if __name__ == '__main__':
         print "You can override this by passing one of the following"
         print "\t--force - to disable all checking"
         print "\t--skip-puppet - to omit installing the puppet agent"
-        print "\t--override-fqdn - to explictly set an FQDN"
         sys.exit(1)
 
     # > Ask for the password if not given as option
