@@ -158,7 +158,6 @@ def install_prereqs():
     yum("install", "subscription-manager 'subscription-manager-migration-*'")
     if 'prereq-update' not in options.skip:
         yum("update", "yum openssl python")
-    generate_katello_facts()
 
 
 def get_bootstrap_rpm():
@@ -301,11 +300,15 @@ def clean_environment():
 
 
 def generate_katello_facts():
-    if FQDN.find(".") != -1 and not os.path.exists('/etc/rhsm/facts/katello.facts'):
-        print_generic("Workaround for FQDN")
-        katellofacts = open('/etc/rhsm/facts/katello.facts', 'w')
-        katellofacts.write('{"network.hostname":"%s"}\n' % (FQDN))
-        katellofacts.close()
+    """
+    Write katello_facts file based on FQDN. Done after installation
+    of katello-ca-consumer RPM in case the script is overriding the
+    FQDN
+    """
+    print_generic("Writing FQDN katello-fact")
+    katellofacts = open('/etc/rhsm/facts/katello.facts', 'w')
+    katellofacts.write('{"network.hostname-override":"%s"}\n' % (FQDN))
+    katellofacts.close()
 
 
 def install_puppet_agent():
@@ -321,7 +324,6 @@ vardir = /var/lib/puppet
 logdir = /var/log/puppet
 rundir = /var/run/puppet
 ssldir = $vardir/ssl
-
 [agent]
 pluginsync      = true
 report          = true
@@ -689,15 +691,6 @@ if __name__ == '__main__':
     opener = urllib2.build_opener(BetterHTTPErrorProcessor)
     urllib2.install_opener(opener)
 
-    # > Gather FQDN, HOSTNAME and DOMAIN.
-    FQDN = socket.getfqdn()
-    if FQDN.find(".") != -1:
-        HOSTNAME = FQDN.split('.')[0]
-        DOMAIN = FQDN[FQDN.index('.') + 1:]
-    else:
-        HOSTNAME = FQDN
-        DOMAIN = None
-
     # > Gather MAC Address.
     MAC = None
     try:
@@ -733,6 +726,7 @@ if __name__ == '__main__':
     parser.add_option("-s", "--server", dest="foreman_fqdn", help="FQDN of Foreman OR Capsule - omit https://", metavar="foreman_fqdn")
     parser.add_option("-l", "--login", dest="login", default='admin', help="Login user for API Calls", metavar="LOGIN")
     parser.add_option("-p", "--password", dest="password", help="Password for specified user. Will prompt if omitted", metavar="PASSWORD")
+    parser.add_option("--fqdn", dest="fqdn", help="Set an explicit FQDN, overriding detected FQDN from socket.getfqdn(), currently detected as %default", metavar="FQDN", default=socket.getfqdn())
     parser.add_option("--legacy-login", dest="legacy_login", default='admin', help="Login user for Satellite 5 API Calls", metavar="LOGIN")
     parser.add_option("--legacy-password", dest="legacy_password", help="Password for specified Satellite 5 user. Will prompt if omitted", metavar="PASSWORD")
     parser.add_option("--legacy-purge", dest="legacy_purge", action="store_true", help="Purge system from the Legacy environment (e.g. Sat5)")
@@ -790,11 +784,25 @@ if __name__ == '__main__':
         print "\nExample usage: ./bootstrap.py -l admin -s foreman.example.com -o 'Default Organization' -L 'Default Location' -g My_Hostgroup -a My_Activation_Key"
         sys.exit(1)
 
+    # > Gather FQDN, HOSTNAME and DOMAIN using options.fqdn
+    # > If socket.fqdn() returns an FQDN, derive HOSTNAME & DOMAIN using FQDN
+    # > else, HOSTNAME isn't an FQDN
+    # > if user passes --override-fqdn set FQDN, HOSTNAME and DOMAIN to the parameter that is given.
+    FQDN = options.fqdn
+    if FQDN.find(".") != -1:
+        HOSTNAME = FQDN.split('.')[0]
+        DOMAIN = FQDN[FQDN.index('.') + 1:]
+    else:
+        HOSTNAME = FQDN
+        DOMAIN = None
+
     # > Exit if DOMAIN isn't set and Puppet must be installed (without force)
     if not DOMAIN and not (options.force or 'puppet' in options.skip):
         print "We could not determine the domain of this machine, most probably `hostname -f` does not return the FQDN."
         print "This can lead to Puppet missbehaviour and thus the script will terminate now."
-        print "You can override this by passing --force or --skip-puppet"
+        print "You can override this by passing one of the following"
+        print "\t--force - to disable all checking"
+        print "\t--skip-puppet - to omit installing the puppet agent"
         sys.exit(1)
 
     # > Ask for the password if not given as option
@@ -815,6 +823,7 @@ if __name__ == '__main__':
     if options.verbose:
         print "HOSTNAME - %s" % HOSTNAME
         print "DOMAIN - %s" % DOMAIN
+        print "FQDN - %s" % FQDN
         print "RELEASE - %s" % RELEASE
         print "MAC - %s" % MAC
         print "foreman_fqdn - %s" % options.foreman_fqdn
@@ -885,6 +894,7 @@ if __name__ == '__main__':
         install_prereqs()
         check_migration_version()
         get_bootstrap_rpm()
+        generate_katello_facts()
         API_PORT = get_api_port()
         if 'foreman' not in options.skip:
             create_host()
@@ -897,6 +907,7 @@ if __name__ == '__main__':
         # >      register via subscription-manager
         print_generic('This system is not registered to RHN. Attempting to register via subscription-manager')
         get_bootstrap_rpm()
+        generate_katello_facts()
         API_PORT = get_api_port()
         if 'foreman' not in options.skip:
             create_host()
