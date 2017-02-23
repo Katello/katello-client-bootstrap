@@ -156,7 +156,8 @@ def install_prereqs():
     print_generic("Installing subscription manager prerequisites")
     yum("remove", "subscription-manager-gnome")
     yum("install", "subscription-manager 'subscription-manager-migration-*'")
-    yum("update", "yum openssl python")
+    if 'prereq-update' not in options.skip:
+        yum("update", "yum openssl python")
     generate_katello_facts()
 
 
@@ -224,7 +225,7 @@ def migrate_systems(org_name, activationkey):
     does not fail on channels which cannot be mapped either because they
     are cloned channels, custom channels, or do not exist in the destination.
     """
-    if options.no_foreman:
+    if 'foreman' in options.skip:
         org_label = org_name
     else:
         org_label = return_matching_katello_key('organizations', 'name="%s"' % org_name, 'label', False)
@@ -250,7 +251,7 @@ def register_systems(org_name, activationkey, release):
     `subscription-manager` and the given activation key.
     Option "--force" is given further.
     """
-    if options.no_foreman:
+    if 'foreman' in options.skip:
         org_label = org_name
     else:
         org_label = return_matching_katello_key('organizations', 'name="%s"' % org_name, 'label', False)
@@ -725,6 +726,8 @@ if __name__ == '__main__':
     except AttributeError:
         RELEASE = platform.dist()[1]
 
+    SKIP_STEPS = ['foreman', 'puppet', 'migration', 'prereq-update', 'katello-agent', 'remove-obsolete-packages']
+
     # > Define and parse the options
     parser = OptionParser()
     parser.add_option("-s", "--server", dest="foreman_fqdn", help="FQDN of Foreman OR Capsule - omit https://", metavar="foreman_fqdn")
@@ -756,7 +759,15 @@ if __name__ == '__main__':
     parser.add_option("--rex", dest="remote_exec", action="store_true", help="Install Foreman's SSH key for remote execution.", default=False)
     parser.add_option("--rex-user", dest="remote_exec_user", default="root", help="Local user used by Foreman's remote execution feature.")
     parser.add_option("--enablerepos", dest="enablerepos", help="Repositories to be enabled via subscription-manager - comma separated", metavar="enablerepos")
+    parser.add_option("--skip", dest="skip", action="append", help="Skip the listed steps (choices: %s)" % SKIP_STEPS, choices=SKIP_STEPS, default=[])
     (options, args) = parser.parse_args()
+
+    if options.no_foreman:
+        options.skip.append('foreman')
+    if options.no_puppet:
+        options.skip.append('puppet')
+    if not options.removepkgs:
+        options.skip.append('remove-obsolete-packages')
 
     # > Validate that the options make sense or exit with a message.
     # the logic is as follows:
@@ -769,8 +780,8 @@ if __name__ == '__main__':
     #   else if mode = remove:
     #     if removing from foreman:
     #        foreman_fqdn
-    if not ((options.remove and (options.no_foreman or options.foreman_fqdn)) or
-            (options.foreman_fqdn and options.org and options.activationkey and (options.no_foreman or options.hostgroup))):
+    if not ((options.remove and ('foreman' in options.skip or options.foreman_fqdn)) or
+            (options.foreman_fqdn and options.org and options.activationkey and ('foreman' in options.skip or options.hostgroup))):
         if not options.remove:
             print "Must specify server, login, organization, hostgroup and activation key.  See usage:"
         else:
@@ -780,14 +791,14 @@ if __name__ == '__main__':
         sys.exit(1)
 
     # > Exit if DOMAIN isn't set and Puppet must be installed (without force)
-    if not DOMAIN and not (options.force or options.no_puppet):
+    if not DOMAIN and not (options.force or 'puppet' in options.skip):
         print "We could not determine the domain of this machine, most probably `hostname -f` does not return the FQDN."
         print "This can lead to Puppet missbehaviour and thus the script will terminate now."
         print "You can override this by passing --force or --skip-puppet"
         sys.exit(1)
 
     # > Ask for the password if not given as option
-    if not options.password and not options.no_foreman:
+    if not options.password and 'foreman' not in options.skip:
         options.password = getpass.getpass("%s's password:" % options.login)
 
     # > If user wants to purge profile from RHN/Satellite 5, credentials are needed.
@@ -795,8 +806,10 @@ if __name__ == '__main__':
         options.legacy_password = getpass.getpass("Legacy User %s's password:" % options.legacy_login)
 
     # > Puppet won't be installed if Foreman Host shall not be created
-    if options.no_foreman:
-        options.no_puppet = True
+    if 'foreman' in options.skip:
+        options.skip.append('puppet')
+
+    options.skip = set(options.skip)
 
     # > Output all parameters if verbose.
     if options.verbose:
@@ -817,6 +830,7 @@ if __name__ == '__main__':
         print "LEGACY LOGIN - %s" % options.legacy_login
         print "LEGACY PASSWORD - %s" % options.legacy_password
         print "DOWNLOAD METHOD - %s" % options.download_method
+        print "SKIP - %s" % options.skip
 
     # > Exit if the user isn't root.
     # Done here to allow an unprivileged user to run the script to see
@@ -854,15 +868,16 @@ if __name__ == '__main__':
         # >            uninstall katello and optionally puppet agents
         API_PORT = get_api_port()
         unregister_system()
-        if not options.no_foreman:
+        if 'foreman' not in options.skip:
             host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', True)
             if host_id is not None:
                 disassociate_host(host_id)
                 delete_host(host_id)
-        clean_katello_agent()
-        if not options.no_puppet:
+        if 'katello-agent' not in options.skip:
+            clean_katello_agent()
+        if 'puppet' not in options.skip:
             clean_puppet()
-    elif check_rhn_registration():
+    elif check_rhn_registration() and 'migration' not in options.skip:
         # > ELIF registered to RHN, install subscription-manager prerequs
         # >                         get CA RPM, optionally create host,
         # >                         migrate via rhn-classic-migrate-to-rhsm
@@ -871,7 +886,7 @@ if __name__ == '__main__':
         check_migration_version()
         get_bootstrap_rpm()
         API_PORT = get_api_port()
-        if not options.no_foreman:
+        if 'foreman' not in options.skip:
             create_host()
         configure_subscription_manager()
         migrate_systems(options.org, options.activationkey)
@@ -883,7 +898,7 @@ if __name__ == '__main__':
         print_generic('This system is not registered to RHN. Attempting to register via subscription-manager')
         get_bootstrap_rpm()
         API_PORT = get_api_port()
-        if not options.no_foreman:
+        if 'foreman' not in options.skip:
             create_host()
         configure_subscription_manager()
         register_systems(options.org, options.activationkey, options.release)
@@ -894,16 +909,17 @@ if __name__ == '__main__':
         # > IF not removing, install Katello agent, optionally update host,
         # >                  optionally clean and install Puppet agent
         # >                  optionally remove legacy RHN packages
-        install_katello_agent()
+        if 'katello-agent' not in options.skip:
+            install_katello_agent()
         if options.update:
             fully_update_the_box()
 
-        if not options.no_puppet:
+        if 'puppet' not in options.skip:
             if options.force:
                 clean_puppet()
             install_puppet_agent()
 
-        if options.removepkgs:
+        if 'remove-obsolete-packages' not in options.skip:
             remove_obsolete_packages()
 
         if options.remote_exec:
