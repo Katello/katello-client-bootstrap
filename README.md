@@ -399,7 +399,7 @@ Options:
   --skip=SKIP           Skip the listed steps (choices: ['foreman', 'puppet',
                         'migration', 'prereq-update', 'katello-agent',
                         'remove-obsolete-packages'])
-
+  --ip=IP               IP address
 ~~~
 
 # For developers:
