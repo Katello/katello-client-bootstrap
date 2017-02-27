@@ -292,10 +292,10 @@ def clean_puppet():
 
 def clean_environment():
     """
-    Undefine `LD_LIBRARY_PATH` and `LD_PRELOAD` as many environments
+    Undefine `GEM_PATH`, `LD_LIBRARY_PATH` and `LD_PRELOAD` as many environments
     have it defined non-sensibly.
     """
-    for key in ['LD_LIBRARY_PATH', 'LD_PRELOAD']:
+    for key in ['GEM_PATH', 'LD_LIBRARY_PATH', 'LD_PRELOAD']:
         os.environ.pop(key, None)
 
 
