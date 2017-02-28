@@ -756,7 +756,7 @@ if __name__ == '__main__':
     parser.add_option("--rex-user", dest="remote_exec_user", default="root", help="Local user used by Foreman's remote execution feature.")
     parser.add_option("--enablerepos", dest="enablerepos", help="Repositories to be enabled via subscription-manager - comma separated", metavar="enablerepos")
     parser.add_option("--skip", dest="skip", action="append", help="Skip the listed steps (choices: %s)" % SKIP_STEPS, choices=SKIP_STEPS, default=[])
-    parser.add_option("--ip", dest="ip", help="IP address")
+    parser.add_option("--ip", dest="ip", help="IPv4 address of the primary interface in Foreman (defaults to the address used to make request to Foreman)")
     (options, args) = parser.parse_args()
 
     if options.no_foreman:
