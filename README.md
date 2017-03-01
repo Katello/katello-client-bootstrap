@@ -323,6 +323,22 @@ By default, the bootstrap script uses HTTP to download the `katello-ca-consumer`
     --download-method https
 ~~~
 
+### Providing the IP address to Foreman
+
+Foreman requires the IP address of the machine to perform remote execution or re-deploy the machine using kickstart.
+
+On machines with multiple interfaces or multiple addresses on one interface, it might be needed to override the auto-detection of the address and provide a specific address to Foreman.
+
+~~~
+./bootstrap.py -l admin \
+    -s foreman.example.com \
+    -o "Red Hat" \
+    -L RDU \
+    -g "RHEL7/Crash" \
+    -a ak-Reg_To_Crash \
+    --ip 192.0.2.23
+~~~
+
 # Help / Available options:
 
 ~~~
@@ -399,7 +415,9 @@ Options:
   --skip=SKIP           Skip the listed steps (choices: ['foreman', 'puppet',
                         'migration', 'prereq-update', 'katello-agent',
                         'remove-obsolete-packages'])
-
+  --ip=IP               IPv4 address of the primary interface in Foreman
+                        (defaults to the address used to make request to
+                        Foreman)
 ~~~
 
 # For developers:

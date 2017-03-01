@@ -569,6 +569,8 @@ def create_host():
         jsondata['host']['location_id'] = mylocid
     if mydomainid:
         jsondata['host']['domain_id'] = mydomainid
+    if options.ip:
+        jsondata['host']['ip'] = options.ip
     myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/hosts/"
     if options.force and host_id is not None:
         disassociate_host(host_id)
@@ -754,6 +756,7 @@ if __name__ == '__main__':
     parser.add_option("--rex-user", dest="remote_exec_user", default="root", help="Local user used by Foreman's remote execution feature.")
     parser.add_option("--enablerepos", dest="enablerepos", help="Repositories to be enabled via subscription-manager - comma separated", metavar="enablerepos")
     parser.add_option("--skip", dest="skip", action="append", help="Skip the listed steps (choices: %s)" % SKIP_STEPS, choices=SKIP_STEPS, default=[])
+    parser.add_option("--ip", dest="ip", help="IPv4 address of the primary interface in Foreman (defaults to the address used to make request to Foreman)")
     (options, args) = parser.parse_args()
 
     if options.no_foreman:
@@ -805,6 +808,18 @@ if __name__ == '__main__':
         print "\t--skip-puppet - to omit installing the puppet agent"
         sys.exit(1)
 
+    # > Gather primary IP address if none was given
+    # we do this *after* parsing options to find the IP on the interface
+    # towards the Foreman instance in the case the machine has multiple
+    if not options.ip:
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect((options.foreman_fqdn, 80))
+            options.ip = s.getsockname()[0]
+            s.close()
+        except:
+            options.ip = None
+
     # > Ask for the password if not given as option
     if not options.password and 'foreman' not in options.skip:
         options.password = getpass.getpass("%s's password:" % options.login)
@@ -826,6 +841,7 @@ if __name__ == '__main__':
         print "FQDN - %s" % FQDN
         print "RELEASE - %s" % RELEASE
         print "MAC - %s" % MAC
+        print "IP - %s" % options.ip
         print "foreman_fqdn - %s" % options.foreman_fqdn
         print "LOGIN - %s" % options.login
         print "PASSWORD - %s" % options.password
