@@ -757,6 +757,7 @@ if __name__ == '__main__':
     parser.add_option("--enablerepos", dest="enablerepos", help="Repositories to be enabled via subscription-manager - comma separated", metavar="enablerepos")
     parser.add_option("--skip", dest="skip", action="append", help="Skip the listed steps (choices: %s)" % SKIP_STEPS, choices=SKIP_STEPS, default=[])
     parser.add_option("--ip", dest="ip", help="IPv4 address of the primary interface in Foreman (defaults to the address used to make request to Foreman)")
+    parser.add_option("--new-capsule", dest="new_capsule", action="store_true", help="Switch the server to a new capsule for content and Puppet. Pass --server with the Capsule FQDN as well.")
     (options, args) = parser.parse_args()
 
     if options.no_foreman:
@@ -765,6 +766,8 @@ if __name__ == '__main__':
         options.skip.append('puppet')
     if not options.removepkgs:
         options.skip.append('remove-obsolete-packages')
+    if options.new_capsule:
+        API_PORT = "8443"
 
     # > Validate that the options make sense or exit with a message.
     # the logic is as follows:
@@ -778,9 +781,12 @@ if __name__ == '__main__':
     #     if removing from foreman:
     #        foreman_fqdn
     if not ((options.remove and ('foreman' in options.skip or options.foreman_fqdn)) or
-            (options.foreman_fqdn and options.org and options.activationkey and ('foreman' in options.skip or options.hostgroup))):
-        if not options.remove:
+            (options.foreman_fqdn and options.org and options.activationkey and ('foreman' in options.skip or options.hostgroup)) or
+            (options.foreman_fqdn and options.new_capsule)):
+        if not options.remove and not options.new_capsule:
             print "Must specify server, login, organization, hostgroup and activation key.  See usage:"
+        elif options.new_capsule:
+            print "Must use both --new-capsule and --server. See usage:"
         else:
             print "Must specify server.  See usage:"
         parser.print_help()
@@ -879,7 +885,7 @@ if __name__ == '__main__':
                 import simplejson as json
             except ImportError:
                 print_error("Could not install python-simplejson")
-                sys.exit(1)
+
 
     # > Clean the environment from LD_... variables
     clean_environment()
@@ -918,6 +924,47 @@ if __name__ == '__main__':
         migrate_systems(options.org, options.activationkey)
         if options.enablerepos:
             enable_repos()
+    elif options.new_capsule and options.foreman_fqdn:
+        # > ELIF new_capsule and foreman_fqdn set, will migrate to other capsule
+        # 
+        # > will replace CA certificate, reinstall katello-agent, gofer
+        # > update system definition to point to new capsule for content,
+        # > Puppet, OpenSCAP and update Puppet configuration
+        # > MANUAL SIGNING OF CSR OR MANUALLY CREATING AUTO-SIGN RULE STILL REQUIRED!
+        # > API doesn't have a public provision for creating auto-sign entries yet!
+
+        print_running("Removing katello-*, gofer and installing new Katello certificate")
+        clean_katello_agent()
+        exec_failexit("rpm -Uvh http://%s/pub/katello-ca-consumer-latest.noarch.rpm" % options.foreman_fqdn)
+        install_katello_agent()
+
+        print_running("Calling Foreman API to update content source, puppet master, puppet ca and openscap proxy records for %s" % FQDN)
+        capsule_id = return_matching_katello_key('capsules', 'name="%s"' % options.foreman_fqdn, 'id', False)
+        host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', False)
+        puppet_master_json = json.loads('{"host": {"puppet_proxy_id": "%s"}}' % (capsule_id))
+        puppet_ca_json = json.loads('{"host": {"puppet_ca_proxy_id": "%s"}}' % (capsule_id))
+        content_src_json = json.loads('{"host": {"content_source_id": "%s"}}' % (capsule_id))
+        scap_json = json.loads('{"host": {"openscap_proxy_id": "%s"}}' % (capsule_id))
+        host_update_url = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/hosts/" + str(host_id)
+        for host_update_json in puppet_master_json, puppet_ca_json, content_src_json, scap_json:
+            put_json(host_update_url, host_update_json)
+
+        print_running("Restarting goferd and rhsmcertd")
+        exec_failexit("/sbin/service rhsmcertd restart")
+        exec_failexit("/sbin/service goferd restart")
+
+        print_running("Stopping the Puppet agent for configuration update")
+        exec_failok("/sbin/service puppet stop") # failok because people might be running Puppet from cron
+
+        print_running("Updating Puppet configuration")
+        exec_failexit("/usr/bin/puppet config set --section agent server %s" % options.foreman_fqdn)
+        delete_directory("/var/lib/puppet/ssl")
+        delete_file("/var/lib/puppet/client_data/catalog/%s.json" % FQDN)
+
+        print_running("Starting Puppet and waiting for cert; please go and sign it now!")
+        exec_failok("/usr/bin/puppet agent --noop -t --waitforcert 15")
+        print_generic("Puppet agent is not running; please start manually if required.")
+
     else:
         # > ELSE get CA RPM, optionally create host,
         # >      register via subscription-manager
@@ -932,7 +979,7 @@ if __name__ == '__main__':
         if options.enablerepos:
             enable_repos()
 
-    if not options.remove:
+    if not options.remove and not options.new_capsule:
         # > IF not removing, install Katello agent, optionally update host,
         # >                  optionally clean and install Puppet agent
         # >                  optionally remove legacy RHN packages
@@ -951,3 +998,4 @@ if __name__ == '__main__':
 
         if options.remote_exec:
             install_foreman_ssh_key()
+
