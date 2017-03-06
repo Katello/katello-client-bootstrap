@@ -459,9 +459,9 @@ def delete_json(url):
     return call_api(url, method='DELETE')
 
 
-def put_json(url):
+def put_json(url, jdata=None):
     """Use `call_api` to place a "PUT" REST API call."""
-    return call_api(url, method='PUT')
+    return call_api(url, data=jdata, method='PUT')
 
 
 def return_matching_foreman_key(api_name, search_key, return_key, null_result_ok=False):
