@@ -463,6 +463,10 @@ def put_json(url, jdata=None):
     """Use `call_api` to place a "PUT" REST API call."""
     return call_api(url, data=jdata, method='PUT')
 
+def update_host_capsule_mapping(server, port, attribute, capsule_id, host_id):
+    url = "https://" + server + ":" + str(port) + "/api/v2/hosts/" + str(host_id)
+    jdata = json.loads('{"host": {"%s": "%s"}}' % (attribute, capsule_id))
+    return put_json(url, jdata)
 
 def return_matching_foreman_key(api_name, search_key, return_key, null_result_ok=False):
     """
@@ -932,7 +936,6 @@ if __name__ == '__main__':
         # > Puppet, OpenSCAP and update Puppet configuration
         # > MANUAL SIGNING OF CSR OR MANUALLY CREATING AUTO-SIGN RULE STILL REQUIRED!
         # > API doesn't have a public provision for creating auto-sign entries yet!
-
         print_running("Removing katello-*, gofer and installing new Katello certificate")
         clean_katello_agent()
         exec_failexit("rpm -Uvh http://%s/pub/katello-ca-consumer-latest.noarch.rpm" % options.foreman_fqdn)
@@ -941,13 +944,11 @@ if __name__ == '__main__':
         print_running("Calling Foreman API to update content source, puppet master, puppet ca and openscap proxy records for %s" % FQDN)
         capsule_id = return_matching_katello_key('capsules', 'name="%s"' % options.foreman_fqdn, 'id', False)
         host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', False)
-        puppet_master_json = json.loads('{"host": {"puppet_proxy_id": "%s"}}' % (capsule_id))
-        puppet_ca_json = json.loads('{"host": {"puppet_ca_proxy_id": "%s"}}' % (capsule_id))
-        content_src_json = json.loads('{"host": {"content_source_id": "%s"}}' % (capsule_id))
-        scap_json = json.loads('{"host": {"openscap_proxy_id": "%s"}}' % (capsule_id))
-        host_update_url = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/hosts/" + str(host_id)
-        for host_update_json in puppet_master_json, puppet_ca_json, content_src_json, scap_json:
-            put_json(host_update_url, host_update_json)
+
+        update_host_capsule_mapping(options.foreman_fqdn, API_PORT, "puppet_proxy_id", capsule_id, host_id)
+        update_host_capsule_mapping(options.foreman_fqdn, API_PORT, "puppet_ca_proxy_id", capsule_id, host_id)
+        update_host_capsule_mapping(options.foreman_fqdn, API_PORT, "content_source_id", capsule_id, host_id)
+        update_host_capsule_mapping(options.foreman_fqdn, API_PORT, "openscap_proxy_id", capsule_id, host_id)
 
         print_running("Restarting goferd and rhsmcertd")
         exec_failexit("/sbin/service rhsmcertd restart")
