@@ -463,10 +463,12 @@ def put_json(url, jdata=None):
     """Use `call_api` to place a "PUT" REST API call."""
     return call_api(url, data=jdata, method='PUT')
 
+
 def update_host_capsule_mapping(server, port, attribute, capsule_id, host_id):
     url = "https://" + server + ":" + str(port) + "/api/v2/hosts/" + str(host_id)
     jdata = json.loads('{"host": {"%s": "%s"}}' % (attribute, capsule_id))
     return put_json(url, jdata)
+
 
 def return_matching_foreman_key(api_name, search_key, return_key, null_result_ok=False):
     """
@@ -890,7 +892,6 @@ if __name__ == '__main__':
             except ImportError:
                 print_error("Could not install python-simplejson")
 
-
     # > Clean the environment from LD_... variables
     clean_environment()
 
@@ -930,7 +931,7 @@ if __name__ == '__main__':
             enable_repos()
     elif options.new_capsule and options.foreman_fqdn:
         # > ELIF new_capsule and foreman_fqdn set, will migrate to other capsule
-        # 
+        #
         # > will replace CA certificate, reinstall katello-agent, gofer
         # > update system definition to point to new capsule for content,
         # > Puppet, OpenSCAP and update Puppet configuration
@@ -955,7 +956,7 @@ if __name__ == '__main__':
         exec_failexit("/sbin/service goferd restart")
 
         print_running("Stopping the Puppet agent for configuration update")
-        exec_failok("/sbin/service puppet stop") # failok because people might be running Puppet from cron
+        exec_failok("/sbin/service puppet stop")   # failok because people might be running Puppet from cron
 
         print_running("Updating Puppet configuration")
         exec_failexit("/usr/bin/puppet config set --section agent server %s" % options.foreman_fqdn)
@@ -999,4 +1000,3 @@ if __name__ == '__main__':
 
         if options.remote_exec:
             install_foreman_ssh_key()
-
