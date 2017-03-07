@@ -894,8 +894,8 @@ if __name__ == '__main__':
     # > Clean the environment from LD_... variables
     clean_environment()
 
-    # > IF RHEL 5 and not removing, prepare the migration.
-    if not options.remove and int(RELEASE[0]) == 5:
+    # > IF RHEL 5, not removing, and not moving to new capsule prepare the migration.
+    if not options.remove and int(RELEASE[0]) == 5 and not options.new_capsule:
         prepare_rhel5_migration()
 
     if options.remove:
