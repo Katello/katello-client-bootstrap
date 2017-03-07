@@ -955,11 +955,11 @@ if __name__ == '__main__':
         print_running("Stopping the Puppet agent for configuration update")
         exec_failok("/sbin/service puppet stop")   # failok because people might be running Puppet from cron
 
+        # Not using clean_puppet() and install_puppet_agent() here, because
+        # that would nuke custom /etc/puppet/puppet.conf files, which might
+        # yield undesirable results.
         print_running("Updating Puppet configuration")
-        pupcfg = SafeConfigParser()
-        pupcfg.read("/etc/puppet/puppet.conf")
-        pupcfg.set("agent", "server", options.foreman_fqdn)
-        pupcfg.write("/etc/puppet/puppet.conf")
+        exec_failexit("sed -i 's/^[[:space:]]*server.*/   server     = %s/' /etc/puppet/puppet.conf" % options.foreman_fqdn)
         delete_directory("/var/lib/puppet/ssl")
         delete_file("/var/lib/puppet/client_data/catalog/%s.json" % FQDN)
 
