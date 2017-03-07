@@ -889,6 +889,7 @@ if __name__ == '__main__':
                 import simplejson as json
             except ImportError:
                 print_error("Could not install python-simplejson")
+                sys.exit(1)
 
     # > Clean the environment from LD_... variables
     clean_environment()
