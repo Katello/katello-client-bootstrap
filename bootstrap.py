@@ -960,6 +960,7 @@ if __name__ == '__main__':
         # yield undesirable results.
         print_running("Updating Puppet configuration")
         exec_failexit("sed -i 's/^[[:space:]]*server.*/   server     = %s/' /etc/puppet/puppet.conf" % options.foreman_fqdn)
+        exec_failok("sed -i 's/^[[:space:]]*ca_server.*/   server     = %s/' /etc/puppet/puppet.conf" % options.foreman_fqdn)  # For RHEL5 stock puppet.conf
         delete_directory("/var/lib/puppet/ssl")
         delete_file("/var/lib/puppet/client_data/catalog/%s.json" % FQDN)
 
