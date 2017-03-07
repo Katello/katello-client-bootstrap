@@ -944,15 +944,13 @@ if __name__ == '__main__':
         print_running("Calling Foreman API to update content source, puppet master, puppet ca and openscap proxy records for %s" % FQDN)
         capsule_id = return_matching_katello_key('capsules', 'name="%s"' % options.foreman_fqdn, 'id', False)
         host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', False)
-
         update_host_capsule_mapping(options.foreman_fqdn, API_PORT, "puppet_proxy_id", capsule_id, host_id)
         update_host_capsule_mapping(options.foreman_fqdn, API_PORT, "puppet_ca_proxy_id", capsule_id, host_id)
         update_host_capsule_mapping(options.foreman_fqdn, API_PORT, "content_source_id", capsule_id, host_id)
         update_host_capsule_mapping(options.foreman_fqdn, API_PORT, "openscap_proxy_id", capsule_id, host_id)
 
-        print_running("Restarting goferd and rhsmcertd")
-        exec_failexit("/sbin/service rhsmcertd restart")
-        exec_failexit("/sbin/service goferd restart")
+        print_running("Restarting rhsmcertd")
+        enable_rhsmcertd()
 
         print_running("Stopping the Puppet agent for configuration update")
         exec_failok("/sbin/service puppet stop")   # failok because people might be running Puppet from cron
