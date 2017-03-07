@@ -936,9 +936,8 @@ if __name__ == '__main__':
         # > Puppet, OpenSCAP and update Puppet configuration
         # > MANUAL SIGNING OF CSR OR MANUALLY CREATING AUTO-SIGN RULE STILL REQUIRED!
         # > API doesn't have a public provision for creating auto-sign entries yet!
-        print_running("Removing katello-*, gofer and installing new Katello certificate")
-        clean_katello_agent()
-        exec_failexit("rpm -Uvh http://%s/pub/katello-ca-consumer-latest.noarch.rpm" % options.foreman_fqdn)
+        options.force = True  # Need to set this to make get_bootstrap_rpm() to perform the right way
+        get_bootstrap_rpm()
         install_katello_agent()
         API_PORT = get_api_port()
 
