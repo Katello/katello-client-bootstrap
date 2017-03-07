@@ -772,8 +772,6 @@ if __name__ == '__main__':
         options.skip.append('puppet')
     if not options.removepkgs:
         options.skip.append('remove-obsolete-packages')
-    if options.new_capsule:
-        API_PORT = "8443"
 
     # > Validate that the options make sense or exit with a message.
     # the logic is as follows:
@@ -941,6 +939,7 @@ if __name__ == '__main__':
         clean_katello_agent()
         exec_failexit("rpm -Uvh http://%s/pub/katello-ca-consumer-latest.noarch.rpm" % options.foreman_fqdn)
         install_katello_agent()
+        API_PORT = get_api_port()
 
         print_running("Calling Foreman API to update content source, puppet master, puppet ca and openscap proxy records for %s" % FQDN)
         capsule_id = return_matching_katello_key('capsules', 'name="%s"' % options.foreman_fqdn, 'id', False)
