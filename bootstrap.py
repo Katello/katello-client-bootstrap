@@ -956,7 +956,10 @@ if __name__ == '__main__':
         exec_failok("/sbin/service puppet stop")   # failok because people might be running Puppet from cron
 
         print_running("Updating Puppet configuration")
-        exec_failexit("/usr/bin/puppet config set --section agent server %s" % options.foreman_fqdn)
+        pupcfg = SafeConfigParser()
+        pupcfg.read("/etc/puppet/puppet.conf")
+        pupcfg.set("agent", "server", options.foreman_fqdn)
+        pupcfg.write("/etc/puppet/puppet.conf")
         delete_directory("/var/lib/puppet/ssl")
         delete_file("/var/lib/puppet/client_data/catalog/%s.json" % FQDN)
 
