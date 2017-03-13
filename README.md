@@ -38,14 +38,13 @@ Network Classic and get it registered to Foreman & Katello.
   API calls a lot more pleasant, but I couldn't justify the dependencies)
 * The system in question has python.
 * The administrator can approve Puppet certificates if using Puppet.
-  Alternatively, autosigning can be enabled for the system in question.  (And be careful,
-  auto-signing isnt one of those things you'd leave enabled forever)
+  Alternatively, autosigning can be enabled for the system in question.  (And be careful, auto-signing isn't one of those things you'd leave enabled forever)
 * The Foreman instance is properly prepared and is able to provision systems,
   especially the following is true:
   * The activation key provides access to a Content View
     which provides Puppet and other client side tooling.
   * The domain of the system is known to Foreman.
-  * The hostgroup has the "Host Group" and "Operating System" tabs filled out completelly.
+  * If not using the `--skip foreman` option, the hostgroup has the "Host Group" and "Operating System" tabs filled out completely. Otherwise, when boostrap runs to create the host, required information will be missing and the API call with fail.
 
 # Dependencies
 
@@ -261,7 +260,7 @@ Sometimes, you may want to skip certain steps of the bootstrapping process. the 
 * `katello-agent` - Does not install the `katello-agent` package
 * `remove-obsolete-packages` - Does not remove the Classic/RHN/Spacewalk/RHUI packages.  (equivalent to `--no-remove-obsolete-packages`)
 
-**Note:** it is strongly preferred to use the `--skip` option in lieu of the individual `--skip-foreman`, `--skip-puppet`, and `--no-remove-obsolete-packages` options. 
+**Note:** it is strongly preferred to use the `--skip` option in lieu of the individual `--skip-foreman`, `--skip-puppet`, and `--no-remove-obsolete-packages` options.
 
 ~~~
 # ./bootstrap.py -l admin \
@@ -420,8 +419,6 @@ Options:
                         Foreman)
 ~~~
 
-# For developers:
+# For developers and contributors:
 
-Use `pydoc ./bootstrap.py` to get the code documentation.
-
-Use `awk -F'# >' 'NF>1 {print $2}' ./bootstrap.py` to see the flow of the script.
+See  [CONTRIBUTING.md](https://github.com/Katello/katello-client-bootstrap/blob/master/CONTRIBUTING.md)
