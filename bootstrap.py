@@ -638,10 +638,12 @@ def get_api_port():
 print "Foreman Bootstrap Script"
 print "This script is designed to register new systems or to migrate an existing system to a Foreman server with Katello"
 
+
 def check_prerequisite():
     rpm_sat = "katello-capsule"
     check_rpm_installed(rpm_sat)
 
+    
 def check_rpm_installed(rpm_sat):
     ts = rpm.TransactionSet()
     headers = ts.dbMatch('name', rpm_sat)
@@ -656,6 +658,7 @@ def check_rpm_installed(rpm_sat):
         print_error("RPM Satellite/capsule installed")
         sys.exit(1)
 
+        
 def prepare_rhel5_migration():
     """
     Execute specific preparations steps for RHEL 5. Older releases of RHEL 5
@@ -708,7 +711,7 @@ if __name__ == '__main__':
     
     # Check if Satellite or Capsule are installed or not
     check_prerequisite()
-
+    
     # > Register our better HTTP processor as default opener for URLs.
     opener = urllib2.build_opener(BetterHTTPErrorProcessor)
     urllib2.install_opener(opener)
