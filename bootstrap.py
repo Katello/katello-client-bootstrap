@@ -206,6 +206,7 @@ def enable_rhsmcertd():
     """
     Enable and restart the rhsmcertd service
     """
+    print_running("Enabling and restarting rhsmcertd...")
     exec_failexit("/sbin/chkconfig rhsmcertd on")
     exec_failexit("/sbin/service rhsmcertd restart")
 
@@ -948,7 +949,6 @@ if __name__ == '__main__':
         update_host_capsule_mapping("content_source_id", capsule_id, host_id)
         update_host_capsule_mapping("openscap_proxy_id", capsule_id, host_id)
 
-        print_running("Restarting rhsmcertd")
         enable_rhsmcertd()
 
         print_running("Stopping the Puppet agent for configuration update")
