@@ -464,8 +464,8 @@ def put_json(url, jdata=None):
     return call_api(url, data=jdata, method='PUT')
 
 
-def update_host_capsule_mapping(server, port, attribute, capsule_id, host_id):
-    url = "https://" + server + ":" + str(port) + "/api/v2/hosts/" + str(host_id)
+def update_host_capsule_mapping(attribute, capsule_id, host_id):
+    url = "https://" + options.foreman_fqdn + ":" + str(API_PORT) + "/api/v2/hosts/" + str(host_id)
     jdata = json.loads('{"host": {"%s": "%s"}}' % (attribute, capsule_id))
     return put_json(url, jdata)
 
@@ -944,10 +944,10 @@ if __name__ == '__main__':
         print_running("Calling Foreman API to update content source, puppet master, puppet ca and openscap proxy records for %s" % FQDN)
         capsule_id = return_matching_katello_key('capsules', 'name="%s"' % options.foreman_fqdn, 'id', False)
         host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', False)
-        update_host_capsule_mapping(options.foreman_fqdn, API_PORT, "puppet_proxy_id", capsule_id, host_id)
-        update_host_capsule_mapping(options.foreman_fqdn, API_PORT, "puppet_ca_proxy_id", capsule_id, host_id)
-        update_host_capsule_mapping(options.foreman_fqdn, API_PORT, "content_source_id", capsule_id, host_id)
-        update_host_capsule_mapping(options.foreman_fqdn, API_PORT, "openscap_proxy_id", capsule_id, host_id)
+        update_host_capsule_mapping("puppet_proxy_id", capsule_id, host_id)
+        update_host_capsule_mapping("puppet_ca_proxy_id", capsule_id, host_id)
+        update_host_capsule_mapping("content_source_id", capsule_id, host_id)
+        update_host_capsule_mapping("openscap_proxy_id", capsule_id, host_id)
 
         print_running("Restarting rhsmcertd")
         enable_rhsmcertd()
