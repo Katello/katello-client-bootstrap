@@ -166,7 +166,7 @@ def get_bootstrap_rpm(clean=False):
     Uses --insecure options to curl(1) if instructed to download via HTTPS
     If called with --force, calls clean_katello_agent().
     """
-    if options.force or clean == True:
+    if clean == True:
         clean_katello_agent()
     if os.path.exists('/etc/rhsm/ca/katello-server-ca.pem'):
         print_generic("A Katello CA certificate is already installed. Assuming system is registered")
@@ -919,7 +919,7 @@ if __name__ == '__main__':
         print_generic('This system is registered to RHN. Attempting to migrate via rhn-classic-migrate-to-rhsm')
         install_prereqs()
         check_migration_version()
-        get_bootstrap_rpm()
+        get_bootstrap_rpm(clean=options.force)
         generate_katello_facts()
         API_PORT = get_api_port()
         if 'foreman' not in options.skip:
@@ -971,7 +971,7 @@ if __name__ == '__main__':
         # > ELSE get CA RPM, optionally create host,
         # >      register via subscription-manager
         print_generic('This system is not registered to RHN. Attempting to register via subscription-manager')
-        get_bootstrap_rpm()
+        get_bootstrap_rpm(clean=options.force)
         generate_katello_facts()
         API_PORT = get_api_port()
         if 'foreman' not in options.skip:
