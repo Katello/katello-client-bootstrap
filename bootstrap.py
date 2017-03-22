@@ -164,7 +164,8 @@ def get_bootstrap_rpm(clean=False):
     """
     Retrieve Client CA Certificate RPMs from the Satellite 6 server.
     Uses --insecure options to curl(1) if instructed to download via HTTPS
-    If called with --force, calls clean_katello_agent().
+    This function is usually called with clean=options.force, which ensures
+    clean_katello_agent() is called is --force is specified.
     """
     if clean:
         clean_katello_agent()
