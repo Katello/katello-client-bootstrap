@@ -259,6 +259,7 @@ Sometimes, you may want to skip certain steps of the bootstrapping process. the 
 * `prereq-update` - Skips update of `yum`, `openssl` and `python`
 * `katello-agent` - Does not install the `katello-agent` package
 * `remove-obsolete-packages` - Does not remove the Classic/RHN/Spacewalk/RHUI packages.  (equivalent to `--no-remove-obsolete-packages`)
+* `puppet-enable` - Does not enable and start the puppet daemon on the client. 
 
 **Note:** it is strongly preferred to use the `--skip` option in lieu of the individual `--skip-foreman`, `--skip-puppet`, and `--no-remove-obsolete-packages` options.
 
