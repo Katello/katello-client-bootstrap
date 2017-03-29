@@ -338,6 +338,22 @@ On machines with multiple interfaces or multiple addresses on one interface, it 
     --ip 192.0.2.23
 ~~~
 
+### Configuring the client to run only in noop mode
+
+When migrating or registering clients which may have never been managed via Puppet, it may be useful to configure the agent in `noop` mode. This allows the client to be managed via Foreman, while getting facts & reports about its configuration state, without making any changes to it. The `--puppet-noop` switch facilitates this behavior
+
+~~~
+./bootstrap.py -l admin \
+    -s foreman.example.com \
+    -o "Red Hat" \
+    -L RDU \
+    -g "RHEL7/Crash" \
+    -a ak-Reg_To_Crash \
+    --puppet-noop
+~~~
+
+
+
 # Help / Available options:
 
 ~~~
@@ -393,6 +409,7 @@ Options:
   -f, --force           Force registration (will erase old katello and puppet
                         certs)
   --add-domain          Automatically add the clients domain to Foreman
+  --puppet-noop         Configure Puppet agent to only run in noop mode
   --remove              Instead of registering the machine to Foreman remove it
   -r RELEASE, --release=RELEASE
                         Specify release version

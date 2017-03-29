@@ -334,6 +334,9 @@ certname        = %s
 environment     = %s
 server          = %s
 """ % (options.foreman_fqdn, FQDN, puppet_env, options.foreman_fqdn))
+    if options.puppet_noop:
+        puppet_conf.write("""noop            = true
+""")
     puppet_conf.close()
     print_generic("Running Puppet in noop mode to generate SSL certs")
     print_generic("Visit the UI and approve this certificate via Infrastructure->Capsules")
@@ -746,7 +749,8 @@ if __name__ == '__main__':
     parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="Verbose output")
     parser.add_option("-f", "--force", dest="force", action="store_true", help="Force registration (will erase old katello and puppet certs)")
     parser.add_option("--add-domain", dest="add_domain", action="store_true", help="Automatically add the clients domain to Foreman")
-    parser.add_option("--remove", dest="remove", action="store_true", help="Instead of registring the machine to Foreman remove it")
+    parser.add_option("--puppet-noop", dest="puppet_noop", action="store_true", help="Configure Puppet agent to only run in noop mode")
+    parser.add_option("--remove", dest="remove", action="store_true", help="Instead of registering the machine to Foreman remove it")
     parser.add_option("-r", "--release", dest="release", default=RELEASE, help="Specify release version")
     parser.add_option("-R", "--remove-obsolete-packages", dest="removepkgs", action="store_true", help="Remove old Red Hat Network and RHUI Packages (default)", default=True)
     parser.add_option("--download-method", dest="download_method", default="http", help="Method to download katello-ca-consumer package (e.g. http or https)", metavar="DOWNLOADMETHOD", choices=['http', 'https'])
