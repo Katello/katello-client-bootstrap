@@ -338,6 +338,26 @@ On machines with multiple interfaces or multiple addresses on one interface, it 
     --ip 192.0.2.23
 ~~~
 
+### Providing a repository with the subscription-manager packages
+
+For clients who do not have subscription-manager installed (which is a prerequisite of `bootstrap.py`), the `deps-repository-url` option can be used to specify a yum repository which contains the `subscription-manager` RPMs
+
+On your Foreman instance, kickstart repositories are available via HTTP, and are ideal to be used in this scenario. However, any yum repository with the required packages would work.  
+
+~~~
+./bootstrap.py -l admin \
+    -s foreman.example.com \
+    -o "Red Hat" \
+    -L RDU \
+    -g "RHEL7/Crash" \
+    -a ak-Reg_To_Crash \
+    --download-method https \
+    --deps-repository-url "http://server.example.com/pulp/repos/Example/Library/content/dist/rhel/server/7/7.2/x86_64/kickstart/"
+~~~
+
+Also, the `--deps-repository-gpg-key` option (defaults to `file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release`) is available if the GPG key for the repository differs from `/etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release`
+
+
 # Help / Available options:
 
 ~~~

@@ -7,6 +7,7 @@ Use `pydoc ./bootstrap.py` to get the documentation.
 Use `awk -F'# >' 'NF>1 {print $2}' ./bootstrap.py` to see the flow.
 """
 
+import yum
 import getpass
 import urllib2
 import base64
@@ -124,9 +125,15 @@ def delete_directory(directoryname):
         sys.exit(1)
 
 
-def yum(command, pkgs=""):
-    """Helper function to call a yum command on a list of packages."""
-    exec_failexit("/usr/bin/yum -y %s %s" % (command, pkgs))
+def call_yum(command, params="", failonerror=True):
+    """
+    Helper function to call a yum command on a list of packages.
+    pass failonerror = False to make yum commands non-fatal
+    """
+    if failonerror:
+        exec_failexit("/usr/bin/yum -y %s %s" % (command, params))
+    else:
+        exec_failok("/usr/bin/yum -y %s %s" % (command, params))
 
 
 def check_migration_version():
@@ -149,15 +156,52 @@ def check_migration_version():
         sys.exit(1)
 
 
+def setup_yum_repo(url, gpg_key):
+    """
+    Configures a yum repository at /etc/yum.repos.d/katello-client-bootstrap-deps.repo
+    """
+    submanrepoconfig = SafeConfigParser()
+    submanrepoconfig.add_section('kt-bootstrap')
+    submanrepoconfig.set('kt-bootstrap', 'name', 'Subscription-manager dependencies for katello-client-bootstrap')
+    submanrepoconfig.set('kt-bootstrap', 'baseurl', url)
+    submanrepoconfig.set('kt-bootstrap', 'enabled', '1')
+    submanrepoconfig.set('kt-bootstrap', 'gpgcheck', '1')
+    submanrepoconfig.set('kt-bootstrap', 'gpgkey', gpg_key)
+    submanrepoconfig.write(open('/etc/yum.repos.d/katello-client-bootstrap-deps.repo', 'w'))
+    print_generic('Building yum metadata cache. This may take a few minutes')
+    call_yum('makecache')
+
+
 def install_prereqs():
     """
     Install subscription manager and its prerequisites.
+    If subscription-manager is installed already, check to see if we are migrating. If yes, install subscription-manager-migration.
+    Else if subscription-manager and subscription-manager-migration are available in a configured repo, install them both.
+    Otherwise, exit and inform user that we cannot proceed
     """
-    print_generic("Installing subscription manager prerequisites")
-    yum("remove", "subscription-manager-gnome")
-    yum("install", "subscription-manager 'subscription-manager-migration-*'")
+    print_generic("Checking subscription manager prerequisites")
+    if options.deps_repository_url:
+        print_generic("Enabling %s as a repository for dependency RPMs" % options.deps_repository_url)
+        setup_yum_repo(options.deps_repository_url, options.deps_repository_gpg_key)
+    yb = yum.YumBase()
+    pkg_list = yb.doPackageLists(patterns=['subscription-manager'])
+    call_yum("remove", "subscription-manager-gnome")
+    if pkg_list.installed:
+        if check_rhn_registration() and 'migration' not in options.skip:
+            print_generic("installing subscription-manager-migration")
+            call_yum("install", "'subscription-manager-migration-*'", False)
+        print_generic("subscription-manager is installed already. Attempting update")
+        call_yum("update", "subscription-manager 'subscription-manager-migration-*'", False)
+    elif pkg_list.available:
+        print_generic("subscription-manager NOT installed. Installing.")
+        call_yum("install", "subscription-manager 'subscription-manager-migration-*'")
+    else:
+        print_error("Cannot find subscription-manager in any configured repository. Consider using the --deps-repository-url switch to specify a repository with the subscription-manager RPMs")
+        sys.exit(1)
     if 'prereq-update' not in options.skip:
-        yum("update", "yum openssl python")
+        call_yum("update", "yum openssl python", False)
+    if options.deps_repository_url:
+        delete_file('/etc/yum.repos.d/katello-client-bootstrap-deps.repo')
 
 
 def get_bootstrap_rpm():
@@ -272,13 +316,13 @@ def clean_katello_agent():
     """Remove old Katello agent (aka Gofer) and certificate RPMs."""
     print_generic("Removing old Katello agent and certs")
     delete_file("/etc/rhsm/ca/katello-server-ca.pem")
-    yum("erase", "'katello-ca-consumer-*' katello-agent gofer")
+    call_yum("erase", "'katello-ca-consumer-*' katello-agent gofer")
 
 
 def install_katello_agent():
     """Install Katello agent (aka Gofer) and activate /start it."""
     print_generic("Installing the Katello agent")
-    yum("install", "katello-agent")
+    call_yum("install", "katello-agent")
     exec_failexit("/sbin/chkconfig goferd on")
     exec_failexit("/sbin/service goferd restart")
 
@@ -286,7 +330,7 @@ def install_katello_agent():
 def clean_puppet():
     """Remove old Puppet Agent and its configuration"""
     print_generic("Cleaning old Puppet Agent")
-    yum("erase", "puppet")
+    call_yum("erase", "puppet")
     delete_directory("/var/lib/puppet/")
 
 
@@ -315,7 +359,7 @@ def install_puppet_agent():
     """Install and configure, then enable and start the Puppet Agent"""
     puppet_env = return_puppetenv_for_hg(return_matching_foreman_key('hostgroups', 'title="%s"' % options.hostgroup, 'id', False))
     print_generic("Installing the Puppet Agent")
-    yum("install", "puppet")
+    call_yum("install", "puppet")
     exec_failexit("/sbin/chkconfig puppet on")
     puppet_conf = open('/etc/puppet/puppet.conf', 'wb')
     puppet_conf.write("""
@@ -345,13 +389,13 @@ server          = %s
 def remove_obsolete_packages():
     """Remove old RHN packages"""
     print_generic("Removing old RHN packages")
-    yum("remove", "rhn-setup rhn-client-tools yum-rhn-plugin rhnsd rhn-check rhnlib spacewalk-abrt spacewalk-oscap osad 'rh-*-rhui-client'")
+    call_yum("remove", "rhn-setup rhn-client-tools yum-rhn-plugin rhnsd rhn-check rhnlib spacewalk-abrt spacewalk-oscap osad 'rh-*-rhui-client'")
 
 
 def fully_update_the_box():
     """Call `yum -y update` to upgrade the host."""
     print_generic("Fully Updating The Box")
-    yum("update")
+    call_yum("update")
 
 
 # curl https://satellite.example.com:9090/ssh/pubkey >> ~/.ssh/authorized_keys
@@ -757,6 +801,8 @@ if __name__ == '__main__':
     parser.add_option("--enablerepos", dest="enablerepos", help="Repositories to be enabled via subscription-manager - comma separated", metavar="enablerepos")
     parser.add_option("--skip", dest="skip", action="append", help="Skip the listed steps (choices: %s)" % SKIP_STEPS, choices=SKIP_STEPS, default=[])
     parser.add_option("--ip", dest="ip", help="IPv4 address of the primary interface in Foreman (defaults to the address used to make request to Foreman)")
+    parser.add_option("--deps-repository-url", dest="deps_repository_url", help="URL to a repository that contains the subscription-manager RPMs")
+    parser.add_option("--deps-repository-gpg-key", dest="deps_repository_gpg_key", help="GPG Key to the repository that contains the subscription-manager RPMs", default="file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release")
     (options, args) = parser.parse_args()
 
     if options.no_foreman:
@@ -874,7 +920,7 @@ if __name__ == '__main__':
             import simplejson as json
         except ImportError:
             print_warning("Could neither import json nor simplejson, will try to install simplejson and re-import")
-            yum("install", "python-simplejson")
+            call_yum("install", "python-simplejson")
             try:
                 import simplejson as json
             except ImportError:
@@ -922,6 +968,7 @@ if __name__ == '__main__':
         # > ELSE get CA RPM, optionally create host,
         # >      register via subscription-manager
         print_generic('This system is not registered to RHN. Attempting to register via subscription-manager')
+        install_prereqs()
         get_bootstrap_rpm()
         generate_katello_facts()
         API_PORT = get_api_port()
