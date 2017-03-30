@@ -316,7 +316,6 @@ def install_puppet_agent():
     puppet_env = return_puppetenv_for_hg(return_matching_foreman_key('hostgroups', 'title="%s"' % options.hostgroup, 'id', False))
     print_generic("Installing the Puppet Agent")
     yum("install", "puppet")
-    exec_failexit("/sbin/chkconfig puppet on")
     puppet_conf = open('/etc/puppet/puppet.conf', 'wb')
     puppet_conf.write("""
 [main]
@@ -339,7 +338,9 @@ server          = %s
     print_generic("Visit the UI and approve this certificate via Infrastructure->Capsules")
     print_generic("if auto-signing is disabled")
     exec_failexit("/usr/bin/puppet agent --test --noop --tags no_such_tag --waitforcert 10")
-    exec_failexit("/sbin/service puppet restart")
+    if 'puppet-enable' not in options.skip:
+        exec_failexit("/sbin/chkconfig puppet on")
+        exec_failexit("/sbin/service puppet restart")
 
 
 def remove_obsolete_packages():
@@ -721,7 +722,7 @@ if __name__ == '__main__':
     except AttributeError:
         RELEASE = platform.dist()[1]
 
-    SKIP_STEPS = ['foreman', 'puppet', 'migration', 'prereq-update', 'katello-agent', 'remove-obsolete-packages']
+    SKIP_STEPS = ['foreman', 'puppet', 'migration', 'prereq-update', 'katello-agent', 'remove-obsolete-packages', 'puppet-enable']
 
     # > Define and parse the options
     parser = OptionParser()
