@@ -281,14 +281,14 @@ In many cases, the user cannot update his/her system to provide a FQDN. bootstra
 
 **Prerequisites**
 
-The user needs to set to **False** the `create_new_host_when_facts_are_uploaded` and ` create_new_host_when_reports_are_uploaded` options. If these options are not set, a host entry will be created based upon the facts provided by facter.  This can be done with hammer.
+The user needs to set to **False** the `create_new_host_when_facts_are_uploaded` and ` create_new_host_when_report_is_uploaded` options. If these options are not set, a host entry will be created based upon the facts provided by facter.  This can be done with hammer.
 
 ~~~
 hammer settings set \
   --name  create_new_host_when_facts_are_uploaded \
   --value false
 hammer settings set \
-  --name  create_new_host_when_reports_are_uploaded \
+  --name  create_new_host_when_report_is_uploaded \
   --value false
 ~~~
 
