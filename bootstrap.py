@@ -636,7 +636,10 @@ def get_api_port():
     """Helper function to get the server port from Subscription Manager."""
     configparser = SafeConfigParser()
     configparser.read('/etc/rhsm/rhsm.conf')
-    return configparser.get('server', 'port')
+    try:
+        return configparser.get('server', 'port')
+    except:
+        return "443"
 
 
 print "Foreman Bootstrap Script"
