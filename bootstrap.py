@@ -638,26 +638,18 @@ def get_api_port():
 print "Foreman Bootstrap Script"
 print "This script is designed to register new systems or to migrate an existing system to a Foreman server with Katello"
 
-
 def check_prerequisite():
-    rpm_sat = "katello-capsule"
-    check_rpm_installed(rpm_sat)
-
+   rpm_sat = ['satellite','satellite-capsule']
+   check_rpm_installed(rpm_sat)
 
 def check_rpm_installed(rpm_sat):
     ts = rpm.TransactionSet()
-    headers = ts.dbMatch('name', rpm_sat)
+    headers = ts.dbMatch()
 
     for h in headers:
-        print h['name']
-    try:
-        h
-    except NameError:
-        print_success("Server is not a Satellite/Capsule server fine!")
-    else:
-        print_error("RPM Satellite/capsule installed")
-        sys.exit(1)
-
+        if h['name'] in rpm_sat:
+            print_error("RPM Satellite/capsule installed")
+            sys.exit(1)
 
 def prepare_rhel5_migration():
     """
