@@ -703,7 +703,6 @@ def prepare_rhel5_migration():
 
 if __name__ == '__main__':
 
-
     # > Register our better HTTP processor as default opener for URLs.
     opener = urllib2.build_opener(BetterHTTPErrorProcessor)
     urllib2.install_opener(opener)
