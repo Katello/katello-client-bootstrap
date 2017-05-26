@@ -640,7 +640,7 @@ print "This script is designed to register new systems or to migrate an existing
 
 
 def check_prerequisite():
-    rpm_sat = ['satellite', 'satellite-capsule']
+    rpm_sat = ['katello', 'foreman-proxy-content', 'katello-capsule']
     check_rpm_installed(rpm_sat)
 
 
@@ -703,8 +703,6 @@ def prepare_rhel5_migration():
 
 if __name__ == '__main__':
 
-    # Check if Satellite or Capsule are installed or not
-    check_prerequisite()
 
     # > Register our better HTTP processor as default opener for URLs.
     opener = urllib2.build_opener(BetterHTTPErrorProcessor)
@@ -880,6 +878,9 @@ if __name__ == '__main__':
     if os.getuid() != 0:
         print_error("This script requires root-level access")
         sys.exit(1)
+
+    # Check if Satellite or Capsule are installed or not
+    check_prerequisite()
 
     # > Try to import json or simplejson.
     # do it at this point in the code to have our custom print and exec
