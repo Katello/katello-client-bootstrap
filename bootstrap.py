@@ -640,7 +640,7 @@ print "This script is designed to register new systems or to migrate an existing
 
 
 def check_prerequisite():
-    rpm_sat = ['katello', 'foreman-proxy-content', 'katello-capsule']
+    rpm_sat = ['katello', 'foreman-proxy-content', 'katello-capsule', 'spacewalk-proxy-common', 'spacewalk-backend']
     check_rpm_installed(rpm_sat)
 
 
