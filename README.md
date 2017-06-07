@@ -259,6 +259,7 @@ Sometimes, you may want to skip certain steps of the bootstrapping process. the 
 * `prereq-update` - Skips update of `yum`, `openssl` and `python`
 * `katello-agent` - Does not install the `katello-agent` package
 * `remove-obsolete-packages` - Does not remove the Classic/RHN/Spacewalk/RHUI packages.  (equivalent to `--no-remove-obsolete-packages`)
+* `puppet-enable` - Does not enable and start the puppet daemon on the client. 
 
 **Note:** it is strongly preferred to use the `--skip` option in lieu of the individual `--skip-foreman`, `--skip-puppet`, and `--no-remove-obsolete-packages` options.
 
@@ -280,14 +281,14 @@ In many cases, the user cannot update his/her system to provide a FQDN. bootstra
 
 **Prerequisites**
 
-The user needs to set to **False** the `create_new_host_when_facts_are_uploaded` and ` create_new_host_when_reports_are_uploaded` options. If these options are not set, a host entry will be created based upon the facts provided by facter.  This can be done with hammer.
+The user needs to set to **False** the `create_new_host_when_facts_are_uploaded` and ` create_new_host_when_report_is_uploaded` options. If these options are not set, a host entry will be created based upon the facts provided by facter.  This can be done with hammer.
 
 ~~~
 hammer settings set \
   --name  create_new_host_when_facts_are_uploaded \
   --value false
 hammer settings set \
-  --name  create_new_host_when_reports_are_uploaded \
+  --name  create_new_host_when_report_is_uploaded \
   --value false
 ~~~
 
@@ -338,13 +339,26 @@ On machines with multiple interfaces or multiple addresses on one interface, it 
     --ip 192.0.2.23
 ~~~
 
+
+### Configuring the client to run only in noop mode
+
+When migrating or registering clients which may have never been managed via Puppet, it may be useful to configure the agent in `noop` mode. This allows the client to be managed via Foreman, while getting facts & reports about its configuration state, without making any changes to it. The `--puppet-noop` switch facilitates this behavior
+
+~~~
+./bootstrap.py -l admin \
+    -s foreman.example.com \
+    -o "Red Hat" \
+    -L RDU \
+    -g "RHEL7/Crash" \
+    -a ak-Reg_To_Crash \
+    --puppet-noop
+~~~
+
 ### Providing a repository with the subscription-manager packages
 
 For clients who do not have subscription-manager installed (which is a prerequisite of `bootstrap.py`), the `deps-repository-url` option can be used to specify a yum repository which contains the `subscription-manager` RPMs
-
 On your Foreman instance, kickstart repositories are available via HTTP, and are ideal to be used in this scenario. However, any yum repository with the required packages would work.  
 
-~~~
 ./bootstrap.py -l admin \
     -s foreman.example.com \
     -o "Red Hat" \
@@ -356,7 +370,6 @@ On your Foreman instance, kickstart repositories are available via HTTP, and are
 ~~~
 
 Also, the `--deps-repository-gpg-key` option (defaults to `file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release`) is available if the GPG key for the repository differs from `/etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release`
-
 
 # Help / Available options:
 
@@ -413,6 +426,7 @@ Options:
   -f, --force           Force registration (will erase old katello and puppet
                         certs)
   --add-domain          Automatically add the clients domain to Foreman
+  --puppet-noop         Configure Puppet agent to only run in noop mode
   --remove              Instead of registering the machine to Foreman remove it
   -r RELEASE, --release=RELEASE
                         Specify release version

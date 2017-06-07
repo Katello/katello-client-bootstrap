@@ -378,12 +378,17 @@ certname        = %s
 environment     = %s
 server          = %s
 """ % (options.foreman_fqdn, FQDN, puppet_env, options.foreman_fqdn))
+    if options.puppet_noop:
+        puppet_conf.write("""noop            = true
+""")
     puppet_conf.close()
     print_generic("Running Puppet in noop mode to generate SSL certs")
     print_generic("Visit the UI and approve this certificate via Infrastructure->Capsules")
     print_generic("if auto-signing is disabled")
     exec_failexit("/usr/bin/puppet agent --test --noop --tags no_such_tag --waitforcert 10")
-    exec_failexit("/sbin/service puppet restart")
+    if 'puppet-enable' not in options.skip:
+        exec_failexit("/sbin/chkconfig puppet on")
+        exec_failexit("/sbin/service puppet restart")
 
 
 def remove_obsolete_packages():
@@ -676,7 +681,10 @@ def get_api_port():
     """Helper function to get the server port from Subscription Manager."""
     configparser = SafeConfigParser()
     configparser.read('/etc/rhsm/rhsm.conf')
-    return configparser.get('server', 'port')
+    try:
+        return configparser.get('server', 'port')
+    except:
+        return "443"
 
 
 print "Foreman Bootstrap Script"
@@ -765,7 +773,7 @@ if __name__ == '__main__':
     except AttributeError:
         RELEASE = platform.dist()[1]
 
-    SKIP_STEPS = ['foreman', 'puppet', 'migration', 'prereq-update', 'katello-agent', 'remove-obsolete-packages']
+    SKIP_STEPS = ['foreman', 'puppet', 'migration', 'prereq-update', 'katello-agent', 'remove-obsolete-packages', 'puppet-enable']
 
     # > Define and parse the options
     parser = OptionParser()
@@ -790,7 +798,8 @@ if __name__ == '__main__':
     parser.add_option("-v", "--verbose", dest="verbose", action="store_true", help="Verbose output")
     parser.add_option("-f", "--force", dest="force", action="store_true", help="Force registration (will erase old katello and puppet certs)")
     parser.add_option("--add-domain", dest="add_domain", action="store_true", help="Automatically add the clients domain to Foreman")
-    parser.add_option("--remove", dest="remove", action="store_true", help="Instead of registring the machine to Foreman remove it")
+    parser.add_option("--puppet-noop", dest="puppet_noop", action="store_true", help="Configure Puppet agent to only run in noop mode")
+    parser.add_option("--remove", dest="remove", action="store_true", help="Instead of registering the machine to Foreman remove it")
     parser.add_option("-r", "--release", dest="release", default=RELEASE, help="Specify release version")
     parser.add_option("-R", "--remove-obsolete-packages", dest="removepkgs", action="store_true", help="Remove old Red Hat Network and RHUI Packages (default)", default=True)
     parser.add_option("--download-method", dest="download_method", default="http", help="Method to download katello-ca-consumer package (e.g. http or https)", metavar="DOWNLOADMETHOD", choices=['http', 'https'])
