@@ -677,6 +677,13 @@ def enable_repos():
     exec_failok("subscription-manager repos %s" % repostoenable)
 
 
+def install_packages():
+    """Install user-provided packages"""
+    install_packages = options.install_packages.replace(',', " ")
+    print_running("Installing the following packages %s" % install_packages)
+    call_yum("install", install_packages, False)
+
+
 def get_api_port():
     """Helper function to get the server port from Subscription Manager."""
     configparser = SafeConfigParser()
@@ -812,6 +819,7 @@ if __name__ == '__main__':
     parser.add_option("--ip", dest="ip", help="IPv4 address of the primary interface in Foreman (defaults to the address used to make request to Foreman)")
     parser.add_option("--deps-repository-url", dest="deps_repository_url", help="URL to a repository that contains the subscription-manager RPMs")
     parser.add_option("--deps-repository-gpg-key", dest="deps_repository_gpg_key", help="GPG Key to the repository that contains the subscription-manager RPMs", default="file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release")
+    parser.add_option("--install-packages", dest="install_packages", help="List of packages to be additionally installed - comma separated", metavar="installpackages")
     (options, args) = parser.parse_args()
 
     if options.no_foreman:
@@ -1001,6 +1009,9 @@ if __name__ == '__main__':
             if options.force:
                 clean_puppet()
             install_puppet_agent()
+
+        if options.install_packages:
+            install_packages()
 
         if 'remove-obsolete-packages' not in options.skip:
             remove_obsolete_packages()
