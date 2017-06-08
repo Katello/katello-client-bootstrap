@@ -698,6 +698,20 @@ print "Foreman Bootstrap Script"
 print "This script is designed to register new systems or to migrate an existing system to a Foreman server with Katello"
 
 
+def check_prerequisite():
+    rpm_sat = ['katello', 'foreman-proxy-content', 'katello-capsule', 'spacewalk-proxy-common', 'spacewalk-backend']
+    check_rpm_installed(rpm_sat)
+
+
+def check_rpm_installed(rpm_sat):
+    ts = rpm.TransactionSet()
+    headers = ts.dbMatch()
+    for h in headers:
+        if h['name'] in rpm_sat:
+            print_error("RPM Satellite/capsule installed")
+            sys.exit(1)
+
+
 def prepare_rhel5_migration():
     """
     Execute specific preparations steps for RHEL 5. Older releases of RHEL 5
@@ -926,6 +940,9 @@ if __name__ == '__main__':
     if os.getuid() != 0:
         print_error("This script requires root-level access")
         sys.exit(1)
+
+    # Check if Satellite or Capsule are installed or not
+    check_prerequisite()
 
     # > Try to import json or simplejson.
     # do it at this point in the code to have our custom print and exec
