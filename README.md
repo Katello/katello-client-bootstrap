@@ -359,6 +359,7 @@ When migrating or registering clients which may have never been managed via Pupp
 For clients who do not have subscription-manager installed (which is a prerequisite of `bootstrap.py`), the `deps-repository-url` option can be used to specify a yum repository which contains the `subscription-manager` RPMs
 On your Foreman instance, kickstart repositories are available via HTTP, and are ideal to be used in this scenario. However, any yum repository with the required packages would work.  
 
+~~~
 ./bootstrap.py -l admin \
     -s foreman.example.com \
     -o "Red Hat" \
@@ -370,6 +371,21 @@ On your Foreman instance, kickstart repositories are available via HTTP, and are
 ~~~
 
 Also, the `--deps-repository-gpg-key` option (defaults to `file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release`) is available if the GPG key for the repository differs from `/etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release`
+
+### Installing user specified packages
+
+For some users who do not have a configuration management or automation solution, `bootstrap.py` provides a means to install user specified packages via the `--install-packages` switch.
+
+~~~
+./bootstrap.py -l admin \
+    -s foreman.example.com \
+    -o "Red Hat" \
+    -L RDU \
+    -g "RHEL7/Crash" \
+    -a ak-Reg_To_Crash \
+    --install-packages csh,dstat
+
+~~~
 
 # Help / Available options:
 
@@ -427,7 +443,8 @@ Options:
                         certs)
   --add-domain          Automatically add the clients domain to Foreman
   --puppet-noop         Configure Puppet agent to only run in noop mode
-  --remove              Instead of registering the machine to Foreman remove it
+  --remove              Instead of registering the machine to Foreman remove
+                        it
   -r RELEASE, --release=RELEASE
                         Specify release version
   -R, --remove-obsolete-packages
@@ -447,10 +464,19 @@ Options:
                         comma separated
   --skip=SKIP           Skip the listed steps (choices: ['foreman', 'puppet',
                         'migration', 'prereq-update', 'katello-agent',
-                        'remove-obsolete-packages'])
+                        'remove-obsolete-packages', 'puppet-enable'])
   --ip=IP               IPv4 address of the primary interface in Foreman
                         (defaults to the address used to make request to
                         Foreman)
+  --deps-repository-url=DEPS_REPOSITORY_URL
+                        URL to a repository that contains the subscription-
+                        manager RPMs
+  --deps-repository-gpg-key=DEPS_REPOSITORY_GPG_KEY
+                        GPG Key to the repository that contains the
+                        subscription-manager RPMs
+  --install-packages=installpackages
+                        List of packages to be additionally installed - comma
+                        separated
 ~~~
 
 # For developers and contributors:
