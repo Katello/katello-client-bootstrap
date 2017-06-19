@@ -320,11 +320,12 @@ def clean_katello_agent():
 
 
 def install_katello_agent():
-    """Install Katello agent (aka Gofer) and activate /start it."""
+    """Install Katello agent (aka Gofer) and maybe activate/start it."""
     print_generic("Installing the Katello agent")
     call_yum("install", "katello-agent")
-    exec_failexit("/sbin/chkconfig goferd on")
-    exec_failexit("/sbin/service goferd restart")
+    if 'goferd' not in options.skip:
+        exec_failexit("/sbin/chkconfig goferd on")
+        exec_failexit("/sbin/service goferd restart")
 
 
 def clean_puppet():
@@ -790,7 +791,7 @@ if __name__ == '__main__':
     except AttributeError:
         RELEASE = platform.dist()[1]
 
-    SKIP_STEPS = ['foreman', 'puppet', 'migration', 'prereq-update', 'katello-agent', 'remove-obsolete-packages', 'puppet-enable']
+    SKIP_STEPS = ['foreman', 'puppet', 'migration', 'prereq-update', 'katello-agent', 'remove-obsolete-packages', 'puppet-enable', 'goferd']
 
     # > Define and parse the options
     parser = OptionParser()
