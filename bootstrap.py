@@ -28,6 +28,9 @@ from urllib import urlencode
 from ConfigParser import SafeConfigParser
 
 
+VERSION = '1.4.0'
+
+
 def get_architecture():
     """
     Helper function to get the architecture x86_64 vs. x86.
@@ -694,10 +697,6 @@ def get_api_port():
         return "443"
 
 
-print "Foreman Bootstrap Script"
-print "This script is designed to register new systems or to migrate an existing system to a Foreman server with Katello"
-
-
 def check_rpm_installed():
     rpm_sat = ['katello', 'foreman-proxy-content', 'katello-capsule', 'spacewalk-proxy-common', 'spacewalk-backend']
     ts = rpm.TransactionSet()
@@ -758,6 +757,9 @@ def prepare_rhel5_migration():
 
 if __name__ == '__main__':
 
+    print "Foreman Bootstrap Script"
+    print "This script is designed to register new systems or to migrate an existing system to a Foreman server with Katello"
+
     # > Register our better HTTP processor as default opener for URLs.
     opener = urllib2.build_opener(BetterHTTPErrorProcessor)
     urllib2.install_opener(opener)
@@ -793,7 +795,8 @@ if __name__ == '__main__':
     SKIP_STEPS = ['foreman', 'puppet', 'migration', 'prereq-update', 'katello-agent', 'remove-obsolete-packages', 'puppet-enable']
 
     # > Define and parse the options
-    parser = OptionParser()
+    usage_string = "Usage: %prog -l admin -s foreman.example.com -o 'Default Organization' -L 'Default Location' -g My_Hostgroup -a My_Activation_Key"
+    parser = OptionParser(usage=usage_string, version="%%prog %s" % VERSION)
     parser.add_option("-s", "--server", dest="foreman_fqdn", help="FQDN of Foreman OR Capsule - omit https://", metavar="foreman_fqdn")
     parser.add_option("-l", "--login", dest="login", default='admin', help="Login user for API Calls", metavar="LOGIN")
     parser.add_option("-p", "--password", dest="password", help="Password for specified user. Will prompt if omitted", metavar="PASSWORD")
@@ -857,7 +860,6 @@ if __name__ == '__main__':
         else:
             print "Must specify server.  See usage:"
         parser.print_help()
-        print "\nExample usage: ./bootstrap.py -l admin -s foreman.example.com -o 'Default Organization' -L 'Default Location' -g My_Hostgroup -a My_Activation_Key"
         sys.exit(1)
 
     # > Gather FQDN, HOSTNAME and DOMAIN using options.fqdn
