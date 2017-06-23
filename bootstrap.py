@@ -46,6 +46,11 @@ error_colors = {
 }
 
 
+def filter_string(string):
+    """Helper function to filter out passwords from strings"""
+    return string.replace(options.password, '******').replace(options.legacy_password, '******')
+
+
 def print_error(msg):
     """Helper function to output an ERROR message."""
     print "[%sERROR%s], [%s], EXITING: [%s] failed to execute properly." % (error_colors['FAIL'], error_colors['ENDC'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
@@ -73,11 +78,12 @@ def print_generic(msg):
 
 def exec_failok(command):
     """Helper function to call a command with only warning if failing."""
-    print_running(command)
+    filtered_command = filter_string(command)
+    print_running(filtered_command)
     output = commands.getstatusoutput(command)
     retcode = output[0] >> 8
     if retcode != 0:
-        print_warning(command)
+        print_warning(filtered_command)
     print output[1]
     print ""
     return retcode
@@ -85,15 +91,16 @@ def exec_failok(command):
 
 def exec_failexit(command):
     """Helper function to call a command with error and exit if failing."""
-    print_running(command)
+    filtered_command = filter_string(command)
+    print_running(filtered_command)
     output = commands.getstatusoutput(command)
     retcode = output[0] >> 8
     if retcode != 0:
-        print_error(command)
+        print_error(filtered_command)
         print output[1]
         sys.exit(retcode)
     print output[1]
-    print_success(command)
+    print_success(filtered_command)
     print ""
 
 
