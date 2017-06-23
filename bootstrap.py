@@ -833,8 +833,10 @@ if __name__ == '__main__':
     (options, args) = parser.parse_args()
 
     if options.no_foreman:
+        print_warning("The --skip-foreman option is deprecated, please use --skip foreman.")
         options.skip.append('foreman')
     if options.no_puppet:
+        print_warning("The --skip-puppet option is deprecated, please use --skip puppet.")
         options.skip.append('puppet')
     if not options.removepkgs:
         options.skip.append('remove-obsolete-packages')
