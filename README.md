@@ -392,9 +392,10 @@ For some users who do not have a configuration management or automation solution
 ~~~
 Foreman Bootstrap Script
 This script is designed to register new systems or to migrate an existing system to a Foreman server with Katello
-Usage: bootstrap.py [options]
+Usage: bootstrap.py -l admin -s foreman.example.com -o 'Default Organization' -L 'Default Location' -g My_Hostgroup -a My_Activation_Key
 
 Options:
+  --version             show program's version number and exit
   -h, --help            show this help message and exit
   -s foreman_fqdn, --server=foreman_fqdn
                         FQDN of Foreman OR Capsule - omit https://
