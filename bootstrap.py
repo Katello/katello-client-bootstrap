@@ -51,7 +51,7 @@ error_colors = {
 
 def filter_string(string):
     """Helper function to filter out passwords from strings"""
-    return string.replace(options.password, '******').replace(options.legacy_password, '******')
+    return string.replace(str(options.password), '******').replace(str(options.legacy_password), '******')
 
 
 def print_error(msg):
