@@ -1,0 +1,39 @@
+---
+- hosts: all
+  vars:
+    bootstrap_foreman_fqdn: foreman.example.com
+    bootstrap_download_method: http
+    bootstrap_org: "Default Organization"
+    bootstrap_location: "World"
+    bootstrap_activationkey: "ActivationKey"
+    bootstrap_login: ""
+    bootstrap_password: ""
+    bootstrap_hostgroup: "HostGroup"
+    bootstrap_additional_args: ""
+    bootstrap_target_path: /root/bootstrap.py
+    bootstrap_local_copy: False
+  tasks:
+  - name: download bootstrap.py from {{ bootstrap_foreman_fqdn }}
+    get_url:
+      dest: "{{ bootstrap_target_path }}"
+      url: "{{ bootstrap_download_method }}://{{ bootstrap_foreman_fqdn }}/pub/bootstrap.py"
+    when: not bootstrap_local_copy
+
+  - name: copy bootstrap.py from local machine
+    copy:
+      dest: "{{ bootstrap_target_path }}"
+      src: bootstrap.py
+    when: bootstrap_local_copy
+
+  - name: generate bootstrap.py arguments
+    set_fact:
+      bootstrap_args: "--server {{ bootstrap_foreman_fqdn }} --organization '{{ bootstrap_org }}' --location '{{ bootstrap_location }}' --activationkey '{{ bootstrap_activationkey }}' --download-method {{ bootstrap_download_method }}"
+      bootstrap_foreman_args: "{% if bootstrap_password != '' %}--login '{{ bootstrap_login }}' --password '{{ bootstrap_password }}' --hostgroup '{{ bootstrap_hostgroup }}'{% else %}--skip foreman{% endif %}"
+
+  - name: run bootstrap.py
+    command: "python {{ bootstrap_target_path }} {{ bootstrap_args }} {{ bootstrap_foreman_args }} {{ bootstrap_additional_args }}"
+
+  - name: remove bootstrap.py
+    file:
+      path: "{{ bootstrap_target_path }}"
+      state: absent
