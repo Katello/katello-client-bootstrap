@@ -344,11 +344,11 @@ def install_katello_agent():
     call_yum("install", "katello-agent")
 
     if int(RELEASE[0]) >= 7:
-       exec_failexit("/usr/bin/systemctl enable goferd")
-       exec_failexit("/usr/bin/systemctl restart goferd")
+        exec_failexit("/usr/bin/systemctl enable goferd")
+        exec_failexit("/usr/bin/systemctl restart goferd")
     else:
-       exec_failexit("/sbin/chkconfig goferd on")
-       exec_failexit("/sbin/service goferd restart")
+        exec_failexit("/sbin/chkconfig goferd on")
+        exec_failexit("/sbin/service goferd restart")
 
 
 def clean_puppet():
@@ -422,6 +422,7 @@ server          = %s
         else:
             exec_failexit("/sbin/chkconfig puppet on")
             exec_failexit("/sbin/service puppet restart")
+
 
 def remove_obsolete_packages():
     """Remove old RHN packages"""
