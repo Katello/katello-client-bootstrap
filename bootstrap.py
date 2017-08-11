@@ -264,8 +264,13 @@ def enable_rhsmcertd():
     """
     Enable and restart the rhsmcertd service
     """
-    exec_failexit("/sbin/chkconfig rhsmcertd on")
-    exec_failexit("/sbin/service rhsmcertd restart")
+
+    if int(RELEASE[0]) >= 7:
+        exec_failexit("/usr/bin/systemctl enable rhsmcertd")
+        exec_failexit("/usr/bin/systemctl restart rhsmcertd")
+    else:
+        exec_failexit("/sbin/chkconfig rhsmcertd on")
+        exec_failexit("/sbin/service rhsmcertd restart")
 
 
 def migrate_systems(org_name, activationkey):
@@ -337,8 +342,13 @@ def install_katello_agent():
     """Install Katello agent (aka Gofer) and activate /start it."""
     print_generic("Installing the Katello agent")
     call_yum("install", "katello-agent")
-    exec_failexit("/sbin/chkconfig goferd on")
-    exec_failexit("/sbin/service goferd restart")
+
+    if int(RELEASE[0]) >= 7:
+       exec_failexit("/usr/bin/systemctl enable goferd")
+       exec_failexit("/usr/bin/systemctl restart goferd")
+    else:
+       exec_failexit("/sbin/chkconfig goferd on")
+       exec_failexit("/sbin/service goferd restart")
 
 
 def clean_puppet():
@@ -374,7 +384,12 @@ def install_puppet_agent():
     puppet_env = return_puppetenv_for_hg(return_matching_foreman_key('hostgroups', 'title="%s"' % options.hostgroup, 'id', False))
     print_generic("Installing the Puppet Agent")
     call_yum("install", "puppet")
-    exec_failexit("/sbin/chkconfig puppet on")
+
+    if int(RELEASE[0]) >= 7:
+        exec_failexit("/usr/bin/systemctl enable puppet")
+    else:
+        exec_failexit("/sbin/chkconfig puppet on")
+
     puppet_conf = open('/etc/puppet/puppet.conf', 'wb')
     puppet_conf.write("""
 [main]
@@ -401,9 +416,12 @@ server          = %s
     print_generic("if auto-signing is disabled")
     exec_failexit("/usr/bin/puppet agent --test --noop --tags no_such_tag --waitforcert 10")
     if 'puppet-enable' not in options.skip:
-        exec_failexit("/sbin/chkconfig puppet on")
-        exec_failexit("/sbin/service puppet restart")
-
+        if int(RELEASE[0]) >= 7:
+            exec_failexit("/usr/bin/systemctl enable puppet")
+            exec_failexit("/sbin/systemctl puppet restart")
+        else:
+            exec_failexit("/sbin/chkconfig puppet on")
+            exec_failexit("/sbin/service puppet restart")
 
 def remove_obsolete_packages():
     """Remove old RHN packages"""
