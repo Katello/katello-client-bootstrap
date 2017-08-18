@@ -774,14 +774,14 @@ def enable_service(service, failonerror=True):
     """
     if failonerror:
         if os.path.exists("/run/systemd"):
-	    exec_failexit("/usr/bin/systemctl enable %s" % (service))
-        else:
-	    exec_failexit("/sbin/chkconfig %s on" % (service))
+            exec_failexit("/usr/bin/systemctl enable %s" % (service))
+       else:
+            exec_failexit("/sbin/chkconfig %s on" % (service))
     else:
         if os.path.exists("/run/systemd"):
-	    exec_failok("/usr/bin/systemctl enable %s" % (service))
+            exec_failok("/usr/bin/systemctl enable %s" % (service))
         else:
-	    exec_failok("/sbin/chkconfig %s on" % (service))
+            exec_failok("/sbin/chkconfig %s on" % (service))
 
 
 def start_service(service, command="start", failonerror=True):
@@ -791,14 +791,14 @@ def start_service(service, command="start", failonerror=True):
     """
     if failonerror:
         if os.path.exists("/run/systemd"):
-	    exec_failexit("/usr/bin/systemctl %s %s" % (command, service))
+            exec_failexit("/usr/bin/systemctl %s %s" % (command, service))
         else:
-	    exec_failexit("/sbin/service %s %s %" (service, command))
+            exec_failexit("/sbin/service %s %s %" (service, command))
     else:
         if os.path.exists("/run/systemd"):
-	    exec_failok("/usr/bin/systemctl %s %s" % (command, service))
+            exec_failok("/usr/bin/systemctl %s %s" % (command, service))
         else:
-	    exec_failok("/sbin/service %s %s" % (service, command))
+            exec_failok("/sbin/service %s %s" % (service, command))
 
 
 if __name__ == '__main__':
