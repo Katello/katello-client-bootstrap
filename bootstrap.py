@@ -775,7 +775,7 @@ def enable_service(service, failonerror=True):
     if failonerror:
         if os.path.exists("/run/systemd"):
             exec_failexit("/usr/bin/systemctl enable %s" % (service))
-       else:
+        else:
             exec_failexit("/sbin/chkconfig %s on" % (service))
     else:
         if os.path.exists("/run/systemd"):
