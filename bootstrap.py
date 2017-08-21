@@ -265,7 +265,7 @@ def enable_rhsmcertd():
     Enable and restart the rhsmcertd service
     """
     enable_service("rhsmcertd")
-    start_service("rhsmcertd")
+    exec_service("rhsmcertd", "restart")
 
 
 def migrate_systems(org_name, activationkey):
@@ -338,7 +338,7 @@ def install_katello_agent():
     print_generic("Installing the Katello agent")
     call_yum("install", "katello-agent")
     enable_service("goferd")
-    start_service("restart", "goferd")
+    exec_service("goferd", "restart")
 
 
 def clean_puppet():
@@ -403,7 +403,7 @@ server          = %s
     exec_failexit("/usr/bin/puppet agent --test --noop --tags no_such_tag --waitforcert 10")
     if 'puppet-enable' not in options.skip:
         enable_service("puppet")
-        start_service("restart", "puppet")
+        exec_service("puppet", "restart")
 
 
 def remove_obsolete_packages():
@@ -784,9 +784,10 @@ def enable_service(service, failonerror=True):
             exec_failok("/sbin/chkconfig %s on" % (service))
 
 
-def start_service(service, command="start", failonerror=True):
+def exec_service(service, command, failonerror=True):
     """
     Helper function to call a service command using proper init system.
+    Available command values = start, stop, restart
     pass failonerror = False to make init system's commands non-fatal
     """
     if failonerror:
