@@ -787,7 +787,7 @@ def validate_login():
     so we need to disable SSL verification since it's now enabled
     per default in RHEL7.4+.
     """
-    myurl = "https://" + options.sat6_ip + ":" + API_PORT + "/api/v2/organizations/"
+    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/organizations/"
     try:
         jsonresult=call_api(myurl,no_verify_ssl=True,silent=True)
     except:
