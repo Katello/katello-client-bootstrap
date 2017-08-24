@@ -316,6 +316,8 @@ def register_systems(org_name, activationkey, release):
     options.smargs += " --serverurl=https://%s:%s/rhsm --baseurl=https://%s/pulp/repos" % (options.foreman_fqdn, API_PORT, options.foreman_fqdn)
     if options.force:
         options.smargs += " --force"
+        exec_failok("subscription-manager unregister")
+        exec_failok("subscription-manager clean")
     exec_failexit("/usr/sbin/subscription-manager register --org '%s' --name '%s' --activationkey '%s' %s" % (org_label, FQDN, activationkey, options.smargs))
     enable_rhsmcertd()
 
