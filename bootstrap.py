@@ -847,7 +847,7 @@ def guess_api_port(host):
         port = 8443
         sock.close()
         return port
-    else if sock.connect_ex((host,443)) == 0:
+    elif sock.connect_ex((host,443)) == 0:
         port = 443
         sock.close()
         return port
