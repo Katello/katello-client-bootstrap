@@ -789,8 +789,7 @@ def validate_login():
     so we need to disable SSL verification since it's now enabled
     per default in RHEL7.4+.
     """
-    port = guess_api_port(options.foreman_fqdn)
-    if not port:
+    if not API_PORT:
         print "ERROR, ports 443 and 8443 seems closed, cannot connect."
         sys.exit(2)
 
@@ -844,16 +843,11 @@ def guess_api_port(host):
     """
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(2)
-    if sock.connect_ex((host, 8443)) == 0:
-        port = 8443
-        sock.close()
-        return port
-    elif sock.connect_ex((host, 443)) == 0:
-        port = 443
-        sock.close()
-        return port
-    else:
-        return None
+    for port in [8443, 443]:
+        if sock.connect_ex((host, port)) == 0:
+            sock.close()
+            return str(port)
+    return None
 
 
 if __name__ == '__main__':
@@ -885,8 +879,7 @@ if __name__ == '__main__':
     if not MAC:
         MAC = "00:00:00:00:00:00"
 
-    # > Gather API port (HTTPS), ARCHITECTURE and (OS) RELEASE
-    API_PORT = "443"
+    # > Gather ARCHITECTURE and (OS) RELEASE
     ARCHITECTURE = get_architecture()
     try:
         RELEASE = platform.linux_distribution()[1]
@@ -964,6 +957,9 @@ if __name__ == '__main__':
             print "Must specify server.  See usage:"
         parser.print_help()
         sys.exit(1)
+
+    # > Guess API_PORT needs to be done after options.foreman_fqdn is set, but as early as possible.
+    API_PORT = guess_api_port(options.foreman_fqdn)
 
     # > Gather FQDN, HOSTNAME and DOMAIN using options.fqdn
     # > If socket.fqdn() returns an FQDN, derive HOSTNAME & DOMAIN using FQDN
