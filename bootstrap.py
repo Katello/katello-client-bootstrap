@@ -841,7 +841,7 @@ def guess_api_port(host):
     We need to guess the port to be used to validate login credentials
     since we don't have API_PORT globally defined yet.
     """
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM))
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(2)
     if sock.connect_ex((host,8443)) == 0:
         port = 8443
