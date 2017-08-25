@@ -781,18 +781,25 @@ def prepare_rhel5_migration():
 def validate_login():
     """
     Function to authenticate a user to validate login credentials before
-    running any other API calls. Strip down output so it doesn't print a
+    running any other API calls. Since we don't have API_PORT setup yet
+    we need to make a test. Strip down output so it doesn't print a
     big exception and scare users. This function is going to be used
     before we have the certificates from katello-consumer rpm installed,
     so we need to disable SSL verification since it's now enabled
     per default in RHEL7.4+.
     """
-    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/organizations/"
+    port = guess_api_port(options.foreman_fqdn)
+    if not port:
+        print "ERROR, ports 443 and 8443 seems closed, cannot connect."
+        sys.exit(2)
+
+    myurl = "https://" + options.foreman_fqdn + ":" + port + "/api/v2/organizations/"
     try:
         jsonresult=call_api(myurl,no_verify_ssl=True,silent=True)
     except:
         print "ERROR, could not authenticate username. Please try again."
         sys.exit(2)
+
 
 def enable_service(service, failonerror=True):
     """
@@ -827,6 +834,25 @@ def exec_service(service, command, failonerror=True):
             exec_failok("/usr/bin/systemctl %s %s" % (command, service))
         else:
             exec_failok("/sbin/service %s %s" % (service, command))
+
+
+def guess_api_port(host):
+    """
+    We need to guess the port to be used to validate login credentials
+    since we don't have API_PORT globally defined yet.
+    """
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM))
+    sock.settimeout(2)
+    if sock.connect_ex((host,8443)) == 0:
+        port = 8443
+        sock.close()
+        return port
+    else if sock.connect_ex((host,443)) == 0:
+        port = 443
+        sock.close()
+        return port
+    else
+        return None
 
 
 if __name__ == '__main__':
