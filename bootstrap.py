@@ -474,7 +474,7 @@ def call_api(url, data=None, method='GET', no_verify_ssl=False, silent=False):
     Helper function to place an API call returning JSON results and doing
     some error handling. Any error results in an exit.
     """
-    if sys.version_info >= (2,7) and no_verify_ssl:
+    if sys.version_info >= (2, 7) and no_verify_ssl:
         # import the ssl module only when on Python 2.7
         import ssl
         ssl_context = ssl._create_unverified_context()
@@ -778,6 +778,7 @@ def prepare_rhel5_migration():
     # cleanup
     disable_rhn_plugin()
 
+
 def validate_login():
     """
     Function to authenticate a user to validate login credentials before
@@ -795,7 +796,7 @@ def validate_login():
 
     myurl = "https://" + options.foreman_fqdn + ":" + port + "/api/v2/organizations/"
     try:
-        jsonresult=call_api(myurl,no_verify_ssl=True,silent=True)
+        call_api(myurl, no_verify_ssl=True, silent=True)
     except:
         print "ERROR, could not authenticate username. Please try again."
         sys.exit(2)
@@ -843,11 +844,11 @@ def guess_api_port(host):
     """
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(2)
-    if sock.connect_ex((host,8443)) == 0:
+    if sock.connect_ex((host, 8443)) == 0:
         port = 8443
         sock.close()
         return port
-    elif sock.connect_ex((host,443)) == 0:
+    elif sock.connect_ex((host, 443)) == 0:
         port = 443
         sock.close()
         return port
