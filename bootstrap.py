@@ -793,7 +793,7 @@ def validate_login():
         print "ERROR, ports 443 and 8443 seems closed, cannot connect."
         sys.exit(2)
 
-    myurl = "https://" + options.foreman_fqdn + ":" + port + "/api/v2/organizations/"
+    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/organizations/"
     try:
         call_api(myurl, no_verify_ssl=True, silent=True)
     except:
