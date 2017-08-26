@@ -264,8 +264,8 @@ def enable_rhsmcertd():
     """
     Enable and restart the rhsmcertd service
     """
-    exec_failexit("/sbin/chkconfig rhsmcertd on")
-    exec_failexit("/sbin/service rhsmcertd restart")
+    enable_service("rhsmcertd")
+    exec_service("rhsmcertd", "restart")
 
 
 def migrate_systems(org_name, activationkey):
@@ -339,8 +339,8 @@ def install_katello_agent():
     """Install Katello agent (aka Gofer) and activate /start it."""
     print_generic("Installing the Katello agent")
     call_yum("install", "katello-agent")
-    exec_failexit("/sbin/chkconfig goferd on")
-    exec_failexit("/sbin/service goferd restart")
+    enable_service("goferd")
+    exec_service("goferd", "restart")
 
 
 def clean_puppet():
@@ -376,7 +376,8 @@ def install_puppet_agent():
     puppet_env = return_puppetenv_for_hg(return_matching_foreman_key('hostgroups', 'title="%s"' % options.hostgroup, 'id', False))
     print_generic("Installing the Puppet Agent")
     call_yum("install", "puppet")
-    exec_failexit("/sbin/chkconfig puppet on")
+    enable_service("puppet")
+
     puppet_conf = open('/etc/puppet/puppet.conf', 'wb')
     puppet_conf.write("""
 [main]
@@ -403,8 +404,8 @@ server          = %s
     print_generic("if auto-signing is disabled")
     exec_failexit("/usr/bin/puppet agent --test --noop --tags no_such_tag --waitforcert 10")
     if 'puppet-enable' not in options.skip:
-        exec_failexit("/sbin/chkconfig puppet on")
-        exec_failexit("/sbin/service puppet restart")
+        enable_service("puppet")
+        exec_service("puppet", "restart")
 
 
 def remove_obsolete_packages():
@@ -766,6 +767,41 @@ def prepare_rhel5_migration():
 
     # cleanup
     disable_rhn_plugin()
+
+
+def enable_service(service, failonerror=True):
+    """
+    Helper function to enable a service using proper init system.
+    pass failonerror = False to make init system's commands non-fatal
+    """
+    if failonerror:
+        if os.path.exists("/run/systemd"):
+            exec_failexit("/usr/bin/systemctl enable %s" % (service))
+        else:
+            exec_failexit("/sbin/chkconfig %s on" % (service))
+    else:
+        if os.path.exists("/run/systemd"):
+            exec_failok("/usr/bin/systemctl enable %s" % (service))
+        else:
+            exec_failok("/sbin/chkconfig %s on" % (service))
+
+
+def exec_service(service, command, failonerror=True):
+    """
+    Helper function to call a service command using proper init system.
+    Available command values = start, stop, restart
+    pass failonerror = False to make init system's commands non-fatal
+    """
+    if failonerror:
+        if os.path.exists("/run/systemd"):
+            exec_failexit("/usr/bin/systemctl %s %s" % (command, service))
+        else:
+            exec_failexit("/sbin/service %s %s %" (service, command))
+    else:
+        if os.path.exists("/run/systemd"):
+            exec_failok("/usr/bin/systemctl %s %s" % (command, service))
+        else:
+            exec_failok("/sbin/service %s %s" % (service, command))
 
 
 if __name__ == '__main__':
