@@ -294,6 +294,8 @@ def migrate_systems(org_name, activationkey):
         options.rhsmargs += " --keep"
     exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key '%s' %s" % (org_label, activationkey, options.rhsmargs))
     exec_failexit("subscription-manager config --rhsm.baseurl=https://%s/pulp/repos" % options.foreman_fqdn)
+    if options.release:
+        exec_failexit("subscription-manager release --set %s" % options.release)
     enable_rhsmcertd()
 
     # When rhn-migrate-classic-to-rhsm is called with --keep, it will leave the systemid
@@ -302,7 +304,7 @@ def migrate_systems(org_name, activationkey):
     disable_rhn_plugin()
 
 
-def register_systems(org_name, activationkey, release):
+def register_systems(org_name, activationkey):
     """
     Register the host to Satellite 6's organization using
     `subscription-manager` and the given activation key.
@@ -318,6 +320,8 @@ def register_systems(org_name, activationkey, release):
         options.smargs += " --force"
         exec_failok("subscription-manager unregister")
         exec_failok("subscription-manager clean")
+    if options.release:
+        options.smargs += " --release %s" % options.release
     exec_failexit("/usr/sbin/subscription-manager register --org '%s' --name '%s' --activationkey '%s' %s" % (org_label, FQDN, activationkey, options.smargs))
     enable_rhsmcertd()
 
@@ -869,7 +873,7 @@ if __name__ == '__main__':
     parser.add_option("--add-domain", dest="add_domain", action="store_true", help="Automatically add the clients domain to Foreman")
     parser.add_option("--puppet-noop", dest="puppet_noop", action="store_true", help="Configure Puppet agent to only run in noop mode")
     parser.add_option("--remove", dest="remove", action="store_true", help="Instead of registering the machine to Foreman remove it")
-    parser.add_option("-r", "--release", dest="release", default=RELEASE, help="Specify release version")
+    parser.add_option("-r", "--release", dest="release", help="Specify release version")
     parser.add_option("-R", "--remove-obsolete-packages", dest="removepkgs", action="store_true", help="Remove old Red Hat Network and RHUI Packages (default)", default=True)
     parser.add_option("--download-method", dest="download_method", default="https", help="Method to download katello-ca-consumer package (e.g. http or https)", metavar="DOWNLOADMETHOD", choices=['http', 'https'])
     parser.add_option("--no-remove-obsolete-packages", dest="removepkgs", action="store_false", help="Don't remove old Red Hat Network and RHUI Packages")
@@ -965,7 +969,7 @@ if __name__ == '__main__':
         print "HOSTNAME - %s" % HOSTNAME
         print "DOMAIN - %s" % DOMAIN
         print "FQDN - %s" % FQDN
-        print "RELEASE - %s" % RELEASE
+        print "OS RELEASE - %s" % RELEASE
         print "MAC - %s" % MAC
         print "IP - %s" % options.ip
         print "foreman_fqdn - %s" % options.foreman_fqdn
@@ -977,6 +981,7 @@ if __name__ == '__main__':
         print "PARTITIONTABLE - %s" % options.partitiontable
         print "ORG - %s" % options.org
         print "ACTIVATIONKEY - %s" % options.activationkey
+        print "CONTENT RELEASE - %s" % options.release
         print "UPDATE - %s" % options.update
         print "LEGACY LOGIN - %s" % options.legacy_login
         print "LEGACY PASSWORD - %s" % options.legacy_password
@@ -1058,7 +1063,7 @@ if __name__ == '__main__':
         if 'foreman' not in options.skip:
             create_host()
         configure_subscription_manager()
-        register_systems(options.org, options.activationkey, options.release)
+        register_systems(options.org, options.activationkey)
         if options.enablerepos:
             enable_repos()
 
