@@ -7,7 +7,6 @@ Use `pydoc ./bootstrap.py` to get the documentation.
 Use `awk -F'# >' 'NF>1 {print $2}' ./bootstrap.py` to see the flow.
 """
 
-import yum
 import getpass
 import urllib2
 import base64
@@ -19,13 +18,14 @@ import os
 import pwd
 import glob
 import shutil
-import rpm
-import rpmUtils.miscutils
 import tempfile
 from datetime import datetime
 from optparse import OptionParser
 from urllib import urlencode
 from ConfigParser import SafeConfigParser
+import yum  # pylint:disable=import-error
+import rpm  # pylint:disable=import-error
+import rpmUtils.miscutils  # pylint:disable=import-error
 
 
 VERSION = '1.5.0'
@@ -38,8 +38,8 @@ def get_architecture():
     return os.uname()[4]
 
 
-"""Colors to be used by the multiple `print_*` functions."""
-error_colors = {
+ERROR_COLORS = {
+    """Colors to be used by the multiple `print_*` functions."""
     'HEADER': '\033[95m',
     'OKBLUE': '\033[94m',
     'OKGREEN': '\033[92m',
@@ -60,22 +60,22 @@ def filter_string(string):
 
 def print_error(msg):
     """Helper function to output an ERROR message."""
-    print "[%sERROR%s], [%s], EXITING: [%s] failed to execute properly." % (error_colors['FAIL'], error_colors['ENDC'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
+    print "[%sERROR%s], [%s], EXITING: [%s] failed to execute properly." % (ERROR_COLORS['FAIL'], ERROR_COLORS['ENDC'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
 
 
 def print_warning(msg):
     """Helper function to output a WARNING message."""
-    print "[%sWARNING%s], [%s], NON-FATAL: [%s] failed to execute properly." % (error_colors['WARNING'], error_colors['ENDC'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
+    print "[%sWARNING%s], [%s], NON-FATAL: [%s] failed to execute properly." % (ERROR_COLORS['WARNING'], ERROR_COLORS['ENDC'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
 
 
 def print_success(msg):
     """Helper function to output a SUCCESS message."""
-    print "[%sSUCCESS%s], [%s], [%s], completed successfully." % (error_colors['OKGREEN'], error_colors['ENDC'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
+    print "[%sSUCCESS%s], [%s], [%s], completed successfully." % (ERROR_COLORS['OKGREEN'], ERROR_COLORS['ENDC'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
 
 
 def print_running(msg):
     """Helper function to output a RUNNING message."""
-    print "[%sRUNNING%s], [%s], [%s] " % (error_colors['OKBLUE'], error_colors['ENDC'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
+    print "[%sRUNNING%s], [%s], [%s] " % (ERROR_COLORS['OKBLUE'], ERROR_COLORS['ENDC'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
 
 
 def print_generic(msg):
@@ -119,8 +119,8 @@ def delete_file(filename):
     try:
         os.remove(filename)
         print_success("Removing %s" % filename)
-    except OSError, e:
-        print_generic("Error when removing %s - %s" % (filename, e.strerror))
+    except OSError, exception:
+        print_generic("Error when removing %s - %s" % (filename, exception.strerror))
         print_error("Removing %s" % filename)
         sys.exit(1)
 
@@ -133,8 +133,8 @@ def delete_directory(directoryname):
     try:
         shutil.rmtree(directoryname)
         print_success("Removing %s" % directoryname)
-    except OSError, e:
-        print_generic("Error when removing %s - %s" % (directoryname, e.strerror))
+    except OSError, exception:
+        print_generic("Error when removing %s - %s" % (directoryname, exception.strerror))
         print_error("Removing %s" % directoryname)
         sys.exit(1)
 
@@ -157,11 +157,11 @@ def check_migration_version():
     required_version = rpmUtils.miscutils.stringToVersion('1.14.2')
     err = "subscription-manager-migration not found"
 
-    ts = rpm.TransactionSet()
-    mi = ts.dbMatch('name', 'subscription-manager-migration')
-    for h in mi:
-        if rpmUtils.miscutils.compareEVR(rpmUtils.miscutils.stringToVersion(h['evr']), required_version) < 0:
-            err = "%s-%s is too old" % (h['name'], h['evr'])
+    transaction_set = rpm.TransactionSet()
+    db_result = transaction_set.dbMatch('name', 'subscription-manager-migration')
+    for package in db_result:
+        if rpmUtils.miscutils.compareEVR(rpmUtils.miscutils.stringToVersion(package['evr']), required_version) < 0:
+            err = "%s-%s is too old" % (package['name'], package['evr'])
         else:
             err = None
 
@@ -197,8 +197,8 @@ def install_prereqs():
     if options.deps_repository_url:
         print_generic("Enabling %s as a repository for dependency RPMs" % options.deps_repository_url)
         setup_yum_repo(options.deps_repository_url, options.deps_repository_gpg_key)
-    yb = yum.YumBase()
-    pkg_list = yb.doPackageLists(patterns=['subscription-manager'])
+    yum_base = yum.YumBase()
+    pkg_list = yum_base.doPackageLists(patterns=['subscription-manager'])
     call_yum("remove", "subscription-manager-gnome")
     if pkg_list.installed:
         if check_rhn_registration() and 'migration' not in options.skip:
@@ -237,14 +237,14 @@ def get_puppet_version():
     """
     Retrieve the Major version of puppet install.
     """
-    ts = rpm.TransactionSet()
+    transaction_set = rpm.TransactionSet()
     for name in ['puppet', 'puppet-agent']:
-        mi = ts.dbMatch('name', name)
-        for h in mi:
-            puppet_version = int(h['version'].split('.')[0])
-            if h['name'] == 'puppet-agent' and puppet_version == 1:
-                puppet_version = 4
-            return puppet_version
+        db_results = transaction_set.dbMatch('name', name)
+        for result in db_results:
+            puppet_major_version = int(result['version'].split('.')[0])
+            if result['name'] == 'puppet-agent' and puppet_major_version == 1:
+                puppet_major_version = 4
+            return puppet_major_version
 
 
 def is_fips():
@@ -292,6 +292,9 @@ def get_bootstrap_rpm(clean=False, unreg=True):
 
 
 def disable_rhn_plugin():
+    """
+    Disable the RHN plugin for Yum
+    """
     if os.path.exists('/etc/yum/pluginconf.d/rhnplugin.conf'):
         rhnpluginconfig = SafeConfigParser()
         rhnpluginconfig.read('/etc/yum/pluginconf.d/rhnplugin.conf')
@@ -312,8 +315,10 @@ def enable_rhsmcertd():
 
 
 def is_registered():
-    # Check if all required certificates are in place (i.e. a system is
-    # registered to begin with) before we start changing things
+    """
+    Check if all required certificates are in place (i.e. a system is
+    registered to begin with) before we start changing things
+    """
     return (os.path.exists('/etc/rhsm/ca/katello-server-ca.pem') and
             os.path.exists('/etc/pki/consumer/cert.pem'))
 
@@ -494,6 +499,9 @@ server          = %s
 
 
 def noop_puppet_signing_run():
+    """
+    Execute Puppet with --noop to generate and sign certs
+    """
     print_generic("Running Puppet in noop mode to generate SSL certs")
     print_generic("Visit the UI and approve this certificate via Infrastructure->Capsules")
     print_generic("if auto-signing is disabled")
@@ -530,13 +538,13 @@ def install_foreman_ssh_key():
         os.chown(foreman_ssh_dir, userpw.pw_uid, userpw.pw_gid)
     try:
         foreman_ssh_key = urllib2.urlopen(("https://%s:9090/ssh/pubkey" % options.foreman_fqdn), timeout=options.timeout).read()
-    except urllib2.HTTPError, e:
-        print_generic("The server was unable to fulfill the request. Error: %s - %s" % (e.code, e.reason))
+    except urllib2.HTTPError, exception:
+        print_generic("The server was unable to fulfill the request. Error: %s - %s" % (exception.code, exception.reason))
         print_generic("Please ensure the Remote Execution feature is configured properly")
         print_warning("Installing Foreman SSH key")
         return
-    except urllib2.URLError, e:
-        print_generic("Could not reach the server. Error: %s" % e.reason)
+    except urllib2.URLError, exception:
+        print_generic("Could not reach the server. Error: %s" % exception.reason)
         return
     if os.path.isfile(foreman_ssh_authfile):
         if foreman_ssh_key in open(foreman_ssh_authfile, 'r').read():
@@ -554,13 +562,18 @@ class BetterHTTPErrorProcessor(urllib2.BaseHandler):
     A substitute/supplement class to urllib2.HTTPErrorProcessor
     that doesn't raise exceptions on status codes 201,204,206
     """
+    # pylint:disable=unused-argument,no-self-use,no-init
+
     def http_error_201(self, request, response, code, msg, hdrs):
+        """Handle HTTP 201"""
         return response
 
     def http_error_204(self, request, response, code, msg, hdrs):
+        """Handle HTTP 204"""
         return response
 
     def http_error_206(self, request, response, code, msg, hdrs):
+        """Handle HTTP 206"""
         return response
 
 
@@ -587,21 +600,21 @@ def call_api(url, data=None, method='GET'):
         if options.verbose:
             print 'result: %s' % json.dumps(jsonresult, sort_keys=False, indent=2)
         return jsonresult
-    except urllib2.URLError, e:
-        print 'An error occured: %s' % e
+    except urllib2.URLError, exception:
+        print 'An error occured: %s' % exception
         print 'url: %s' % url
-        if isinstance(e, urllib2.HTTPError):
-            print 'code: %s' % e.code
+        if isinstance(exception, urllib2.HTTPError):
+            print 'code: %s' % exception.code  # pylint:disable=no-member
         if data:
             print 'data: %s' % json.dumps(data, sort_keys=False, indent=2)
         try:
-            jsonerr = json.load(e)
+            jsonerr = json.load(exception)
             print 'error: %s' % json.dumps(jsonerr, sort_keys=False, indent=2)
-        except:  # noqa: E722
-            print 'error: %s' % e
+        except:  # noqa: E722, pylint:disable=bare-except
+            print 'error: %s' % exception
         sys.exit(1)
-    except Exception, e:
-        print "FATAL Error - %s" % (e)
+    except Exception, exception:  # pylint:disable=broad-except
+        print "FATAL Error - %s" % (exception)
         sys.exit(2)
 
 
@@ -626,6 +639,9 @@ def put_json(url, jdata=None):
 
 
 def update_host_capsule_mapping(attribute, capsule_id, host_id):
+    """
+    Update the host entry to point a feature to a new proxy
+    """
     url = "https://" + options.foreman_fqdn + ":" + str(API_PORT) + "/api/v2/hosts/" + str(host_id)
     if attribute == 'content_source_id':
         jdata = json.loads('{"host": {"content_facet_attributes": {"content_source_id": "%s"}, "content_source_id": "%s"}}' % (capsule_id, capsule_id))
@@ -635,11 +651,17 @@ def update_host_capsule_mapping(attribute, capsule_id, host_id):
 
 
 def get_capsule_features(capsule_id):
+    """
+    Fetch all features available on a proxy
+    """
     url = "https://" + options.foreman_fqdn + ":" + str(API_PORT) + "/katello/api/capsules/%s" % str(capsule_id)
-    return [f['name'] for f in get_json(url)['features']]
+    return [feature['name'] for feature in get_json(url)['features']]
 
 
 def update_host_config(attribute, value, host_id):
+    """
+    Update a host config
+    """
     attribute_id = return_matching_foreman_key(attribute + 's', 'title="%s"' % value, 'id', False)
     json_key = attribute + "_id"
     jdata = json.loads('{"host": {"%s": "%s"}}' % (json_key, attribute_id))
@@ -694,8 +716,7 @@ def return_puppetenv_for_hg(hg_id):
     elif hostgroup['ancestry']:
         parent = hostgroup['ancestry'].split('/')[-1]
         return return_puppetenv_for_hg(parent)
-    else:
-        return 'production'
+    return 'production'
 
 
 def create_domain(domain, orgid, locid):
@@ -712,6 +733,9 @@ def create_domain(domain, orgid, locid):
 
 
 def create_host():
+
+    # pylint:disable=too-many-branches
+
     """
     Call Foreman API to create a host entry associated with the
     host group, organization & location, domain and architecture.
@@ -786,6 +810,9 @@ def disassociate_host(host_id):
 
 
 def configure_subscription_manager():
+    """
+    Configure subscription-manager plugins in Yum
+    """
     productidconfig = SafeConfigParser()
     productidconfig.read('/etc/yum/pluginconf.d/product-id.conf')
     if productidconfig.get('main', 'enabled') == '0':
@@ -806,8 +833,7 @@ def check_rhn_registration():
     if os.path.exists('/etc/sysconfig/rhn/systemid'):
         retcode = commands.getstatusoutput('rhn-channel -l')[0] >> 8
         return retcode == 0
-    else:
-        return False
+    return False
 
 
 def enable_repos():
@@ -819,9 +845,9 @@ def enable_repos():
 
 def install_packages():
     """Install user-provided packages"""
-    install_packages = options.install_packages.replace(',', " ")
-    print_running("Installing the following packages %s" % install_packages)
-    call_yum("install", install_packages, False)
+    packages = options.install_packages.replace(',', " ")
+    print_running("Installing the following packages %s" % packages)
+    call_yum("install", packages, False)
 
 
 def get_api_port():
@@ -830,17 +856,18 @@ def get_api_port():
     configparser.read('/etc/rhsm/rhsm.conf')
     try:
         return configparser.get('server', 'port')
-    except:  # noqa: E722
+    except:  # noqa: E722, pylint:disable=bare-except
         return "443"
 
 
 def check_rpm_installed():
+    """Check if the machine already has Katello/Spacewalk RPMs installed"""
     rpm_sat = ['katello', 'foreman-proxy-content', 'katello-capsule', 'spacewalk-proxy-common', 'spacewalk-backend']
-    ts = rpm.TransactionSet()
-    headers = ts.dbMatch()
-    for h in headers:
-        if h['name'] in rpm_sat:
-            print_error("%s RPM found. bootstrap.py should not be used on a Katello/Spacewalk/Satellite host." % (h['name']))
+    transaction_set = rpm.TransactionSet()
+    db_results = transaction_set.dbMatch()
+    for package in db_results:
+        if package['name'] in rpm_sat:
+            print_error("%s RPM found. bootstrap.py should not be used on a Katello/Spacewalk/Satellite host." % (package['name']))
             sys.exit(1)
 
 
@@ -856,11 +883,12 @@ def prepare_rhel5_migration():
     # only do the certificate magic if 69.pem is not present
     # and we have active channels
     if check_rhn_registration() and not os.path.exists('/etc/pki/product/69.pem'):
+        # pylint:disable=W,C,R
         _LIBPATH = "/usr/share/rhsm"
         # add to the path if need be
         if _LIBPATH not in sys.path:
             sys.path.append(_LIBPATH)
-        from subscription_manager.migrate import migrate
+        from subscription_manager.migrate import migrate  # pylint:disable=import-error
 
         class MEOptions:
             force = True
@@ -929,6 +957,8 @@ def exec_service(service, command, failonerror=True):
 
 if __name__ == '__main__':
 
+    # pylint:disable=invalid-name
+
     print "Foreman Bootstrap Script"
     print "This script is designed to register new systems or to migrate an existing system to a Foreman server with Katello"
 
@@ -979,7 +1009,8 @@ if __name__ == '__main__':
     parser.add_option("-a", "--activationkey", dest="activationkey", help="Activation Key to register the system", metavar="ACTIVATIONKEY")
     parser.add_option("-P", "--skip-puppet", dest="no_puppet", action="store_true", default=False, help="Do not install Puppet")
     parser.add_option("--skip-foreman", dest="no_foreman", action="store_true", default=False, help="Do not create a Foreman host. Implies --skip-puppet. When using --skip-foreman, you MUST pass the Organization's LABEL, not NAME")
-    parser.add_option("--content-only", dest="content_only", action="store_true", default=False, help="Setup host for content only. Alias to --skip foreman. Implies --skip-puppet. When using --content-only, you MUST pass the Organization's LABEL, not NAME")
+    parser.add_option("--content-only", dest="content_only", action="store_true", default=False,
+                      help="Setup host for content only. Alias to --skip foreman. Implies --skip-puppet. When using --content-only, you MUST pass the Organization's LABEL, not NAME")
     parser.add_option("-g", "--hostgroup", dest="hostgroup", help="Title of the Hostgroup in Foreman that the host is to be associated with", metavar="HOSTGROUP")
     parser.add_option("-L", "--location", dest="location", help="Title of the Location in Foreman that the host is to be associated with", metavar="LOCATION")
     parser.add_option("-O", "--operatingsystem", dest="operatingsystem", default=None, help="Title of the Operating System in Foreman that the host is to be associated with", metavar="OPERATINGSYSTEM")
@@ -1083,7 +1114,7 @@ if __name__ == '__main__':
             s.connect((options.foreman_fqdn, 80))
             options.ip = s.getsockname()[0]
             s.close()
-        except:  # noqa: E722
+        except:  # noqa: E722, pylint:disable=bare-except
             options.ip = None
 
     # > Ask for the password if not given as option
@@ -1168,10 +1199,10 @@ if __name__ == '__main__':
         API_PORT = get_api_port()
         unregister_system()
         if 'foreman' not in options.skip:
-            host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', True)
-            if host_id is not None:
-                disassociate_host(host_id)
-                delete_host(host_id)
+            hostid = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', True)
+            if hostid is not None:
+                disassociate_host(hostid)
+                delete_host(hostid)
         if 'katello-agent' not in options.skip:
             clean_katello_agent()
         if 'puppet' not in options.skip:
@@ -1210,42 +1241,42 @@ if __name__ == '__main__':
         get_bootstrap_rpm(clean=True, unreg=False)
         install_katello_agent()
         API_PORT = get_api_port()
-        capsule_id = return_matching_foreman_key('smart_proxies', 'name="%s"' % options.foreman_fqdn, 'id', False)
-        host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', False)
-        capsule_features = get_capsule_features(capsule_id)
+        smart_proxy_id = return_matching_foreman_key('smart_proxies', 'name="%s"' % options.foreman_fqdn, 'id', False)
+        current_host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', False)
+        capsule_features = get_capsule_features(smart_proxy_id)
 
         # Optionally configure new hostgroup, location
         if options.hostgroup:
             print_running("Calling Foreman API to switch hostgroup for %s to %s" % (FQDN, options.hostgroup))
-            update_host_config('hostgroup', options.hostgroup, host_id)
+            update_host_config('hostgroup', options.hostgroup, current_host_id)
         if options.location:
             print_running("Calling Foreman API to switch location for %s to %s" % (FQDN, options.location))
-            update_host_config('location', options.location, host_id)
+            update_host_config('location', options.location, current_host_id)
 
         # Configure new proxy_id for Puppet (if not skipped), and OpenSCAP (if available and not skipped)
         if 'foreman' not in options.skip and 'puppet' not in options.skip:
             print_running("Calling Foreman API to update Puppet master and Puppet CA for %s to %s" % (FQDN, options.foreman_fqdn))
-            update_host_capsule_mapping("puppet_proxy_id", capsule_id, host_id)
-            update_host_capsule_mapping("puppet_ca_proxy_id", capsule_id, host_id)
+            update_host_capsule_mapping("puppet_proxy_id", smart_proxy_id, current_host_id)
+            update_host_capsule_mapping("puppet_ca_proxy_id", smart_proxy_id, current_host_id)
         if 'foreman' not in options.skip and 'Openscap' in capsule_features:
             print_running("Calling Foreman API to update OpenSCAP proxy for %s to %s" % (FQDN, options.foreman_fqdn))
-            update_host_capsule_mapping("openscap_proxy_id", capsule_id, host_id)
+            update_host_capsule_mapping("openscap_proxy_id", smart_proxy_id, current_host_id)
         elif 'foreman' not in options.skip and 'Openscap' not in capsule_features:
             print_warning("New capsule doesn't have OpenSCAP capability, not switching / configuring openscap_proxy_id")
 
         print_running("Calling Foreman API to update content source for %s to %s" % (FQDN, options.foreman_fqdn))
-        update_host_capsule_mapping("content_source_id", capsule_id, host_id)
+        update_host_capsule_mapping("content_source_id", smart_proxy_id, current_host_id)
 
         enable_rhsmcertd()
 
         if 'puppet' not in options.skip and 'foreman' not in options.skip:
-            puppet_major_version = get_puppet_version()
-            if puppet_major_version == 3:
-                puppet_conf_file = '/etc/puppet/puppet.conf'
+            puppet_version = get_puppet_version()
+            if puppet_version == 3:
+                puppet_conf_path = '/etc/puppet/puppet.conf'
                 var_dir = '/var/lib/puppet'
                 ssl_dir = '/var/lib/puppet/ssl'
-            elif puppet_major_version in [4, 5]:
-                puppet_conf_file = '/etc/puppetlabs/puppet/puppet.conf'
+            elif puppet_version in [4, 5]:
+                puppet_conf_path = '/etc/puppetlabs/puppet/puppet.conf'
                 var_dir = '/opt/puppetlabs/puppet/cache'
                 ssl_dir = '/etc/puppetlabs/puppet/ssl'
             else:
@@ -1259,8 +1290,8 @@ if __name__ == '__main__':
             # that would nuke custom /etc/puppet/puppet.conf files, which might
             # yield undesirable results.
             print_running("Updating Puppet configuration")
-            exec_failexit("sed -i '/^[[:space:]]*server.*/ s/=.*/= %s/' %s" % (options.puppet_server, puppet_conf_file))
-            exec_failok("sed -i '/^[[:space:]]*ca_server.*/ s/=.*/= %s/' %s" % (options.puppet_ca_server, puppet_conf_file))  # For RHEL5 stock puppet.conf
+            exec_failexit("sed -i '/^[[:space:]]*server.*/ s/=.*/= %s/' %s" % (options.puppet_server, puppet_conf_path))
+            exec_failok("sed -i '/^[[:space:]]*ca_server.*/ s/=.*/= %s/' %s" % (options.puppet_ca_server, puppet_conf_path))  # For RHEL5 stock puppet.conf
             delete_directory(ssl_dir)
             delete_file("%s/client_data/catalog/%s.json" % (var_dir, FQDN))
 
