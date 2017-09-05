@@ -800,7 +800,7 @@ def exec_service(service, command, failonerror=True):
         if os.path.exists("/run/systemd"):
             exec_failexit("/usr/bin/systemctl %s %s" % (command, service))
         else:
-            exec_failexit("/sbin/service %s %s %" (service, command))
+            exec_failexit("/sbin/service %s %s" % (service, command))
     else:
         if os.path.exists("/run/systemd"):
             exec_failok("/usr/bin/systemctl %s %s" % (command, service))
