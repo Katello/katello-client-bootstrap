@@ -336,8 +336,8 @@ def unregister_system():
 def clean_katello_agent():
     """Remove old Katello agent (aka Gofer) and certificate RPMs."""
     print_generic("Removing old Katello agent and certs")
-    delete_file("/etc/rhsm/ca/katello-server-ca.pem")
     call_yum("erase", "'katello-ca-consumer-*' katello-agent gofer")
+    delete_file("/etc/rhsm/ca/katello-server-ca.pem")
 
 
 def install_katello_agent():
