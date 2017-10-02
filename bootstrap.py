@@ -230,7 +230,9 @@ def get_bootstrap_rpm():
         print_generic("A Katello CA certificate is already installed. Assuming system is registered")
         print_generic("To override this behavior, run the script with the --force option. Exiting.")
         sys.exit(1)
-
+    if os.path.exists('/etc/pki/consumer/cert.pem'):
+        print_generic('System appears to be registered via another entitlement server. Attempting unregister')
+        unregister_system()
     if options.download_method == "https":
         print_generic("Writing custom cURL configuration to allow download via HTTPS without certificate verification")
         curl_config_dir = tempfile.mkdtemp()
@@ -318,8 +320,6 @@ def register_systems(org_name, activationkey):
     options.smargs += " --serverurl=https://%s:%s/rhsm --baseurl=https://%s/pulp/repos" % (options.foreman_fqdn, API_PORT, options.foreman_fqdn)
     if options.force:
         options.smargs += " --force"
-        exec_failok("subscription-manager unregister")
-        exec_failok("subscription-manager clean")
     if options.release:
         options.smargs += " --release %s" % options.release
     exec_failexit("/usr/sbin/subscription-manager register --org '%s' --name '%s' --activationkey '%s' %s" % (org_label, FQDN, activationkey, options.smargs))
@@ -329,7 +329,8 @@ def register_systems(org_name, activationkey):
 def unregister_system():
     """Unregister the host using `subscription-manager`."""
     print_generic("Unregistering")
-    exec_failexit("/usr/sbin/subscription-manager unregister")
+    exec_failok("/usr/sbin/subscription-manager unregister")
+    exec_failok("/usr/sbin/subscription-manager clean")
 
 
 def clean_katello_agent():
