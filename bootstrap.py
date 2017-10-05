@@ -474,11 +474,17 @@ class BetterHTTPErrorProcessor(urllib2.BaseHandler):
         return response
 
 
-def call_api(url, data=None, method='GET'):
+def call_api(url, data=None, method='GET', no_verify_ssl=False, silent=False):
     """
     Helper function to place an API call returning JSON results and doing
     some error handling. Any error results in an exit.
     """
+    if sys.version_info >= (2, 7) and no_verify_ssl:
+        # import the ssl module only when on Python 2.7
+        import ssl
+        ssl_context = ssl._create_unverified_context()
+    else:
+        ssl_context = None
     try:
         request = urllib2.Request(url)
         if options.verbose:
@@ -492,23 +498,27 @@ def call_api(url, data=None, method='GET'):
         if data:
             request.add_data(json.dumps(data))
         request.get_method = lambda: method
-        result = urllib2.urlopen(request)
+        if ssl_context:
+            result = urllib2.urlopen(request, context=ssl_context)
+        else:
+            result = urllib2.urlopen(request)
         jsonresult = json.load(result)
         if options.verbose:
             print 'result: %s' % json.dumps(jsonresult, sort_keys=False, indent=2)
         return jsonresult
     except urllib2.URLError, e:
-        print 'An error occured: %s' % e
-        print 'url: %s' % url
-        if isinstance(e, urllib2.HTTPError):
-            print 'code: %s' % e.code
-        if data:
-            print 'data: %s' % json.dumps(data, sort_keys=False, indent=2)
-        try:
-            jsonerr = json.load(e)
-            print 'error: %s' % json.dumps(jsonerr, sort_keys=False, indent=2)
-        except:
-            print 'error: %s' % e
+        if not silent:
+            print 'An error occured: %s' % e
+            print 'url: %s' % url
+            if isinstance(e, urllib2.HTTPError):
+                print 'code: %s' % e.code
+            if data:
+                print 'data: %s' % json.dumps(data, sort_keys=False, indent=2)
+            try:
+                jsonerr = json.load(e)
+                print 'error: %s' % json.dumps(jsonerr, sort_keys=False, indent=2)
+            except:
+                print 'error: %s' % e
         sys.exit(1)
     except Exception, e:
         print "FATAL Error - %s" % (e)
@@ -774,6 +784,28 @@ def prepare_rhel5_migration():
     disable_rhn_plugin()
 
 
+def validate_login():
+    """
+    Function to authenticate a user to validate login credentials before
+    running any other API calls. Since we don't have API_PORT setup yet
+    we need to make a test. Strip down output so it doesn't print a
+    big exception and scare users. This function is going to be used
+    before we have the certificates from katello-consumer rpm installed,
+    so we need to disable SSL verification since it's now enabled
+    per default in RHEL7.4+.
+    """
+    if not API_PORT:
+        print "ERROR, ports 443 and 8443 seems closed, cannot connect."
+        sys.exit(2)
+
+    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/organizations/"
+    try:
+        call_api(myurl, no_verify_ssl=True, silent=True)
+    except:
+        print "ERROR, could not authenticate username. Please try again."
+        sys.exit(2)
+
+
 def enable_service(service, failonerror=True):
     """
     Helper function to enable a service using proper init system.
@@ -809,6 +841,20 @@ def exec_service(service, command, failonerror=True):
             exec_failok("/sbin/service %s %s" % (service, command))
 
 
+def guess_api_port(host):
+    """
+    We need to guess the port to be used to validate login credentials
+    since we don't have API_PORT globally defined yet.
+    """
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(2)
+    for port in [8443, 443]:
+        if sock.connect_ex((host, port)) == 0:
+            sock.close()
+            return str(port)
+    return None
+
+
 if __name__ == '__main__':
 
     print "Foreman Bootstrap Script"
@@ -838,8 +884,7 @@ if __name__ == '__main__':
     if not MAC:
         MAC = "00:00:00:00:00:00"
 
-    # > Gather API port (HTTPS), ARCHITECTURE and (OS) RELEASE
-    API_PORT = "443"
+    # > Gather ARCHITECTURE and (OS) RELEASE
     ARCHITECTURE = get_architecture()
     try:
         RELEASE = platform.linux_distribution()[1]
@@ -917,6 +962,9 @@ if __name__ == '__main__':
             print "Must specify server.  See usage:"
         parser.print_help()
         sys.exit(1)
+
+    # > Guess API_PORT needs to be done after options.foreman_fqdn is set, but as early as possible.
+    API_PORT = guess_api_port(options.foreman_fqdn)
 
     # > Gather FQDN, HOSTNAME and DOMAIN using options.fqdn
     # > If socket.fqdn() returns an FQDN, derive HOSTNAME & DOMAIN using FQDN
@@ -1018,6 +1066,8 @@ if __name__ == '__main__':
 
     # > Clean the environment from LD_... variables
     clean_environment()
+
+    validate_login()
 
     # > IF RHEL 5 and not removing, prepare the migration.
     if not options.remove and int(RELEASE[0]) == 5:
