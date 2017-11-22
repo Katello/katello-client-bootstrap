@@ -507,7 +507,7 @@ def call_api(url, data=None, method='GET'):
         try:
             jsonerr = json.load(e)
             print 'error: %s' % json.dumps(jsonerr, sort_keys=False, indent=2)
-        except:
+        except:  # noqa: E722
             print 'error: %s' % e
         sys.exit(1)
     except Exception, e:
@@ -712,7 +712,7 @@ def get_api_port():
     configparser.read('/etc/rhsm/rhsm.conf')
     try:
         return configparser.get('server', 'port')
-    except:
+    except:  # noqa: E722
         return "443"
 
 
@@ -948,7 +948,7 @@ if __name__ == '__main__':
             s.connect((options.foreman_fqdn, 80))
             options.ip = s.getsockname()[0]
             s.close()
-        except:
+        except:  # noqa: E722
             options.ip = None
 
     # > Ask for the password if not given as option
