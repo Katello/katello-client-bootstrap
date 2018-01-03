@@ -383,7 +383,10 @@ def install_puppet_agent():
     call_yum("install", "puppet")
     enable_service("puppet")
 
-    puppet_conf = open('/etc/puppet/puppet.conf', 'wb')
+    if os.path.isfile('/etc/puppet/puppet.conf'):
+        puppet_conf = open('/etc/puppet/puppet.conf', 'wb')
+    else:
+        puppet_conf = open('/etc/puppetlabs/puppet/puppet.conf', 'wb')
     puppet_conf.write("""
 [main]
 vardir = /var/lib/puppet
@@ -407,7 +410,10 @@ server          = %s
     print_generic("Running Puppet in noop mode to generate SSL certs")
     print_generic("Visit the UI and approve this certificate via Infrastructure->Capsules")
     print_generic("if auto-signing is disabled")
-    exec_failexit("/usr/bin/puppet agent --test --noop --tags no_such_tag --waitforcert 10")
+    if os.path.isfile('/usr/bin/puppet'):
+        exec_failexit("/usr/bin/puppet agent --test --noop --tags no_such_tag --waitforcert 10")
+    else:
+        exec_failexit("/opt/puppetlabs/puppet/bin/puppet agent --test --noop --tags no_such_tag --waitforcert 10")
     if 'puppet-enable' not in options.skip:
         enable_service("puppet")
         exec_service("puppet", "restart")
