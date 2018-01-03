@@ -218,6 +218,45 @@ def install_prereqs():
         delete_file('/etc/yum.repos.d/katello-client-bootstrap-deps.repo')
 
 
+def get_puppet_path():
+    """
+    Get the path of where the puppet excutable is located.
+    """
+    puppet_lookup_paths = [
+        "/usr/bin",
+        "/opt/puppetlabs/puppet/bin"
+    ]
+    executable_path = None
+    for path in puppet_lookup_paths:
+        executable_path = os.path.join(path, 'puppet')
+        if os.path.isfile(executable_path):
+            break
+        executable_path = None
+
+    if executable_path is None:
+        print_error("No puppet executable found")
+        sys.exit(1)
+    return executable_path
+
+
+def get_puppet_version():
+    """
+    Retrieve the Major version of puppet install.
+    """
+    puppet_executable = get_puppet_path()
+    filtered_command = filter_string("%s agent --version" % (puppet_executable))
+
+    print_running(filtered_command)
+    output = commands.getstatusoutput(filtered_command)
+    retcode = output[0] >> 8
+    if retcode != 0:
+        print_error("Unable to determine puppet version")
+        return -1
+    version = output[1].split('.')
+    major_version = int(version[0])
+    return major_version
+
+
 def get_bootstrap_rpm():
     """
     Retrieve Client CA Certificate RPMs from the Satellite 6 server.
@@ -383,10 +422,15 @@ def install_puppet_agent():
     call_yum("install", "puppet")
     enable_service("puppet")
 
-    if os.path.isfile('/etc/puppet/puppet.conf'):
-        puppet_conf = open('/etc/puppet/puppet.conf', 'wb')
+    puppet_major_version = get_puppet_version()
+    if puppet_major_version == 3:
+        puppet_conf_file = '/etc/puppet/puppet.conf'
+    elif puppet_major_version == 4:
+        puppet_conf_file = '/etc/puppetlabs/puppet/puppet.conf'
     else:
-        puppet_conf = open('/etc/puppetlabs/puppet/puppet.conf', 'wb')
+        print_error("Unsupported puppet version")
+        sys.exit(1)
+    puppet_conf = open(puppet_conf_file, 'wb')
     puppet_conf.write("""
 [main]
 vardir = /var/lib/puppet
@@ -410,10 +454,7 @@ server          = %s
     print_generic("Running Puppet in noop mode to generate SSL certs")
     print_generic("Visit the UI and approve this certificate via Infrastructure->Capsules")
     print_generic("if auto-signing is disabled")
-    if os.path.isfile('/usr/bin/puppet'):
-        exec_failexit("/usr/bin/puppet agent --test --noop --tags no_such_tag --waitforcert 10")
-    else:
-        exec_failexit("/opt/puppetlabs/puppet/bin/puppet agent --test --noop --tags no_such_tag --waitforcert 10")
+    exec_failexit("%s agent --test --noop --tags no_such_tag --waitforcert 10" % (get_puppet_path()))
     if 'puppet-enable' not in options.skip:
         enable_service("puppet")
         exec_service("puppet", "restart")
