@@ -937,6 +937,7 @@ if __name__ == '__main__':
         print "You can override this by passing one of the following"
         print "\t--force - to disable all checking"
         print "\t--skip puppet - to omit installing the puppet agent"
+        print "\t--fqdn <FQDN> - to set an explicit FQDN, overriding detected FQDN"
         sys.exit(1)
 
     # > Gather primary IP address if none was given
