@@ -233,6 +233,9 @@ def get_bootstrap_rpm():
     if os.path.exists('/etc/pki/consumer/cert.pem'):
         print_generic('System appears to be registered via another entitlement server. Attempting unregister')
         unregister_system()
+
+    call_yum("install", "subscription-manager")
+
     if options.download_method == "https":
         print_generic("Writing custom cURL configuration to allow download via HTTPS without certificate verification")
         curl_config_dir = tempfile.mkdtemp()
