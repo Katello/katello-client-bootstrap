@@ -936,7 +936,7 @@ if __name__ == '__main__':
         print "This can lead to Puppet missbehaviour and thus the script will terminate now."
         print "You can override this by passing one of the following"
         print "\t--force - to disable all checking"
-        print "\t--skip-puppet - to omit installing the puppet agent"
+        print "\t--skip puppet - to omit installing the puppet agent"
         sys.exit(1)
 
     # > Gather primary IP address if none was given
