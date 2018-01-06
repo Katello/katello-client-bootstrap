@@ -480,6 +480,10 @@ Options:
                         separated
 ~~~
 
+# Ansible integration
+
+The `bootstrap.yml` file contains a playbook for [Ansible](https://www.ansible.com/) which can be used to copy `bootstrap.py` to the target machine and execute it there with predefined parameters.
+
 # For developers and contributors:
 
 See  [CONTRIBUTING.md](https://github.com/Katello/katello-client-bootstrap/blob/master/CONTRIBUTING.md)
