@@ -222,39 +222,29 @@ def get_puppet_path():
     """
     Get the path of where the puppet excutable is located.
     """
-    puppet_lookup_paths = [
-        "/usr/bin",
-        "/opt/puppetlabs/puppet/bin"
-    ]
-    executable_path = None
-    for path in puppet_lookup_paths:
-        executable_path = os.path.join(path, 'puppet')
-        if os.path.isfile(executable_path):
-            break
-        executable_path = None
+    puppet_major_version = get_puppet_version()
 
-    if executable_path is None:
-        print_error("No puppet executable found")
+    if puppet_major_version == 3:
+        return '/usr/bin/puppet'
+    elif puppet_major_version in [4, 5]:
+        return '/opt/puppetlabs/puppet/bin/puppet'
+    else:
+        print_error("Cannot find puppet path. Is it installed?")
         sys.exit(1)
-    return executable_path
 
 
 def get_puppet_version():
     """
     Retrieve the Major version of puppet install.
     """
-    puppet_executable = get_puppet_path()
-    filtered_command = filter_string("%s agent --version" % (puppet_executable))
-
-    print_running(filtered_command)
-    output = commands.getstatusoutput(filtered_command)
-    retcode = output[0] >> 8
-    if retcode != 0:
-        print_error("Unable to determine puppet version")
-        return -1
-    version = output[1].split('.')
-    major_version = int(version[0])
-    return major_version
+    ts = rpm.TransactionSet()
+    for name in ['puppet', 'puppet-agent']:
+        mi = ts.dbMatch('name', name)
+        for h in mi:
+            puppet_version = int(h['version'].split('.')[0])
+            if h['name'] == 'puppet-agent' and puppet_version == 1:
+                puppet_version = 4
+            return puppet_version
 
 
 def get_bootstrap_rpm():
@@ -425,7 +415,7 @@ def install_puppet_agent():
     puppet_major_version = get_puppet_version()
     if puppet_major_version == 3:
         puppet_conf_file = '/etc/puppet/puppet.conf'
-    elif puppet_major_version == 4:
+    elif puppet_major_version in [4, 5]:
         puppet_conf_file = '/etc/puppetlabs/puppet/puppet.conf'
     else:
         print_error("Unsupported puppet version")
