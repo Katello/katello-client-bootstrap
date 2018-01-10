@@ -382,6 +382,8 @@ def clean_puppet():
     print_generic("Cleaning old Puppet Agent")
     call_yum("erase", "puppet")
     delete_directory("/var/lib/puppet/")
+    delete_directory("/opt/puppetlabs/puppet/cache")
+    delete_directory("/etc/puppetlabs/puppet/ssl")
 
 
 def clean_environment():
@@ -415,18 +417,26 @@ def install_puppet_agent():
     puppet_major_version = get_puppet_version()
     if puppet_major_version == 3:
         puppet_conf_file = '/etc/puppet/puppet.conf'
+        main_section = """[main]
+vardir = /var/lib/puppet
+logdir = /var/log/puppet
+rundir = /var/run/puppet
+ssldir = $vardir/ssl
+"""
     elif puppet_major_version in [4, 5]:
         puppet_conf_file = '/etc/puppetlabs/puppet/puppet.conf'
+        main_section = """[main]
+vardir = /opt/puppetlabs/puppet/cache
+logdir = /var/log/puppetlabs/puppet
+rundir = /var/run/puppetlabs
+ssldir = /etc/puppetlabs/puppet/ssl
+"""
     else:
         print_error("Unsupported puppet version")
         sys.exit(1)
     puppet_conf = open(puppet_conf_file, 'wb')
     puppet_conf.write("""
-[main]
-vardir = /var/lib/puppet
-logdir = /var/log/puppet
-rundir = /var/run/puppet
-ssldir = $vardir/ssl
+%s
 [agent]
 pluginsync      = true
 report          = true
@@ -436,7 +446,7 @@ ca_server       = %s
 certname        = %s
 environment     = %s
 server          = %s
-""" % (options.foreman_fqdn, FQDN, puppet_env, options.foreman_fqdn))
+""" % (main_section, options.foreman_fqdn, FQDN, puppet_env, options.foreman_fqdn))
     if options.puppet_noop:
         puppet_conf.write("""noop            = true
 """)
