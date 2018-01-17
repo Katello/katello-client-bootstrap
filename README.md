@@ -387,6 +387,24 @@ For some users who do not have a configuration management or automation solution
 
 ~~~
 
+### Changing the API/Subscription Manager timeouts
+
+On busy servers, it is sometimes useful to increase the amount of time that the system waits before timing out during registration and subscription tasks. 
+`bootstrap.py` defaults to an timeout of **900** seconds for APIs. Additionally, the `server_timeout` parameter for `subscription-manager` 
+is configured with this value. If desired, this value can be overridden using the `--timeout` option.
+
+~~~
+./bootstrap.py -l admin \
+    -s foreman.example.com \
+    -o "Red Hat" \
+    -L RDU \
+    -g "RHEL7/Crash" \
+    -a ak-Reg_To_Crash \
+    --timeout 1800
+
+~~~
+
+
 # Help / Available options:
 
 ~~~
@@ -478,6 +496,9 @@ Options:
   --install-packages=installpackages
                         List of packages to be additionally installed - comma
                         separated
+  -t timeout, --timeout=timeout
+                        Timeout (in seconds) for API calls and subscription-
+                        manager registration. Defaults to 900
 ~~~
 
 # Ansible integration

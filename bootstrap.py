@@ -323,6 +323,7 @@ def migrate_systems(org_name, activationkey):
         options.rhsmargs += " --legacy-user '%s' --legacy-password '%s'" % (options.legacy_login, options.legacy_password)
     else:
         options.rhsmargs += " --keep"
+    exec_failok("/usr/sbin/subscription-manager config --server.server_timeout=%s" % options.timeout)
     exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key '%s' %s" % (org_label, activationkey, options.rhsmargs))
     exec_failexit("subscription-manager config --rhsm.baseurl=https://%s/pulp/repos" % options.foreman_fqdn)
     if options.release:
@@ -351,6 +352,7 @@ def register_systems(org_name, activationkey):
         options.smargs += " --force"
     if options.release:
         options.smargs += " --release %s" % options.release
+    exec_failok("/usr/sbin/subscription-manager config --server.server_timeout=%s" % options.timeout)
     exec_failexit("/usr/sbin/subscription-manager register --org '%s' --name '%s' --activationkey '%s' %s" % (org_label, FQDN, activationkey, options.smargs))
     enable_rhsmcertd()
 
@@ -486,7 +488,7 @@ def install_foreman_ssh_key():
         os.mkdir(foreman_ssh_dir, 0700)
         os.chown(foreman_ssh_dir, userpw.pw_uid, userpw.pw_gid)
     try:
-        foreman_ssh_key = urllib2.urlopen("https://%s:9090/ssh/pubkey" % options.foreman_fqdn).read()
+        foreman_ssh_key = urllib2.urlopen(("https://%s:9090/ssh/pubkey" % options.foreman_fqdn).read(), timeout=options.timeout)
     except urllib2.HTTPError, e:
         print_generic("The server was unable to fulfill the request. Error: %s - %s" % (e.code, e.reason))
         print_generic("Please ensure the Remote Execution feature is configured properly")
@@ -539,7 +541,7 @@ def call_api(url, data=None, method='GET'):
         if data:
             request.add_data(json.dumps(data))
         request.get_method = lambda: method
-        result = urllib2.urlopen(request)
+        result = urllib2.urlopen(request, timeout=options.timeout)
         jsonresult = json.load(result)
         if options.verbose:
             print 'result: %s' % json.dumps(jsonresult, sort_keys=False, indent=2)
@@ -934,6 +936,7 @@ if __name__ == '__main__':
     parser.add_option("--deps-repository-url", dest="deps_repository_url", help="URL to a repository that contains the subscription-manager RPMs")
     parser.add_option("--deps-repository-gpg-key", dest="deps_repository_gpg_key", help="GPG Key to the repository that contains the subscription-manager RPMs", default="file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release")
     parser.add_option("--install-packages", dest="install_packages", help="List of packages to be additionally installed - comma separated", metavar="installpackages")
+    parser.add_option("-t", "--timeout", dest="timeout", type="int", help="Timeout (in seconds) for API calls and subscription-manager registration. Defaults to %default", metavar="timeout", default=900)
     (options, args) = parser.parse_args()
 
     if options.no_foreman:
@@ -1036,6 +1039,7 @@ if __name__ == '__main__':
         print "LEGACY PASSWORD - %s" % options.legacy_password
         print "DOWNLOAD METHOD - %s" % options.download_method
         print "SKIP - %s" % options.skip
+        print "TIMEOUT - %s" % options.timeout
 
     # > Exit if the user isn't root.
     # Done here to allow an unprivileged user to run the script to see
