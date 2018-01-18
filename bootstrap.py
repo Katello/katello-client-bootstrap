@@ -247,6 +247,15 @@ def get_puppet_version():
             return puppet_version
 
 
+def is_fips():
+    """
+    Checks to see if the system is FIPS enabled.
+    """
+    fips_file = open("/proc/sys/crypto/fips_enabled", "r")
+    fips_status = fips_file.read(1)
+    return fips_status == "1"
+
+
 def get_bootstrap_rpm():
     """
     Retrieve Client CA Certificate RPMs from the Satellite 6 server.
@@ -434,6 +443,9 @@ ssldir = /etc/puppetlabs/puppet/ssl
     else:
         print_error("Unsupported puppet version")
         sys.exit(1)
+    if is_fips():
+        main_section += "digest_algorithm = sha256"
+        print_generic("System is in FIPS mode. Setting digest_algorithm to SHA256 in puppet.conf")
     puppet_conf = open(puppet_conf_file, 'wb')
     puppet_conf.write("""
 %s

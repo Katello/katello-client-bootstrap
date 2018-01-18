@@ -480,6 +480,12 @@ Options:
                         separated
 ~~~
 
+# Additional Notes
+
+## FIPS support
+
+On systems with FIPS enabled (where `/proc/sys/crypto/fips_enabled == 1`), algorithms such as MD5 are disallowed. Bootstrap will configure `digest_algorithm = sha256` in puppet.conf to allow successful puppet runs. However, the signing algorithm **must** match on the Puppet Master. It is expected that the Puppet Masters are configured with the **same** algorithm.  
+
 # Ansible integration
 
 The `bootstrap.yml` file contains a playbook for [Ansible](https://www.ansible.com/) which can be used to copy `bootstrap.py` to the target machine and execute it there with predefined parameters.
