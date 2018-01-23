@@ -28,7 +28,7 @@ from urllib import urlencode
 from ConfigParser import SafeConfigParser
 
 
-VERSION = '1.4.2'
+VERSION = '1.5.0'
 
 
 def get_architecture():
