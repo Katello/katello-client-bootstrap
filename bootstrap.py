@@ -517,7 +517,7 @@ def install_foreman_ssh_key():
         os.mkdir(foreman_ssh_dir, 0700)
         os.chown(foreman_ssh_dir, userpw.pw_uid, userpw.pw_gid)
     try:
-        foreman_ssh_key = urllib2.urlopen(("https://%s:9090/ssh/pubkey" % options.foreman_fqdn).read(), timeout=options.timeout)
+        foreman_ssh_key = urllib2.urlopen(("https://%s:9090/ssh/pubkey" % options.foreman_fqdn), timeout=options.timeout).read()
     except urllib2.HTTPError, e:
         print_generic("The server was unable to fulfill the request. Error: %s - %s" % (e.code, e.reason))
         print_generic("Please ensure the Remote Execution feature is configured properly")
