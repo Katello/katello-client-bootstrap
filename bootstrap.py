@@ -256,19 +256,22 @@ def is_fips():
     return fips_status == "1"
 
 
-def get_bootstrap_rpm():
+def get_bootstrap_rpm(clean=False, unreg=True):
     """
     Retrieve Client CA Certificate RPMs from the Satellite 6 server.
     Uses --insecure options to curl(1) if instructed to download via HTTPS
-    If called with --force, calls clean_katello_agent().
+    This function is usually called with clean=options.force, which ensures
+    clean_katello_agent() is called if --force is specified. You can optionally
+    pass unreg=False to bypass unregistering a system (e.g. when moving between
+    capsules.
     """
-    if options.force:
+    if clean:
         clean_katello_agent()
     if os.path.exists('/etc/rhsm/ca/katello-server-ca.pem'):
         print_generic("A Katello CA certificate is already installed. Assuming system is registered")
         print_generic("To override this behavior, run the script with the --force option. Exiting.")
         sys.exit(1)
-    if os.path.exists('/etc/pki/consumer/cert.pem'):
+    if os.path.exists('/etc/pki/consumer/cert.pem') and unreg:
         print_generic('System appears to be registered via another entitlement server. Attempting unregister')
         unregister_system()
     if options.download_method == "https":
@@ -306,6 +309,13 @@ def enable_rhsmcertd():
     """
     enable_service("rhsmcertd")
     exec_service("rhsmcertd", "restart")
+
+
+def is_registered():
+    # Check if all required certificates are in place (i.e. a system is
+    # registered to begin with) before we start changing things
+    return (os.path.exists('/etc/rhsm/ca/katello-server-ca.pem') and
+            os.path.exists('/etc/pki/consumer/cert.pem'))
 
 
 def migrate_systems(org_name, activationkey):
@@ -465,6 +475,13 @@ server          = %s
         puppet_conf.write("""noop            = true
 """)
     puppet_conf.close()
+    noop_puppet_signing_run()
+    if 'puppet-enable' not in options.skip:
+        enable_service("puppet")
+        exec_service("puppet", "restart")
+
+
+def noop_puppet_signing_run():
     print_generic("Running Puppet in noop mode to generate SSL certs")
     print_generic("Visit the UI and approve this certificate via Infrastructure->Capsules")
     print_generic("if auto-signing is disabled")
@@ -591,9 +608,30 @@ def delete_json(url):
     return call_api(url, method='DELETE')
 
 
-def put_json(url):
+def put_json(url, jdata=None):
     """Use `call_api` to place a "PUT" REST API call."""
-    return call_api(url, method='PUT')
+    return call_api(url, data=jdata, method='PUT')
+
+
+def update_host_capsule_mapping(attribute, capsule_id, host_id):
+    url = "https://" + options.foreman_fqdn + ":" + str(API_PORT) + "/api/v2/hosts/" + str(host_id)
+    if attribute == 'content_source_id':
+        jdata = json.loads('{"host": {"content_facet_attributes": {"content_source_id": "%s"}, "content_source_id": "%s"}}' % (capsule_id, capsule_id))
+    else:
+        jdata = json.loads('{"host": {"%s": "%s"}}' % (attribute, capsule_id))
+    return put_json(url, jdata)
+
+
+def get_capsule_features(capsule_id):
+    url = "https://" + options.foreman_fqdn + ":" + str(API_PORT) + "/katello/api/capsules/%s" % str(capsule_id)
+    return [f['name'] for f in get_json(url)['features']]
+
+
+def update_host_config(attribute, value, host_id):
+    attribute_id = return_matching_foreman_key(attribute + 's', 'title="%s"' % value, 'id', False)
+    json_key = attribute + "_id"
+    jdata = json.loads('{"host": {"%s": "%s"}}' % (json_key, attribute_id))
+    put_json("https://" + options.foreman_fqdn + ":" + API_PORT + "/api/hosts/%s" % host_id, jdata)
 
 
 def return_matching_foreman_key(api_name, search_key, return_key, null_result_ok=False):
@@ -948,6 +986,7 @@ if __name__ == '__main__':
     parser.add_option("--deps-repository-url", dest="deps_repository_url", help="URL to a repository that contains the subscription-manager RPMs")
     parser.add_option("--deps-repository-gpg-key", dest="deps_repository_gpg_key", help="GPG Key to the repository that contains the subscription-manager RPMs", default="file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release")
     parser.add_option("--install-packages", dest="install_packages", help="List of packages to be additionally installed - comma separated", metavar="installpackages")
+    parser.add_option("--new-capsule", dest="new_capsule", action="store_true", help="Switch the server to a new capsule for content and Puppet. Pass --server with the Capsule FQDN as well.")
     parser.add_option("-t", "--timeout", dest="timeout", type="int", help="Timeout (in seconds) for API calls and subscription-manager registration. Defaults to %default", metavar="timeout", default=900)
     (options, args) = parser.parse_args()
 
@@ -972,9 +1011,12 @@ if __name__ == '__main__':
     #     if removing from foreman:
     #        foreman_fqdn
     if not ((options.remove and ('foreman' in options.skip or options.foreman_fqdn)) or
-            (options.foreman_fqdn and options.org and options.activationkey and ('foreman' in options.skip or options.hostgroup))):
-        if not options.remove:
+            (options.foreman_fqdn and options.org and options.activationkey and ('foreman' in options.skip or options.hostgroup)) or
+            (options.foreman_fqdn and options.new_capsule)):
+        if not options.remove and not options.new_capsule:
             print "Must specify server, login, organization, hostgroup and activation key.  See usage:"
+        elif options.new_capsule:
+            print "Must use both --new-capsule and --server. See usage:"
         else:
             print "Must specify server.  See usage:"
         parser.print_help()
@@ -1083,8 +1125,8 @@ if __name__ == '__main__':
     # > Clean the environment from LD_... variables
     clean_environment()
 
-    # > IF RHEL 5 and not removing, prepare the migration.
-    if not options.remove and int(RELEASE[0]) == 5:
+    # > IF RHEL 5, not removing, and not moving to new capsule prepare the migration.
+    if not options.remove and int(RELEASE[0]) == 5 and not options.new_capsule:
         prepare_rhel5_migration()
 
     if options.remove:
@@ -1108,7 +1150,7 @@ if __name__ == '__main__':
         print_generic('This system is registered to RHN. Attempting to migrate via rhn-classic-migrate-to-rhsm')
         install_prereqs()
         check_migration_version()
-        get_bootstrap_rpm()
+        get_bootstrap_rpm(clean=options.force)
         generate_katello_facts()
         API_PORT = get_api_port()
         if 'foreman' not in options.skip:
@@ -1117,12 +1159,88 @@ if __name__ == '__main__':
         migrate_systems(options.org, options.activationkey)
         if options.enablerepos:
             enable_repos()
+    elif options.new_capsule:
+        # > ELIF new_capsule and foreman_fqdn set, will migrate to other capsule
+        #
+        # > will replace CA certificate, reinstall katello-agent, gofer
+        # > will optionally update hostgroup and location
+        # > wil update system definition to point to new capsule for content,
+        # > Puppet, OpenSCAP and update Puppet configuration (if applicable)
+        # > MANUAL SIGNING OF CSR OR MANUALLY CREATING AUTO-SIGN RULE STILL REQUIRED!
+        # > API doesn't have a public endpoint for creating auto-sign entries yet!
+        if not is_registered():
+            print_error("This system doesn't seem to be registered to a Capsule at this moment.")
+            sys.exit(1)
+
+        # Make system ready for switch, gather required data
+        install_prereqs()
+        get_bootstrap_rpm(clean=True, unreg=False)
+        install_katello_agent()
+        API_PORT = get_api_port()
+        capsule_id = return_matching_foreman_key('smart_proxies', 'name="%s"' % options.foreman_fqdn, 'id', False)
+        host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', False)
+        capsule_features = get_capsule_features(capsule_id)
+
+        # Optionally configure new hostgroup, location
+        if options.hostgroup:
+            print_running("Calling Foreman API to switch hostgroup for %s to %s" % (FQDN, options.hostgroup))
+            update_host_config('hostgroup', options.hostgroup, host_id)
+        if options.location:
+            print_running("Calling Foreman API to switch location for %s to %s" % (FQDN, options.location))
+            update_host_config('location', options.location, host_id)
+
+        # Configure new proxy_id for Puppet (if not skipped), and OpenSCAP (if available and not skipped)
+        if 'foreman' not in options.skip and 'puppet' not in options.skip:
+            print_running("Calling Foreman API to update Puppet master and Puppet CA for %s to %s" % (FQDN, options.foreman_fqdn))
+            update_host_capsule_mapping("puppet_proxy_id", capsule_id, host_id)
+            update_host_capsule_mapping("puppet_ca_proxy_id", capsule_id, host_id)
+        if 'foreman' not in options.skip and 'Openscap' in capsule_features:
+            print_running("Calling Foreman API to update OpenSCAP proxy for %s to %s" % (FQDN, options.foreman_fqdn))
+            update_host_capsule_mapping("openscap_proxy_id", capsule_id, host_id)
+        elif 'foreman' not in options.skip and 'Openscap' not in capsule_features:
+            print_warning("New capsule doesn't have OpenSCAP capability, not switching / configuring openscap_proxy_id")
+
+        print_running("Calling Foreman API to update content source for %s to %s" % (FQDN, options.foreman_fqdn))
+        update_host_capsule_mapping("content_source_id", capsule_id, host_id)
+
+        enable_rhsmcertd()
+
+        if 'puppet' not in options.skip and 'foreman' not in options.skip:
+            puppet_major_version = get_puppet_version()
+            if puppet_major_version == 3:
+                puppet_conf_file = '/etc/puppet/puppet.conf'
+                var_dir = '/var/lib/puppet'
+                ssl_dir = '/var/lib/puppet/ssl'
+            elif puppet_major_version in [4, 5]:
+                puppet_conf_file = '/etc/puppetlabs/puppet/puppet.conf'
+                var_dir = '/opt/puppetlabs/puppet/cache'
+                ssl_dir = '/etc/puppetlabs/puppet/ssl'
+            else:
+                print_error("Unsupported puppet version")
+                sys.exit(1)
+
+            print_running("Stopping the Puppet agent for configuration update")
+            exec_service("puppet", "stop")
+
+            # Not using clean_puppet() and install_puppet_agent() here, because
+            # that would nuke custom /etc/puppet/puppet.conf files, which might
+            # yield undesirable results.
+            print_running("Updating Puppet configuration")
+            exec_failexit("sed -i '/^[[:space:]]*server.*/ s/=.*/= %s/' %s" % (options.foreman_fqdn, puppet_conf_file))
+            exec_failok("sed -i '/^[[:space:]]*ca_server.*/ s/=.*/= %s/' %s" % (options.foreman_fqdn, puppet_conf_file))  # For RHEL5 stock puppet.conf
+            delete_directory(ssl_dir)
+            delete_file("%s/client_data/catalog/%s.json" % (var_dir, FQDN))
+
+            noop_puppet_signing_run()
+            print_generic("Puppet agent is not running; please start manually if required.")
+            print_generic("You also need to manually revoke the certificate on the old capsule.")
+
     else:
         # > ELSE get CA RPM, optionally create host,
         # >      register via subscription-manager
         print_generic('This system is not registered to RHN. Attempting to register via subscription-manager')
         install_prereqs()
-        get_bootstrap_rpm()
+        get_bootstrap_rpm(clean=options.force)
         generate_katello_facts()
         API_PORT = get_api_port()
         if 'foreman' not in options.skip:
@@ -1132,7 +1250,7 @@ if __name__ == '__main__':
         if options.enablerepos:
             enable_repos()
 
-    if not options.remove:
+    if not options.remove and not options.new_capsule:
         # > IF not removing, install Katello agent, optionally update host,
         # >                  optionally clean and install Puppet agent
         # >                  optionally remove legacy RHN packages
