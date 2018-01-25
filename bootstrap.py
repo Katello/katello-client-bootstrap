@@ -425,6 +425,8 @@ def generate_katello_facts():
     print_generic("Writing FQDN katello-fact")
     katellofacts = open('/etc/rhsm/facts/katello.facts', 'w')
     katellofacts.write('{"network.hostname-override":"%s"}\n' % (FQDN))
+    if LOCATION:
+      katellofacts.write('{"foreman_location":"%s"}\n' % (LOCATION))
     katellofacts.close()
 
 
@@ -1095,6 +1097,11 @@ if __name__ == '__main__':
         print "SKIP - %s" % options.skip
         print "TIMEOUT - %s" % options.timeout
 
+
+    # Set LOCATION if options.location 
+    if options.location:
+        LOCATION = options.location
+    
     # > Exit if the user isn't root.
     # Done here to allow an unprivileged user to run the script to see
     # its various options.
