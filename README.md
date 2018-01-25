@@ -104,7 +104,7 @@ When using the `--add-domain` option, the following additional permission is nee
 
 * Create domains
 
-When using the `--skip-foreman` option, no user account in Foreman is needed at all.
+When using the `--skip foreman` option, no user account in Foreman is needed at all.
 
 When using the `--legacy-purge` option, a user account on the legacy environment (RHN/Satellite5) is required. The user needs to be an admin of the system in the legacy environment by having any of the following roles:
 
@@ -137,23 +137,23 @@ There are times where you wish to not install Puppet, perhaps you have a differi
     -L RDU \
     -g "RHEL7/Crash" \
     -a ak-Reg_To_Crash \
-    --skip-puppet
+    --skip puppet
 ~~~
 
 ### Registering a system to Foreman + Katello, for content only.
 
-This usage leverages the `--skip-foreman` switch, which does not require username/password authentication.
+This usage leverages the `--skip foreman` switch, which does not require username/password authentication.
 
 **NOTES**
 
- - the `--skip-foreman` switch implies `--skip-puppet`
- - When using `--skip-foreman`, it is expected that the organization specified  (via `--organization|-o`) is specified via **LABEL**, not **NAME**.
+ - the `--skip foreman` switch implies `--skip puppet`
+ - When using `--skip foreman`, it is expected that the organization specified  (via `--organization|-o`) is specified via **LABEL**, not **NAME**.
 
 ~~~
 # ./bootstrap.py -s foreman.example.com \
     -a ak_Reg_To_Dev_EL7 \
     -o "Red_Hat" \
-    --skip-foreman
+    --skip foreman
 ~~~
 
 
@@ -287,8 +287,8 @@ ssh-rsa AAAAB3Nz.... foreman-proxy@foreman.example.com
 
 Sometimes, you may want to skip certain steps of the bootstrapping process. the `--skip` switch provides this. It currently has the following parameters
 
-* `foreman` - Skips any Foreman setup steps. (equivalent to the `--skip-foreman` option)
-* `puppet` - Does not install puppet (equivalent to the `--skip-puppet` option)
+* `foreman` - Skips any Foreman setup steps, please note that you MUST pass the Organization's LABEL, not NAME when using this. (equivalent to the deprecated `--skip-foreman` option)
+* `puppet` - Does not install puppet (equivalent to the deprecated `--skip-puppet` option)
 * `migration` - Skips RHN/Spacewalk registration detection. This option prevents `rhn-classic-migrate-to-rhsm` from timing out and failing on RHN/Spacewalk systems that aren't available.
 * `prereq-update` - Skips update of `yum`, `openssl` and `python`
 * `katello-agent` - Does not install the `katello-agent` package
