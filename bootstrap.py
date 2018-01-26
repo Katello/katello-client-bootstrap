@@ -420,12 +420,19 @@ def generate_katello_facts():
     """
     Write katello_facts file based on FQDN. Done after installation
     of katello-ca-consumer RPM in case the script is overriding the
-    FQDN
+    FQDN. Place the location if the location option is included
     """
+
     print_generic("Writing FQDN katello-fact")
     katellofacts = open('/etc/rhsm/facts/katello.facts', 'w')
     katellofacts.write('{"network.hostname-override":"%s"}\n' % (FQDN))
     katellofacts.close()
+
+    if options.location:
+        print_generic("Writing LOCATION RHSM fact")
+        locationfacts = open('/etc/rhsm/facts/location.facts', 'w')
+        locationfacts.write('{"foreman_location":"%s"}\n' % (options.location))
+        locationfacts.close()
 
 
 def install_puppet_agent():
@@ -1095,6 +1102,11 @@ if __name__ == '__main__':
         print "SKIP - %s" % options.skip
         print "TIMEOUT - %s" % options.timeout
 
+
+    # Set LOCATION if options.location 
+    if options.location:
+        LOCATION = options.location
+    
     # > Exit if the user isn't root.
     # Done here to allow an unprivileged user to run the script to see
     # its various options.
