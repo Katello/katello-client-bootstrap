@@ -429,10 +429,10 @@ def generate_katello_facts():
     katellofacts.close()
 
     if options.location:
-       print_generic("Writing LOCATION RHSM fact")
-       locationfacts = open('/etc/rhsm/facts/location.facts', 'w')
-       locationfacts.write('{"foreman_location":"%s"}\n' % (options.location))
-       locationfacts.close()
+        print_generic("Writing LOCATION RHSM fact")
+        locationfacts = open('/etc/rhsm/facts/location.facts', 'w')
+        locationfacts.write('{"foreman_location":"%s"}\n' % (options.location))
+        locationfacts.close()
 
 
 def install_puppet_agent():
