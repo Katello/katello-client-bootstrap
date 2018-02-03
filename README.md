@@ -3,7 +3,7 @@ bootstrap Script for migrating existing running systems to Foreman with the Kate
 
 # Overview
 
-* The goal is to take a RHEL client and get it registered to Foreman
+* The goal is to take a Red Hat Enterprise Linux (RHEL) client and get it registered to Foreman
 This script can take a system that is registered to Spacewalk, Satellite 5, Red Hat
 Network Classic and get it registered to Foreman & Katello.
 
@@ -12,7 +12,7 @@ external) of one Katello installation by using the `--new-capsule` option.
 
 # What does the Script do?
 
-* Identify which systems management platform is the system registered to (Classic/Sat5 or None)  then perform the following
+* Identify which systems management platform is the system registered to (Classic/Sat5 or None)  then perform the following:
 
 ## Red Hat Classic & Satellite 5
 
@@ -75,6 +75,7 @@ external) of one Katello installation by using the `--new-capsule` option.
 * Location and Organization that the system is to be associated with.
 * hostgroup that the client is to be associated with.
 * An Activation Key that provides a content view with access to Puppet and other tools
+* If `subscription-manager` is not installed or is unavailable in the host's configured repositories, a URL pointing to a repository with the `subscription-manager` RPMs is required.
 
 # Permissions
 
@@ -293,7 +294,7 @@ Sometimes, you may want to skip certain steps of the bootstrapping process. the 
 * `prereq-update` - Skips update of `yum`, `openssl` and `python`
 * `katello-agent` - Does not install the `katello-agent` package
 * `remove-obsolete-packages` - Does not remove the Classic/RHN/Spacewalk/RHUI packages.  (equivalent to `--no-remove-obsolete-packages`)
-* `puppet-enable` - Does not enable and start the puppet daemon on the client. 
+* `puppet-enable` - Does not enable and start the puppet daemon on the client.
 
 **Note:** it is strongly preferred to use the `--skip` option in lieu of the individual `--skip-foreman`, `--skip-puppet`, and `--no-remove-obsolete-packages` options.
 
@@ -345,7 +346,7 @@ node-100
 
 ### Changing the method bootstrap uses to download the katello-ca-consumer RPM
 
-By default, the bootstrap script uses HTTP to download the `katello-ca-consumer` RPM. In some environments, it is desired to only allow HTTPS between the client and Foreman. the `--download-method` option can be used to change the download method that bootstrap uses from HTTP to HTTPS.
+By default, the bootstrap script uses HTTPS to download the `katello-ca-consumer` RPM. In some environments, it is desired to connect via HTTP. the `--download-method` option can be used to change the download method that bootstrap uses from HTTPS to HTTP.
 
 ~~~
 ./bootstrap.py -l admin \
@@ -354,7 +355,7 @@ By default, the bootstrap script uses HTTP to download the `katello-ca-consumer`
     -L RDU \
     -g "RHEL7/Crash" \
     -a ak-Reg_To_Crash \
-    --download-method https
+    --download-method http
 ~~~
 
 ### Providing the IP address to Foreman
@@ -374,9 +375,9 @@ On machines with multiple interfaces or multiple addresses on one interface, it 
 ~~~
 
 
-### Configuring the client to run only in noop mode
+### Configuring Puppet on the client to run only in noop mode
 
-When migrating or registering clients which may have never been managed via Puppet, it may be useful to configure the agent in `noop` mode. This allows the client to be managed via Foreman, while getting facts & reports about its configuration state, without making any changes to it. The `--puppet-noop` switch facilitates this behavior
+When migrating or registering clients which may have never been managed via Puppet, it may be useful to configure the agent in `noop` mode. This allows the client to be managed via Foreman, while getting facts & reports about its configuration state, without making any changes to it. The `--puppet-noop` switch facilitates this behavior.
 
 ~~~
 ./bootstrap.py -l admin \
@@ -423,8 +424,8 @@ For some users who do not have a configuration management or automation solution
 
 ### Changing the API/Subscription Manager timeouts
 
-On busy servers, it is sometimes useful to increase the amount of time that the system waits before timing out during registration and subscription tasks. 
-`bootstrap.py` defaults to an timeout of **900** seconds for APIs. Additionally, the `server_timeout` parameter for `subscription-manager` 
+On busy servers, it is sometimes useful to increase the amount of time that the system waits before timing out during registration and subscription tasks.
+`bootstrap.py` defaults to an timeout of **900** seconds for APIs. Additionally, the `server_timeout` parameter for `subscription-manager`
 is configured with this value. If desired, this value can be overridden using the `--timeout` option.
 
 ~~~
@@ -539,7 +540,7 @@ Options:
 
 ## FIPS support
 
-On systems with FIPS enabled (where `/proc/sys/crypto/fips_enabled == 1`), algorithms such as MD5 are disallowed. Bootstrap will configure `digest_algorithm = sha256` in puppet.conf to allow successful puppet runs. However, the signing algorithm **must** match on the Puppet Master. It is expected that the Puppet Masters are configured with the **same** algorithm.  
+On systems with FIPS enabled (where `/proc/sys/crypto/fips_enabled == 1`), algorithms such as MD5 are disallowed. Bootstrap will configure `digest_algorithm = sha256` in puppet.conf to allow successful puppet runs. However, the signing algorithm **must** match on the Puppet Master. It is expected that the Puppet Masters are configured with the **same** algorithm prior to running `bootstrap.py` on the clients. 
 
 # Ansible integration
 
