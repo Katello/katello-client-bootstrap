@@ -962,6 +962,7 @@ if __name__ == '__main__':
     parser.add_option("-a", "--activationkey", dest="activationkey", help="Activation Key to register the system", metavar="ACTIVATIONKEY")
     parser.add_option("-P", "--skip-puppet", dest="no_puppet", action="store_true", default=False, help="Do not install Puppet")
     parser.add_option("--skip-foreman", dest="no_foreman", action="store_true", default=False, help="Do not create a Foreman host. Implies --skip-puppet. When using --skip-foreman, you MUST pass the Organization's LABEL, not NAME")
+    parser.add_option("--content-only", dest="content_only", action="store_true", default=False, help="Setup host for content only. Alias to --skip foreman. Implies --skip-puppet. When using --content-only, you MUST pass the Organization's LABEL, not NAME")
     parser.add_option("-g", "--hostgroup", dest="hostgroup", help="Title of the Hostgroup in Foreman that the host is to be associated with", metavar="HOSTGROUP")
     parser.add_option("-L", "--location", dest="location", help="Title of the Location in Foreman that the host is to be associated with", metavar="LOCATION")
     parser.add_option("-O", "--operatingsystem", dest="operatingsystem", default=None, help="Title of the Operating System in Foreman that the host is to be associated with", metavar="OPERATINGSYSTEM")
@@ -1000,6 +1001,9 @@ if __name__ == '__main__':
         options.skip.append('puppet')
     if not options.removepkgs:
         options.skip.append('remove-obsolete-packages')
+    if options.content_only:
+        print_generic("The --content-only option was provided. Adding --skip foreman")
+        options.skip.append('foreman')
 
     # > Validate that the options make sense or exit with a message.
     # the logic is as follows:
