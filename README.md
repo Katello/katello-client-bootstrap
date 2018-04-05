@@ -150,11 +150,22 @@ This usage leverages the `--skip foreman` switch, which does not require usernam
  - the `--skip foreman` switch implies `--skip puppet`
  - When using `--skip foreman`, it is expected that the organization specified  (via `--organization|-o`) is specified via **LABEL**, not **NAME**.
 
+Option 1: using the `--skip foreman` option. 
+
 ~~~
 # ./bootstrap.py -s foreman.example.com \
     -a ak_Reg_To_Dev_EL7 \
     -o "Red_Hat" \
     --skip foreman
+~~~
+
+Option 2 : using the `--content-only` option. This option exists as an alias to `--skip foreman`. 
+
+~~~
+# ./bootstrap.py -s foreman.example.com \
+    -a ak_Reg_To_Dev_EL7 \
+    -o "Red_Hat" \
+    --content-only
 ~~~
 
 
