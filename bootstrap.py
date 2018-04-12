@@ -727,6 +727,13 @@ def create_host():
         if not mydomainid:
             print_generic("Domain %s doesn't exist in Foreman, consider using the --add-domain option." % DOMAIN)
             sys.exit(2)
+        domain_available_search = 'name="%s"&organization_id=%s' % (DOMAIN, myorgid)
+        if mylocid:
+            domain_available_search += '&location_id=%s' % (mylocid)
+        mydomainid = return_matching_foreman_key('domains', domain_available_search, 'id', True)
+        if not mydomainid:
+            print_generic("Domain %s exists in Foreman, but is not assigned to the requested Organization or Location." % DOMAIN)
+            sys.exit(2)
     else:
         mydomainid = None
     architecture_id = return_matching_foreman_key('architectures', 'name="%s"' % ARCHITECTURE, 'id', False)
