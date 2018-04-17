@@ -480,6 +480,9 @@ certname        = %s
 environment     = %s
 server          = %s
 """ % (main_section, options.puppet_ca_server, FQDN, puppet_env, options.puppet_server))
+    if options.puppet_ca_port:
+        puppet_conf.write("""ca_port         = %s
+""" % (options.puppet_ca_port))
     if options.puppet_noop:
         puppet_conf.write("""noop            = true
 """)
@@ -991,6 +994,7 @@ if __name__ == '__main__':
     parser.add_option("--puppet-noop", dest="puppet_noop", action="store_true", help="Configure Puppet agent to only run in noop mode")
     parser.add_option("--puppet-server", dest="puppet_server", action="store", help="Configure Puppet agent to use this server as master (defaults to the Foreman server)")
     parser.add_option("--puppet-ca-server", dest="puppet_ca_server", action="store", help="Configure Puppet agent to use this server as CA (defaults to the Foreman server)")
+    parser.add_option("--puppet-ca-port", dest="puppet_ca_port", action="store", help="Configure Puppet agent to use this port to connect to the CA")
     parser.add_option("--remove", dest="remove", action="store_true", help="Instead of registering the machine to Foreman remove it")
     parser.add_option("-r", "--release", dest="release", help="Specify release version")
     parser.add_option("-R", "--remove-obsolete-packages", dest="removepkgs", action="store_true", help="Remove old Red Hat Network and RHUI Packages (default)", default=True)
