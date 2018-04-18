@@ -1124,6 +1124,9 @@ if __name__ == '__main__':
         print "DOWNLOAD METHOD - %s" % options.download_method
         print "SKIP - %s" % options.skip
         print "TIMEOUT - %s" % options.timeout
+        print "PUPPET SERVER - %s" % options.puppet_server
+        print "PUPPET CA SERVER - %s" % options.puppet_ca_server
+        print "PUPPET CA PORT - %s" % options.puppet_ca_port
 
     # > Exit if the user isn't root.
     # Done here to allow an unprivileged user to run the script to see
