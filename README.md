@@ -450,7 +450,43 @@ is configured with this value. If desired, this value can be overridden using th
 
 ~~~
 
+### Using an alternative Puppet master or Puppet CA
 
+When attaching a client to a setup, where Puppet runs outside of the Foreman setup, you can configure the Puppet agent to use an alternative Puppet master using the `--puppet-server` switch.
+
+~~~
+./bootstrap.py -l admin \
+    -s foreman.example.com \
+    -o "Red Hat" \
+    -L RDU \
+    -g "RHEL7/Crash" \
+    -a ak-Reg_To_Crash \
+    --puppet-server=puppet.example.com
+~~~
+
+In the case the Puppet CA is running on a different server, you can use the `--puppet-ca-server` switch for the server hostname and the `--puppet-ca-port` one for the port.
+
+~~~
+./bootstrap.py -l admin \
+    -s foreman.example.com \
+    -o "Red Hat" \
+    -L RDU \
+    -g "RHEL7/Crash" \
+    -a ak-Reg_To_Crash \
+    --puppet-server=puppet.example.com \
+    --puppet-ca-server=puppetca.example.com
+~~~
+
+~~~
+./bootstrap.py -l admin \
+    -s foreman.example.com \
+    -o "Red Hat" \
+    -L RDU \
+    -g "RHEL7/Crash" \
+    -a ak-Reg_To_Crash \
+    --puppet-server=puppet.example.com \
+    --puppet-ca-port=8141
+~~~
 # Help / Available options:
 
 ~~~
