@@ -150,7 +150,7 @@ This usage leverages the `--skip foreman` switch, which does not require usernam
  - the `--skip foreman` switch implies `--skip puppet`
  - When using `--skip foreman`, it is expected that the organization specified  (via `--organization|-o`) is specified via **LABEL**, not **NAME**.
 
-Option 1: using the `--skip foreman` option. 
+Option 1: using the `--skip foreman` option.
 
 ~~~
 # ./bootstrap.py -s foreman.example.com \
@@ -159,7 +159,7 @@ Option 1: using the `--skip foreman` option.
     --skip foreman
 ~~~
 
-Option 2 : using the `--content-only` option. This option exists as an alias to `--skip foreman`. 
+Option 2 : using the `--content-only` option. This option exists as an alias to `--skip foreman`.
 
 ~~~
 # ./bootstrap.py -s foreman.example.com \
@@ -403,7 +403,7 @@ When migrating or registering clients which may have never been managed via Pupp
 ### Providing a repository with the subscription-manager packages
 
 For clients who do not have subscription-manager installed (which is a prerequisite of `bootstrap.py`), the `deps-repository-url` option can be used to specify a yum repository which contains the `subscription-manager` RPMs
-On your Foreman instance, kickstart repositories are available via HTTP, and are ideal to be used in this scenario. However, any yum repository with the required packages would work.  
+On your Foreman instance, kickstart repositories are available via HTTP, and are ideal to be used in this scenario. However, any yum repository with the required packages would work.
 
 ~~~
 ./bootstrap.py -l admin \
@@ -450,7 +450,43 @@ is configured with this value. If desired, this value can be overridden using th
 
 ~~~
 
+### Using an alternative Puppet master or Puppet CA
 
+When attaching a client to a setup, where Puppet runs outside of the Foreman setup, you can configure the Puppet agent to use an alternative Puppet master using the `--puppet-server` switch.
+
+~~~
+./bootstrap.py -l admin \
+    -s foreman.example.com \
+    -o "Red Hat" \
+    -L RDU \
+    -g "RHEL7/Crash" \
+    -a ak-Reg_To_Crash \
+    --puppet-server=puppet.example.com
+~~~
+
+In the case the Puppet CA is running on a different server, you can use the `--puppet-ca-server` switch for the server hostname and the `--puppet-ca-port` one for the port.
+
+~~~
+./bootstrap.py -l admin \
+    -s foreman.example.com \
+    -o "Red Hat" \
+    -L RDU \
+    -g "RHEL7/Crash" \
+    -a ak-Reg_To_Crash \
+    --puppet-server=puppet.example.com \
+    --puppet-ca-server=puppetca.example.com
+~~~
+
+~~~
+./bootstrap.py -l admin \
+    -s foreman.example.com \
+    -o "Red Hat" \
+    -L RDU \
+    -g "RHEL7/Crash" \
+    -a ak-Reg_To_Crash \
+    --puppet-server=puppet.example.com \
+    --puppet-ca-port=8141
+~~~
 # Help / Available options:
 
 ~~~
@@ -481,6 +517,9 @@ Options:
   --skip-foreman        Do not create a Foreman host. Implies --skip-puppet.
                         When using --skip-foreman, you MUST pass the
                         Organization's LABEL, not NAME
+  --content-only        Setup host for content only. Alias to --skip foreman.
+                        Implies --skip-puppet. When using --content-only, you
+                        MUST pass the Organization's LABEL, not NAME
   -g HOSTGROUP, --hostgroup=HOSTGROUP
                         Title of the Hostgroup in Foreman that the host is to
                         be associated with
@@ -508,6 +547,15 @@ Options:
                         certs)
   --add-domain          Automatically add the clients domain to Foreman
   --puppet-noop         Configure Puppet agent to only run in noop mode
+  --puppet-server=PUPPET_SERVER
+                        Configure Puppet agent to use this server as master
+                        (defaults to the Foreman server)
+  --puppet-ca-server=PUPPET_CA_SERVER
+                        Configure Puppet agent to use this server as CA
+                        (defaults to the Foreman server)
+  --puppet-ca-port=PUPPET_CA_PORT
+                        Configure Puppet agent to use this port to connect to
+                        the CA
   --remove              Instead of registering the machine to Foreman remove
                         it
   -r RELEASE, --release=RELEASE
@@ -542,6 +590,8 @@ Options:
   --install-packages=installpackages
                         List of packages to be additionally installed - comma
                         separated
+  --new-capsule         Switch the server to a new capsule for content and
+                        Puppet. Pass --server with the Capsule FQDN as well.
   -t timeout, --timeout=timeout
                         Timeout (in seconds) for API calls and subscription-
                         manager registration. Defaults to 900
@@ -551,7 +601,7 @@ Options:
 
 ## FIPS support
 
-On systems with FIPS enabled (where `/proc/sys/crypto/fips_enabled == 1`), algorithms such as MD5 are disallowed. Bootstrap will configure `digest_algorithm = sha256` in puppet.conf to allow successful puppet runs. However, the signing algorithm **must** match on the Puppet Master. It is expected that the Puppet Masters are configured with the **same** algorithm prior to running `bootstrap.py` on the clients. 
+On systems with FIPS enabled (where `/proc/sys/crypto/fips_enabled == 1`), algorithms such as MD5 are disallowed. Bootstrap will configure `digest_algorithm = sha256` in puppet.conf to allow successful puppet runs. However, the signing algorithm **must** match on the Puppet Master. It is expected that the Puppet Masters are configured with the **same** algorithm prior to running `bootstrap.py` on the clients.
 
 # Ansible integration
 

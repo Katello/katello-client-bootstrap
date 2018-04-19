@@ -479,7 +479,10 @@ ca_server       = %s
 certname        = %s
 environment     = %s
 server          = %s
-""" % (main_section, options.foreman_fqdn, FQDN, puppet_env, options.foreman_fqdn))
+""" % (main_section, options.puppet_ca_server, FQDN, puppet_env, options.puppet_server))
+    if options.puppet_ca_port:
+        puppet_conf.write("""ca_port         = %s
+""" % (options.puppet_ca_port))
     if options.puppet_noop:
         puppet_conf.write("""noop            = true
 """)
@@ -989,6 +992,9 @@ if __name__ == '__main__':
     parser.add_option("-f", "--force", dest="force", action="store_true", help="Force registration (will erase old katello and puppet certs)")
     parser.add_option("--add-domain", dest="add_domain", action="store_true", help="Automatically add the clients domain to Foreman")
     parser.add_option("--puppet-noop", dest="puppet_noop", action="store_true", help="Configure Puppet agent to only run in noop mode")
+    parser.add_option("--puppet-server", dest="puppet_server", action="store", help="Configure Puppet agent to use this server as master (defaults to the Foreman server)")
+    parser.add_option("--puppet-ca-server", dest="puppet_ca_server", action="store", help="Configure Puppet agent to use this server as CA (defaults to the Foreman server)")
+    parser.add_option("--puppet-ca-port", dest="puppet_ca_port", action="store", help="Configure Puppet agent to use this port to connect to the CA")
     parser.add_option("--remove", dest="remove", action="store_true", help="Instead of registering the machine to Foreman remove it")
     parser.add_option("-r", "--release", dest="release", help="Specify release version")
     parser.add_option("-R", "--remove-obsolete-packages", dest="removepkgs", action="store_true", help="Remove old Red Hat Network and RHUI Packages (default)", default=True)
@@ -1018,6 +1024,10 @@ if __name__ == '__main__':
     if options.content_only:
         print_generic("The --content-only option was provided. Adding --skip foreman")
         options.skip.append('foreman')
+    if not options.puppet_server:
+        options.puppet_server = options.foreman_fqdn
+    if not options.puppet_ca_server:
+        options.puppet_ca_server = options.foreman_fqdn
 
     # > Validate that the options make sense or exit with a message.
     # the logic is as follows:
@@ -1114,6 +1124,9 @@ if __name__ == '__main__':
         print "DOWNLOAD METHOD - %s" % options.download_method
         print "SKIP - %s" % options.skip
         print "TIMEOUT - %s" % options.timeout
+        print "PUPPET SERVER - %s" % options.puppet_server
+        print "PUPPET CA SERVER - %s" % options.puppet_ca_server
+        print "PUPPET CA PORT - %s" % options.puppet_ca_port
 
     # > Exit if the user isn't root.
     # Done here to allow an unprivileged user to run the script to see
@@ -1246,8 +1259,8 @@ if __name__ == '__main__':
             # that would nuke custom /etc/puppet/puppet.conf files, which might
             # yield undesirable results.
             print_running("Updating Puppet configuration")
-            exec_failexit("sed -i '/^[[:space:]]*server.*/ s/=.*/= %s/' %s" % (options.foreman_fqdn, puppet_conf_file))
-            exec_failok("sed -i '/^[[:space:]]*ca_server.*/ s/=.*/= %s/' %s" % (options.foreman_fqdn, puppet_conf_file))  # For RHEL5 stock puppet.conf
+            exec_failexit("sed -i '/^[[:space:]]*server.*/ s/=.*/= %s/' %s" % (options.puppet_server, puppet_conf_file))
+            exec_failok("sed -i '/^[[:space:]]*ca_server.*/ s/=.*/= %s/' %s" % (options.puppet_ca_server, puppet_conf_file))  # For RHEL5 stock puppet.conf
             delete_directory(ssl_dir)
             delete_file("%s/client_data/catalog/%s.json" % (var_dir, FQDN))
 
