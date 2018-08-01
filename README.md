@@ -517,6 +517,8 @@ Options:
   --skip-foreman        Do not create a Foreman host. Implies --skip-puppet.
                         When using --skip-foreman, you MUST pass the
                         Organization's LABEL, not NAME
+  --force-content-source
+                        Force the content source to be the registration capsule (it overrides the value in the host group if any is defined)
   --content-only        Setup host for content only. Alias to --skip foreman.
                         Implies --skip-puppet. When using --content-only, you
                         MUST pass the Organization's LABEL, not NAME

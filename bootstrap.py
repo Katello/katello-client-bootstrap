@@ -735,6 +735,7 @@ def create_domain(domain, orgid, locid):
 def create_host():
 
     # pylint:disable=too-many-branches
+    # pylint:disable=too-many-statements
 
     """
     Call Foreman API to create a host entry associated with the
@@ -763,11 +764,17 @@ def create_host():
             sys.exit(2)
     else:
         mydomainid = None
+    if options.force_content_source:
+        my_content_src_id = return_matching_foreman_key(api_name='smart_proxies', search_key='name="%s"' % options.foreman_fqdn, return_key='id', null_result_ok=False)
+    else:
+        my_content_src_id = None
     architecture_id = return_matching_foreman_key('architectures', 'name="%s"' % ARCHITECTURE, 'id', False)
     host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', True)
     # create the starting json, to be filled below
     jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s, "mac":"%s","architecture_id":%s}}' % (HOSTNAME, myhgid, myorgid, MAC, architecture_id))
     # optional parameters
+    if my_content_src_id:
+        jsondata['host']['content_facet_attributes'] = {'content_source_id': my_content_src_id}
     if options.operatingsystem is not None:
         operatingsystem_id = return_matching_foreman_key('operatingsystems', 'title="%s"' % options.operatingsystem, 'id', False)
         jsondata['host']['operatingsystem_id'] = operatingsystem_id
@@ -1009,6 +1016,7 @@ if __name__ == '__main__':
     parser.add_option("-a", "--activationkey", dest="activationkey", help="Activation Key to register the system", metavar="ACTIVATIONKEY")
     parser.add_option("-P", "--skip-puppet", dest="no_puppet", action="store_true", default=False, help="Do not install Puppet")
     parser.add_option("--skip-foreman", dest="no_foreman", action="store_true", default=False, help="Do not create a Foreman host. Implies --skip-puppet. When using --skip-foreman, you MUST pass the Organization's LABEL, not NAME")
+    parser.add_option("--force-content-source", dest="force_content_source", action="store_true", default=False, help="Force the content source to be the registration capsule (it overrides the value in the host group if any is defined)")
     parser.add_option("--content-only", dest="content_only", action="store_true", default=False,
                       help="Setup host for content only. Alias to --skip foreman. Implies --skip-puppet. When using --content-only, you MUST pass the Organization's LABEL, not NAME")
     parser.add_option("-g", "--hostgroup", dest="hostgroup", help="Title of the Hostgroup in Foreman that the host is to be associated with", metavar="HOSTGROUP")
