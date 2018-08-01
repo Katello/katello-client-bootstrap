@@ -484,7 +484,7 @@ ca_server       = %s
 certname        = %s
 environment     = %s
 server          = %s
-""" % (main_section, options.puppet_ca_server, FQDN, puppet_env, options.puppet_server))
+""" % (main_section, options.puppet_ca_server, FQDN.lower(), puppet_env, options.puppet_server))
     if options.puppet_ca_port:
         puppet_conf.write("""ca_port         = %s
 """ % (options.puppet_ca_port))
