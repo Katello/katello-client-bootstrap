@@ -791,6 +791,8 @@ def create_host():
         jsondata['host']['domain_id'] = mydomainid
     if options.ip:
         jsondata['host']['ip'] = options.ip
+    if options.comment:
+        jsondata['host']['comment'] = options.comment
     myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/hosts/"
     if options.force and host_id is not None:
         disassociate_host(host_id)
@@ -1050,6 +1052,7 @@ if __name__ == '__main__':
     parser.add_option("--install-packages", dest="install_packages", help="List of packages to be additionally installed - comma separated", metavar="installpackages")
     parser.add_option("--new-capsule", dest="new_capsule", action="store_true", help="Switch the server to a new capsule for content and Puppet. Pass --server with the Capsule FQDN as well.")
     parser.add_option("-t", "--timeout", dest="timeout", type="int", help="Timeout (in seconds) for API calls and subscription-manager registration. Defaults to %default", metavar="timeout", default=900)
+    parser.add_option("-c", "--comment", dest="comment", help="Add a host comment")
     (options, args) = parser.parse_args()
 
     if options.no_foreman:
