@@ -487,6 +487,21 @@ In the case the Puppet CA is running on a different server, you can use the `--p
     --puppet-server=puppet.example.com \
     --puppet-ca-port=8141
 ~~~
+
+### Adding a comment when registering a node.
+
+When registering a client, it is sometimes desirable to add a comment, denoting internal information such as the owner of the server or other site-specific info. This can be accomplished with the `--comment` option.
+
+~~~
+./bootstrap.py -l admin \
+    -s foreman.example.com \
+    -o "Red Hat" \
+    -L RDU \
+    -g "RHEL7/Crash" \
+    -a ak-Reg_To_Crash \
+    --comment 'Crash Testing Server'
+~~~
+
 # Help / Available options:
 
 ~~~
@@ -597,6 +612,8 @@ Options:
   -t timeout, --timeout=timeout
                         Timeout (in seconds) for API calls and subscription-
                         manager registration. Defaults to 900
+  -c COMMENT, --comment=COMMENT
+                        Add a host comment
 ~~~
 
 # Additional Notes
