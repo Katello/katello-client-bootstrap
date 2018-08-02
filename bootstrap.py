@@ -28,7 +28,7 @@ import rpm  # pylint:disable=import-error
 import rpmUtils.miscutils  # pylint:disable=import-error
 
 
-VERSION = '1.5.0'
+VERSION = '1.6.0'
 
 
 def get_architecture():
