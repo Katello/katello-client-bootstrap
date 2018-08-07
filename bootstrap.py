@@ -397,12 +397,13 @@ def clean_katello_agent():
     delete_file("/etc/rhsm/ca/katello-server-ca.pem")
 
 
-def install_katello_agent():
-    """Install Katello agent (aka Gofer) and activate /start it."""
-    print_generic("Installing the Katello agent")
-    call_yum("install", "katello-agent")
-    enable_service("goferd")
-    exec_service("goferd", "restart")
+def install_katello_host_tools():
+    """
+    Install Katello host tools. Note: if the older AMQP agent (goferd) is required,
+    pass `--install-packages katello-agent` as an argument.
+    """
+    print_generic("Installing the Katello Host Tools")
+    call_yum("install", "katello-host-tools")
 
 
 def clean_puppet():
@@ -1251,7 +1252,7 @@ if __name__ == '__main__':
         # Make system ready for switch, gather required data
         install_prereqs()
         get_bootstrap_rpm(clean=True, unreg=False)
-        install_katello_agent()
+        install_katello_host_tools()
         API_PORT = get_api_port()
         smart_proxy_id = return_matching_foreman_key('smart_proxies', 'name="%s"' % options.foreman_fqdn, 'id', False)
         current_host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', False)
@@ -1334,7 +1335,7 @@ if __name__ == '__main__':
         # >                  optionally clean and install Puppet agent
         # >                  optionally remove legacy RHN packages
         if 'katello-agent' not in options.skip:
-            install_katello_agent()
+            install_katello_host_tools()
         if options.update:
             fully_update_the_box()
 
