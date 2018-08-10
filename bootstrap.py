@@ -473,6 +473,15 @@ ssldir = /etc/puppetlabs/puppet/ssl
         main_section += "digest_algorithm = sha256"
         print_generic("System is in FIPS mode. Setting digest_algorithm to SHA256 in puppet.conf")
     puppet_conf = open(puppet_conf_file, 'wb')
+
+    # set puppet.conf certname to lowercase FQDN, as capitalized characters would
+    # get translated anyway generating our certificate
+    # * https://puppet.com/docs/puppet/3.8/configuration.html#certname
+    # * https://puppet.com/docs/puppet/4.10/configuration.html#certname
+    # * https://puppet.com/docs/puppet/5.5/configuration.html#certname
+    # other links mentioning capitalized characters related issues:
+    # * https://grokbase.com/t/gg/puppet-users/152s27374y/forcing-a-variable-to-be-lower-case
+    # * https://groups.google.com/forum/#!topic/puppet-users/vRAu092ppzs
     puppet_conf.write("""
 %s
 [agent]
@@ -484,7 +493,7 @@ ca_server       = %s
 certname        = %s
 environment     = %s
 server          = %s
-""" % (main_section, options.puppet_ca_server, FQDN, puppet_env, options.puppet_server))
+""" % (main_section, options.puppet_ca_server, FQDN.lower(), puppet_env, options.puppet_server))
     if options.puppet_ca_port:
         puppet_conf.write("""ca_port         = %s
 """ % (options.puppet_ca_port))
