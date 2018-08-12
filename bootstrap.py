@@ -610,7 +610,7 @@ def call_api(url, data=None, method='GET'):
             print 'result: %s' % json.dumps(jsonresult, sort_keys=False, indent=2)
         return jsonresult
     except urllib2.URLError, exception:
-        print 'An error occured: %s' % exception
+        print 'An error occurred: %s' % exception
         print 'url: %s' % url
         if isinstance(exception, urllib2.HTTPError):
             print 'code: %s' % exception.code  # pylint:disable=no-member
