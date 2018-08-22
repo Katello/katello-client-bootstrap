@@ -397,6 +397,14 @@ def clean_katello_agent():
     delete_file("/etc/rhsm/ca/katello-server-ca.pem")
 
 
+def install_katello_agent():
+    """Install Katello agent (aka Gofer) and activate /start it."""
+    print_generic("Installing the Katello agent")
+    call_yum("install", "katello-agent")
+    enable_service("goferd")
+    exec_service("goferd", "restart")
+
+
 def install_katello_host_tools():
     """
     Install Katello host tools. Note: if the older AMQP agent (goferd) is required,
