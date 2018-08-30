@@ -1421,6 +1421,8 @@ if __name__ == '__main__':
         install_katello_agent()
         API_PORT = get_api_port()
         smart_proxy_id = return_matching_foreman_key('smart_proxies', 'name="%s"' % options.foreman_fqdn, 'id', False)
+        puppet_master_smart_proxy_id = return_matching_foreman_key('smart_proxies', 'name="%s"' % options.puppet_server, 'id', True)
+        puppet_ca_smart_proxy_id = return_matching_foreman_key('smart_proxies', 'name="%s"' % options.puppet_ca_server, 'id', True)
         current_host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', False)
         capsule_features = get_capsule_features(smart_proxy_id)
 
@@ -1434,9 +1436,15 @@ if __name__ == '__main__':
 
         # Configure new proxy_id for Puppet (if not skipped), and OpenSCAP (if available and not skipped)
         if 'foreman' not in options.skip and 'puppet' not in options.skip:
-            print_running("Calling Foreman API to update Puppet master and Puppet CA for %s to %s" % (FQDN, options.foreman_fqdn))
-            update_host_capsule_mapping("puppet_proxy_id", smart_proxy_id, current_host_id)
-            update_host_capsule_mapping("puppet_ca_proxy_id", smart_proxy_id, current_host_id)
+            if puppet_master_smart_proxy_id is not None and puppet_ca_smart_proxy_id is not None:
+                print_running("Calling Foreman API to update Puppet Master for %s to %s" % (FQDN, options.puppet_server))
+                update_host_capsule_mapping("puppet_proxy_id", puppet_master_smart_proxy_id, current_host_id)
+                print_running("Calling Foreman API to update Puppet CA for %s to %s" % (FQDN, options.puppet_ca_server))
+                update_host_capsule_mapping("puppet_ca_proxy_id", puppet_ca_smart_proxy_id, current_host_id)
+            else:
+                print_running("Calling Foreman API to update Puppet master and Puppet CA for %s to %s" % (FQDN, options.foreman_fqdn))
+                update_host_capsule_mapping("puppet_proxy_id", smart_proxy_id, current_host_id)
+                update_host_capsule_mapping("puppet_ca_proxy_id", smart_proxy_id, current_host_id)
         if 'foreman' not in options.skip and 'Openscap' in capsule_features:
             print_running("Calling Foreman API to update OpenSCAP proxy for %s to %s" % (FQDN, options.foreman_fqdn))
             update_host_capsule_mapping("openscap_proxy_id", smart_proxy_id, current_host_id)
