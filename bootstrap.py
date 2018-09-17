@@ -348,8 +348,12 @@ def migrate_systems(org_name, activationkey):
     else:
         options.rhsmargs += " --keep"
     exec_failok("/usr/sbin/subscription-manager config --server.server_timeout=%s" % options.timeout)
-    exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key '%s' %s" % (org_label, activationkey, options.rhsmargs))
-    exec_failexit("subscription-manager config --rhsm.baseurl=https://%s/pulp/repos" % options.foreman_fqdn)
+    if options.ignore_registration_failures:
+        exec_failok("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key '%s' %s" % (org_label, activationkey, options.rhsmargs))
+        exec_failok("subscription-manager config --rhsm.baseurl=https://%s/pulp/repos" % options.foreman_fqdn)
+    else:
+        exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key '%s' %s" % (org_label, activationkey, options.rhsmargs))
+        exec_failexit("subscription-manager config --rhsm.baseurl=https://%s/pulp/repos" % options.foreman_fqdn)
     if options.release:
         exec_failexit("subscription-manager release --set %s" % options.release)
     enable_rhsmcertd()
@@ -377,7 +381,10 @@ def register_systems(org_name, activationkey):
     if options.release:
         options.smargs += " --release %s" % options.release
     exec_failok("/usr/sbin/subscription-manager config --server.server_timeout=%s" % options.timeout)
-    exec_failexit("/usr/sbin/subscription-manager register --org '%s' --name '%s' --activationkey '%s' %s" % (org_label, FQDN, activationkey, options.smargs))
+    if options.ignore_registration_failures:
+        exec_failok("/usr/sbin/subscription-manager register --org '%s' --name '%s' --activationkey '%s' %s" % (org_label, FQDN, activationkey, options.smargs))
+    else:
+        exec_failexit("/usr/sbin/subscription-manager register --org '%s' --name '%s' --activationkey '%s' %s" % (org_label, FQDN, activationkey, options.smargs))
     enable_rhsmcertd()
 
 
@@ -1063,6 +1070,7 @@ if __name__ == '__main__':
     parser.add_option("--new-capsule", dest="new_capsule", action="store_true", help="Switch the server to a new capsule for content and Puppet. Pass --server with the Capsule FQDN as well.")
     parser.add_option("-t", "--timeout", dest="timeout", type="int", help="Timeout (in seconds) for API calls and subscription-manager registration. Defaults to %default", metavar="timeout", default=900)
     parser.add_option("-c", "--comment", dest="comment", help="Add a host comment")
+    parser.add_option("--ignore-registration-failures", dest="ignore_registration_failures", action="store_true", help="Continue running even if registration via subscription-manager/rhn-migrate-classic-to-rhsm returns a non-zero return code.")
     (options, args) = parser.parse_args()
 
     if options.no_foreman:
@@ -1179,6 +1187,7 @@ if __name__ == '__main__':
         print "PUPPET SERVER - %s" % options.puppet_server
         print "PUPPET CA SERVER - %s" % options.puppet_ca_server
         print "PUPPET CA PORT - %s" % options.puppet_ca_port
+        print "IGNORE REGISTRATION FAILURES - %s" % options.ignore_registration_failures
 
     # > Exit if the user isn't root.
     # Done here to allow an unprivileged user to run the script to see

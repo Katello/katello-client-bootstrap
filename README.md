@@ -502,6 +502,20 @@ When registering a client, it is sometimes desirable to add a comment, denoting 
     --comment 'Crash Testing Server'
 ~~~
 
+### Ignoring Registration Failures
+
+When registering a client, it is sometimes desired to ignore registration failures reported via `subscription-manager` or `rhn-migrate-classic-to-rhsm`. The `--ignore-registration-failures` option allows `bootstrap.py` to continue running even when these commands return a non-zero error code. **NOTE**: it is the responsibility of the end-user to ensure, when using this option, that registration has completed successfully. 
+
+~~~
+./bootstrap.py -l admin \
+    -s foreman.example.com \
+    -o "Red Hat" \
+    -L RDU \
+    -g "RHEL7/Crash" \
+    -a ak-Reg_To_Crash \
+    --ignore-registration-failures
+~~~
+
 # Help / Available options:
 
 ~~~
@@ -614,6 +628,10 @@ Options:
                         manager registration. Defaults to 900
   -c COMMENT, --comment=COMMENT
                         Add a host comment
+  --ignore-registration-failures
+                        Continue running even if registration via
+                        subscription-manager/rhn-migrate-classic-to-rhsm
+                        returns a non-zero return code.
 ~~~
 
 # Additional Notes
