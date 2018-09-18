@@ -144,10 +144,7 @@ def call_yum(command, params="", failonerror=True):
     Helper function to call a yum command on a list of packages.
     pass failonerror = False to make yum commands non-fatal
     """
-    if failonerror:
-        exec_failexit("/usr/bin/yum -y %s %s" % (command, params))
-    else:
-        exec_failok("/usr/bin/yum -y %s %s" % (command, params))
+    exec_command("/usr/bin/yum -y %s %s" % (command, params), not failonerror)
 
 
 def check_migration_version():
