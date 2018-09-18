@@ -969,16 +969,10 @@ def exec_service(service, command, failonerror=True):
     Available command values = start, stop, restart
     pass failonerror = False to make init system's commands non-fatal
     """
-    if failonerror:
-        if os.path.exists("/run/systemd"):
-            exec_failexit("/usr/bin/systemctl %s %s" % (command, service))
-        else:
-            exec_failexit("/sbin/service %s %s" % (service, command))
+    if os.path.exists("/run/systemd"):
+        exec_command("/usr/bin/systemctl %s %s" % (command, service), not failonerror)
     else:
-        if os.path.exists("/run/systemd"):
-            exec_failok("/usr/bin/systemctl %s %s" % (command, service))
-        else:
-            exec_failok("/sbin/service %s %s" % (service, command))
+        exec_command("/sbin/service %s %s" % (service, command), not failonerror)
 
 
 if __name__ == '__main__':
