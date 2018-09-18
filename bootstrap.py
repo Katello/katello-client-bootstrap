@@ -11,7 +11,12 @@ import getpass
 import urllib2
 import base64
 import sys
-import commands
+try:
+    from commands import getstatusoutput
+    NEED_STATUS_SHIFT = True
+except ImportError:
+    from subprocess import getstatusoutput
+    NEED_STATUS_SHIFT = False
 import platform
 import socket
 import os
@@ -114,8 +119,9 @@ def exec_command(command, failok=False):
     """Helper function to call a command and handle errors and output."""
     filtered_command = filter_string(command)
     print_running(filtered_command)
-    status, output = commands.getstatusoutput(command)
-    retcode = status >> 8
+    retcode, output = getstatusoutput(command)
+    if NEED_STATUS_SHIFT:
+        retcode = os.WEXITSTATUS(retcode)
     print output
     if retcode != 0:
         if failok:
@@ -873,7 +879,9 @@ def configure_subscription_manager():
 def check_rhn_registration():
     """Helper function to check if host is registered to legacy RHN."""
     if os.path.exists('/etc/sysconfig/rhn/systemid'):
-        retcode = commands.getstatusoutput('rhn-channel -l')[0] >> 8
+        retcode = getstatusoutput('rhn-channel -l')[0]
+        if NEED_STATUS_SHIFT:
+            retcode = os.WEXITSTATUS(retcode)
         return retcode == 0
     return False
 
