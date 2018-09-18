@@ -102,30 +102,30 @@ def color_string(msg, color):
 
 def exec_failok(command):
     """Helper function to call a command with only warning if failing."""
-    filtered_command = filter_string(command)
-    print_running(filtered_command)
-    output = commands.getstatusoutput(command)
-    retcode = output[0] >> 8
-    if retcode != 0:
-        print_warning(filtered_command)
-    print output[1]
-    print ""
-    return retcode
+    return exec_command(command, True)
 
 
 def exec_failexit(command):
     """Helper function to call a command with error and exit if failing."""
+    return exec_command(command, False)
+
+
+def exec_command(command, failok=False):
+    """Helper function to call a command and handle errors and output."""
     filtered_command = filter_string(command)
     print_running(filtered_command)
-    output = commands.getstatusoutput(command)
-    retcode = output[0] >> 8
+    status, output = commands.getstatusoutput(command)
+    retcode = status >> 8
+    print output
     if retcode != 0:
-        print_error(filtered_command)
-        print output[1]
-        sys.exit(retcode)
-    print output[1]
-    print_success(filtered_command)
-    print ""
+        if failok:
+            print_warning(filtered_command)
+        else:
+            print_error(filtered_command)
+            sys.exit(retcode)
+    else:
+        print_success(filtered_command)
+    return retcode
 
 
 def delete_file(filename):
