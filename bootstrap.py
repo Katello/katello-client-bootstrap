@@ -8,7 +8,30 @@ Use `awk -F'# >' 'NF>1 {print $2}' ./bootstrap.py` to see the flow.
 """
 
 import getpass
-import urllib2
+try:
+    # pylint:disable=invalid-name
+    import urllib2
+    from urllib import urlencode
+    urllib_urlopen = urllib2.urlopen
+    urllib_urlerror = urllib2.URLError
+    urllib_httperror = urllib2.HTTPError
+    urllib_basehandler = urllib2.BaseHandler
+    urllib_request = urllib2.Request
+    urllib_build_opener = urllib2.build_opener
+    urllib_install_opener = urllib2.install_opener
+except ImportError:
+    # pylint:disable=invalid-name,no-member
+    import urllib
+    import urllib.request
+    import urllib.error
+    from urllib.parse import urlencode
+    urllib_urlopen = urllib.request.urlopen
+    urllib_urlerror = urllib.error.URLError
+    urllib_httperror = urllib.error.HTTPError
+    urllib_basehandler = urllib.request.BaseHandler
+    urllib_request = urllib.request.Request
+    urllib_build_opener = urllib.request.build_opener
+    urllib_install_opener = urllib.request.install_opener
 import base64
 import sys
 try:
@@ -26,10 +49,6 @@ import shutil
 import tempfile
 from datetime import datetime
 from optparse import OptionParser
-try:
-    from urllib import urlencode
-except ImportError:
-    from urllib.parse import urlencode
 try:
     from ConfigParser import SafeConfigParser
 except ImportError:
@@ -634,15 +653,15 @@ def install_foreman_ssh_key(remote_url):
         return
     try:
         if sys.version_info >= (2, 6):
-            foreman_ssh_key = urllib2.urlopen(remote_url, timeout=options.timeout).read()
+            foreman_ssh_key = urllib_urlopen(remote_url, timeout=options.timeout).read()
         else:
-            foreman_ssh_key = urllib2.urlopen(remote_url).read()
-    except urllib2.HTTPError, exception:
+            foreman_ssh_key = urllib_urlopen(remote_url).read()
+    except urllib_httperror, exception:
         print_generic("The server was unable to fulfill the request. Error: %s - %s" % (exception.code, exception.reason))
         print_generic("Please ensure the Remote Execution feature is configured properly")
         print_warning("Installing Foreman SSH key")
         return
-    except urllib2.URLError, exception:
+    except urllib_urlerror, exception:
         print_generic("Could not reach the server. Error: %s" % exception.reason)
         return
     if os.path.isfile(options.remote_exec_authpath):
@@ -656,9 +675,9 @@ def install_foreman_ssh_key(remote_url):
     output.close()
 
 
-class BetterHTTPErrorProcessor(urllib2.BaseHandler):
+class BetterHTTPErrorProcessor(urllib_basehandler):
     """
-    A substitute/supplement class to urllib2.HTTPErrorProcessor
+    A substitute/supplement class to HTTPErrorProcessor
     that doesn't raise exceptions on status codes 201,204,206
     """
     # pylint:disable=unused-argument,no-self-use,no-init
@@ -682,7 +701,7 @@ def call_api(url, data=None, method='GET'):
     some error handling. Any error results in an exit.
     """
     try:
-        request = urllib2.Request(url)
+        request = urllib_request(url)
         if options.verbose:
             print 'url: %s' % url
             print 'method: %s' % method
@@ -695,17 +714,17 @@ def call_api(url, data=None, method='GET'):
             request.add_data(json.dumps(data))
         request.get_method = lambda: method
         if sys.version_info >= (2, 6):
-            result = urllib2.urlopen(request, timeout=options.timeout)
+            result = urllib_urlopen(request, timeout=options.timeout)
         else:
-            result = urllib2.urlopen(request)
+            result = urllib_urlopen(request)
         jsonresult = json.load(result)
         if options.verbose:
             print 'result: %s' % json.dumps(jsonresult, sort_keys=False, indent=2)
         return jsonresult
-    except urllib2.URLError, exception:
+    except urllib_urlerror, exception:
         print 'An error occurred: %s' % exception
         print 'url: %s' % url
-        if isinstance(exception, urllib2.HTTPError):
+        if isinstance(exception, urllib_httperror):
             print 'code: %s' % exception.code  # pylint:disable=no-member
         if data:
             print 'data: %s' % json.dumps(data, sort_keys=False, indent=2)
@@ -1065,8 +1084,8 @@ if __name__ == '__main__':
     print "This script is designed to register new systems or to migrate an existing system to a Foreman server with Katello"
 
     # > Register our better HTTP processor as default opener for URLs.
-    opener = urllib2.build_opener(BetterHTTPErrorProcessor)
-    urllib2.install_opener(opener)
+    opener = urllib_build_opener(BetterHTTPErrorProcessor)
+    urllib_install_opener(opener)
 
     # > Gather MAC Address.
     MAC = None
