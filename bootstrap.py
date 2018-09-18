@@ -951,16 +951,10 @@ def enable_service(service, failonerror=True):
     Helper function to enable a service using proper init system.
     pass failonerror = False to make init system's commands non-fatal
     """
-    if failonerror:
-        if os.path.exists("/run/systemd"):
-            exec_failexit("/usr/bin/systemctl enable %s" % (service))
-        else:
-            exec_failexit("/sbin/chkconfig %s on" % (service))
+    if os.path.exists("/run/systemd"):
+        exec_command("/usr/bin/systemctl enable %s" % (service), not failonerror)
     else:
-        if os.path.exists("/run/systemd"):
-            exec_failok("/usr/bin/systemctl enable %s" % (service))
-        else:
-            exec_failok("/sbin/chkconfig %s on" % (service))
+        exec_command("/sbin/chkconfig %s on" % (service), not failonerror)
 
 
 def exec_service(service, command, failonerror=True):
