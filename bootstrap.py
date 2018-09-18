@@ -400,10 +400,7 @@ def register_systems(org_name, activationkey):
     if options.release:
         options.smargs += " --release %s" % options.release
     exec_failok("/usr/sbin/subscription-manager config --server.server_timeout=%s" % options.timeout)
-    if options.ignore_registration_failures:
-        exec_failok("/usr/sbin/subscription-manager register --org '%s' --name '%s' --activationkey '%s' %s" % (org_label, FQDN, activationkey, options.smargs))
-    else:
-        exec_failexit("/usr/sbin/subscription-manager register --org '%s' --name '%s' --activationkey '%s' %s" % (org_label, FQDN, activationkey, options.smargs))
+    exec_command("/usr/sbin/subscription-manager register --org '%s' --name '%s' --activationkey '%s' %s" % (org_label, FQDN, activationkey, options.smargs), options.ignore_registration_failures)
     enable_rhsmcertd()
 
 
