@@ -21,7 +21,10 @@ import shutil
 import tempfile
 from datetime import datetime
 from optparse import OptionParser
-from urllib import urlencode
+try:
+    from urllib import urlencode
+except ImportError:
+    from urllib.parse import urlencode
 from ConfigParser import SafeConfigParser
 import yum  # pylint:disable=import-error
 import rpm  # pylint:disable=import-error
