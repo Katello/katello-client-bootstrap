@@ -371,12 +371,8 @@ def migrate_systems(org_name, activationkey):
     else:
         options.rhsmargs += " --keep"
     exec_failok("/usr/sbin/subscription-manager config --server.server_timeout=%s" % options.timeout)
-    if options.ignore_registration_failures:
-        exec_failok("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key '%s' %s" % (org_label, activationkey, options.rhsmargs))
-        exec_failok("subscription-manager config --rhsm.baseurl=https://%s/pulp/repos" % options.foreman_fqdn)
-    else:
-        exec_failexit("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key '%s' %s" % (org_label, activationkey, options.rhsmargs))
-        exec_failexit("subscription-manager config --rhsm.baseurl=https://%s/pulp/repos" % options.foreman_fqdn)
+    exec_command("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key '%s' %s" % (org_label, activationkey, options.rhsmargs), options.ignore_registration_failures)
+    exec_command("subscription-manager config --rhsm.baseurl=https://%s/pulp/repos" % options.foreman_fqdn, options.ignore_registration_failures)
     if options.release:
         exec_failexit("subscription-manager release --set %s" % options.release)
     enable_rhsmcertd()
