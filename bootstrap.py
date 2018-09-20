@@ -228,7 +228,7 @@ def install_prereqs():
         pkg_list = dnf_base.sack.query().filter(name='subscription-manager')
         subman_installed = pkg_list.installed().run()
         subman_available = pkg_list.available().run()
-    call_yum("remove", "subscription-manager-gnome")
+    call_yum("remove", "subscription-manager-gnome", False)
     if subman_installed:
         if check_rhn_registration() and 'migration' not in options.skip:
             print_generic("installing subscription-manager-migration")
@@ -422,7 +422,7 @@ def unregister_system():
 def clean_katello_agent():
     """Remove old Katello agent (aka Gofer) and certificate RPMs."""
     print_generic("Removing old Katello agent and certs")
-    call_yum("erase", "'katello-ca-consumer-*' katello-agent gofer katello-host-tools katello-host-tools-fact-plugin")
+    call_yum("remove", "'katello-ca-consumer-*' katello-agent gofer katello-host-tools katello-host-tools-fact-plugin", False)
     delete_file("/etc/rhsm/ca/katello-server-ca.pem")
 
 
@@ -437,7 +437,7 @@ def install_katello_agent():
 def clean_puppet():
     """Remove old Puppet Agent and its configuration"""
     print_generic("Cleaning old Puppet Agent")
-    call_yum("erase", "puppet")
+    call_yum("remove", "puppet", False)
     delete_directory("/var/lib/puppet/")
     delete_directory("/opt/puppetlabs/puppet/cache")
     delete_directory("/etc/puppetlabs/puppet/ssl")
@@ -552,7 +552,7 @@ def noop_puppet_signing_run():
 def remove_obsolete_packages():
     """Remove old RHN packages"""
     print_generic("Removing old RHN packages")
-    call_yum("remove", "rhn-setup rhn-client-tools yum-rhn-plugin rhnsd rhn-check rhnlib spacewalk-abrt spacewalk-oscap osad 'rh-*-rhui-client' 'candlepin-cert-consumer-*'")
+    call_yum("remove", "rhn-setup rhn-client-tools yum-rhn-plugin rhnsd rhn-check rhnlib spacewalk-abrt spacewalk-oscap osad 'rh-*-rhui-client' 'candlepin-cert-consumer-*'", False)
 
 
 def fully_update_the_box():
