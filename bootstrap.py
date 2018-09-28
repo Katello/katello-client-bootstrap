@@ -25,7 +25,6 @@ from urllib import urlencode
 from ConfigParser import SafeConfigParser
 import yum  # pylint:disable=import-error
 import rpm  # pylint:disable=import-error
-import rpmUtils.miscutils  # pylint:disable=import-error
 
 
 VERSION = '1.6.0'
@@ -164,14 +163,14 @@ def check_migration_version():
     """
     Verify that the command 'subscription-manager-migration' isn't too old.
     """
-    required_version = rpmUtils.miscutils.stringToVersion('1.14.2')
+    required_version = ('0', '1.14.2', '1')
     err = "subscription-manager-migration not found"
 
     transaction_set = rpm.TransactionSet()
     db_result = transaction_set.dbMatch('name', 'subscription-manager-migration')
     for package in db_result:
-        if rpmUtils.miscutils.compareEVR(rpmUtils.miscutils.stringToVersion(package['evr']), required_version) < 0:
-            err = "%s-%s is too old" % (package['name'], package['evr'])
+        if rpm.labelCompare(('0', package['version'].decode('ascii'), '1'), required_version) < 0:
+            err = "%s %s is too old" % (package['name'], package['version'])
         else:
             err = None
 
