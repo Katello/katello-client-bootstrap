@@ -60,27 +60,37 @@ def filter_string(string):
 
 def print_error(msg):
     """Helper function to output an ERROR message."""
-    print "[%sERROR%s], [%s], EXITING: [%s] failed to execute properly." % (ERROR_COLORS['FAIL'], ERROR_COLORS['ENDC'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
+    print_message(color_string('ERROR', 'FAIL'), 'EXITING: [%s] failed to execute properly.' % msg)
 
 
 def print_warning(msg):
     """Helper function to output a WARNING message."""
-    print "[%sWARNING%s], [%s], NON-FATAL: [%s] failed to execute properly." % (ERROR_COLORS['WARNING'], ERROR_COLORS['ENDC'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
+    print_message(color_string('WARNING', 'WARNING'), 'NON-FATAL: [%s] failed to execute properly.' % msg)
 
 
 def print_success(msg):
     """Helper function to output a SUCCESS message."""
-    print "[%sSUCCESS%s], [%s], [%s], completed successfully." % (ERROR_COLORS['OKGREEN'], ERROR_COLORS['ENDC'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
+    print_message(color_string('SUCCESS', 'OKGREEN'), '[%s], completed successfully.' % msg)
 
 
 def print_running(msg):
     """Helper function to output a RUNNING message."""
-    print "[%sRUNNING%s], [%s], [%s] " % (ERROR_COLORS['OKBLUE'], ERROR_COLORS['ENDC'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
+    print_message(color_string('RUNNING', 'OKBLUE'), '[%s]' % msg)
 
 
 def print_generic(msg):
     """Helper function to output a NOTIFICATION message."""
-    print "[NOTIFICATION], [%s], [%s] " % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
+    print_message('NOTIFICATION', '[%s]' % msg)
+
+
+def print_message(prefix, msg):
+    """Helper function to output a message with a prefix"""
+    print "[%s], [%s], %s" % (prefix, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
+
+
+def color_string(msg, color):
+    """Helper function to add ANSII colors to a message"""
+    return '%s%s%s' % (ERROR_COLORS[color], msg, ERROR_COLORS['ENDC'])
 
 
 def exec_failok(command):
