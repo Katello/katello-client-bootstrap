@@ -23,7 +23,12 @@ from datetime import datetime
 from optparse import OptionParser
 from urllib import urlencode
 from ConfigParser import SafeConfigParser
-import yum  # pylint:disable=import-error
+try:
+    import yum  # pylint:disable=import-error
+    USE_YUM = True
+except ImportError:
+    import dnf  # pylint:disable=import-error
+    USE_YUM = False
 import rpm  # pylint:disable=import-error
 
 
@@ -206,16 +211,25 @@ def install_prereqs():
     if options.deps_repository_url:
         print_generic("Enabling %s as a repository for dependency RPMs" % options.deps_repository_url)
         setup_yum_repo(options.deps_repository_url, options.deps_repository_gpg_key)
-    yum_base = yum.YumBase()
-    pkg_list = yum_base.doPackageLists(patterns=['subscription-manager'])
+    if USE_YUM:
+        yum_base = yum.YumBase()
+        pkg_list = yum_base.doPackageLists(patterns=['subscription-manager'])
+        subman_installed = pkg_list.installed
+        subman_available = pkg_list.available
+    else:
+        dnf_base = dnf.Base()
+        dnf_base.fill_sack()
+        pkg_list = dnf_base.sack.query().filter(name='subscription-manager')
+        subman_installed = pkg_list.installed().run()
+        subman_available = pkg_list.available().run()
     call_yum("remove", "subscription-manager-gnome")
-    if pkg_list.installed:
+    if subman_installed:
         if check_rhn_registration() and 'migration' not in options.skip:
             print_generic("installing subscription-manager-migration")
             call_yum("install", "'subscription-manager-migration-*'", False)
         print_generic("subscription-manager is installed already. Attempting update")
         call_yum("update", "subscription-manager 'subscription-manager-migration-*'", False)
-    elif pkg_list.available:
+    elif subman_available:
         print_generic("subscription-manager NOT installed. Installing.")
         call_yum("install", "subscription-manager 'subscription-manager-migration-*'")
     else:
