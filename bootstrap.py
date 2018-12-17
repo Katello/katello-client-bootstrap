@@ -64,6 +64,12 @@ import rpm  # pylint:disable=import-error
 
 VERSION = '1.6.0'
 
+# Python 2.4 only supports octal numbers by prefixing '0'
+# Python 3 only support octal numbers by prefixing '0o'
+# Therefore use the decimal notation for file permissions
+OWNER_ONLY_DIR = 448  # octal: 700
+OWNER_ONLY_FILE = 384  # octal: 600
+
 
 def get_architecture():
     """
@@ -648,7 +654,7 @@ def install_foreman_ssh_key(remote_url):
         options.remote_exec_authpath = os.path.join(userpw.pw_dir, '.ssh', 'authorized_keys')
         foreman_ssh_dir = os.path.join(userpw.pw_dir, '.ssh')
         if not os.path.isdir(foreman_ssh_dir):
-            os.mkdir(foreman_ssh_dir, 0700)
+            os.mkdir(foreman_ssh_dir, OWNER_ONLY_DIR)
             os.chown(foreman_ssh_dir, userpw.pw_uid, userpw.pw_gid)
     elif not os.path.isfile(options.remote_exec_authpath):
         print_error("Foreman's SSH key not installed. File where authorized_keys must be located is not found: %s" % options.remote_exec_authpath)
@@ -672,7 +678,7 @@ def install_foreman_ssh_key(remote_url):
         if foreman_ssh_key in open(options.remote_exec_authpath, 'r').read():
             print_generic("Foreman's SSH key already present in %s" % options.remote_exec_authpath)
             return
-    output = os.fdopen(os.open(options.remote_exec_authpath, os.O_WRONLY | os.O_CREAT, 0600), 'a')
+    output = os.fdopen(os.open(options.remote_exec_authpath, os.O_WRONLY | os.O_CREAT, OWNER_ONLY_FILE), 'a')
     output.write(foreman_ssh_key)
     os.chown(options.remote_exec_authpath, userpw.pw_uid, userpw.pw_gid)
     print_generic("Foreman's SSH key added to %s" % options.remote_exec_authpath)
