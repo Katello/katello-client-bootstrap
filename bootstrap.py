@@ -166,7 +166,8 @@ def delete_file(filename):
     try:
         os.remove(filename)
         print_success("Removing %s" % filename)
-    except OSError, exception:
+    except OSError:
+        exception = sys.exc_info()[1]
         print_generic("Error when removing %s - %s" % (filename, exception.strerror))
         print_error("Removing %s" % filename)
         sys.exit(1)
@@ -180,7 +181,8 @@ def delete_directory(directoryname):
     try:
         shutil.rmtree(directoryname)
         print_success("Removing %s" % directoryname)
-    except OSError, exception:
+    except OSError:
+        exception = sys.exc_info()[1]
         print_generic("Error when removing %s - %s" % (directoryname, exception.strerror))
         print_error("Removing %s" % directoryname)
         sys.exit(1)
@@ -656,12 +658,14 @@ def install_foreman_ssh_key(remote_url):
             foreman_ssh_key = urllib_urlopen(remote_url, timeout=options.timeout).read()
         else:
             foreman_ssh_key = urllib_urlopen(remote_url).read()
-    except urllib_httperror, exception:
+    except urllib_httperror:
+        exception = sys.exc_info()[1]
         print_generic("The server was unable to fulfill the request. Error: %s - %s" % (exception.code, exception.reason))
         print_generic("Please ensure the Remote Execution feature is configured properly")
         print_warning("Installing Foreman SSH key")
         return
-    except urllib_urlerror, exception:
+    except urllib_urlerror:
+        exception = sys.exc_info()[1]
         print_generic("Could not reach the server. Error: %s" % exception.reason)
         return
     if os.path.isfile(options.remote_exec_authpath):
@@ -721,7 +725,8 @@ def call_api(url, data=None, method='GET'):
         if options.verbose:
             print('result: %s' % json.dumps(jsonresult, sort_keys=False, indent=2))
         return jsonresult
-    except urllib_urlerror, exception:
+    except urllib_urlerror:
+        exception = sys.exc_info()[1]
         print('An error occurred: %s' % exception)
         print('url: %s' % url)
         if isinstance(exception, urllib_httperror):
@@ -734,7 +739,8 @@ def call_api(url, data=None, method='GET'):
         except:  # noqa: E722, pylint:disable=bare-except
             print('error: %s' % exception)
         sys.exit(1)
-    except Exception, exception:  # pylint:disable=broad-except
+    except Exception:  # pylint:disable=broad-except
+        exception = sys.exc_info()[1]
         print("FATAL Error - %s" % (exception))
         sys.exit(2)
 
