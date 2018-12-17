@@ -10,8 +10,8 @@ test-%:
 	$(DOCKER) run -it --volume $(CURDIR):/app$(USE_SELINUX) --workdir=/app $* python setup.py sdist
 
 test3-%:
-	-$(DOCKER) run -it --volume $(CURDIR):/app$(USE_SELINUX) --workdir=/app $* python3 bootstrap.py --help
-	-$(DOCKER) run -it --volume $(CURDIR):/app$(USE_SELINUX) --workdir=/app $* python3 setup.py sdist
+	$(DOCKER) run -it --volume $(CURDIR):/app$(USE_SELINUX) --workdir=/app $* python3 bootstrap.py --help
+	$(DOCKER) run -it --volume $(CURDIR):/app$(USE_SELINUX) --workdir=/app $* python3 setup.py sdist
 
 lint:
 	python -m flake8 --ignore E501,W504 ./bootstrap.py ./setup.py
