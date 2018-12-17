@@ -722,7 +722,10 @@ def call_api(url, data=None, method='GET'):
         request.add_header("Content-Type", "application/json")
         request.add_header("Accept", "application/json")
         if data:
-            request.add_data(json.dumps(data))
+            if hasattr(request, 'add_data'):
+                request.add_data(json.dumps(data))
+            else:
+                request.data = json.dumps(data).encode()
         request.get_method = lambda: method
         if sys.version_info >= (2, 6):
             result = urllib_urlopen(request, timeout=options.timeout)
