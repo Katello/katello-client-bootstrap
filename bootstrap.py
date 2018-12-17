@@ -121,7 +121,7 @@ def print_generic(msg):
 
 def print_message(prefix, msg):
     """Helper function to output a message with a prefix"""
-    print "[%s], [%s], %s" % (prefix, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
+    print("[%s], [%s], %s" % (prefix, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg))
 
 
 def color_string(msg, color):
@@ -146,7 +146,7 @@ def exec_command(command, failok=False):
     retcode, output = getstatusoutput(command)
     if NEED_STATUS_SHIFT:
         retcode = os.WEXITSTATUS(retcode)
-    print output
+    print(output)
     if retcode != 0:
         if failok:
             print_warning(filtered_command)
@@ -703,9 +703,9 @@ def call_api(url, data=None, method='GET'):
     try:
         request = urllib_request(url)
         if options.verbose:
-            print 'url: %s' % url
-            print 'method: %s' % method
-            print 'data: %s' % json.dumps(data, sort_keys=False, indent=2)
+            print('url: %s' % url)
+            print('method: %s' % method)
+            print('data: %s' % json.dumps(data, sort_keys=False, indent=2))
         base64string = base64.encodestring('%s:%s' % (options.login, options.password)).strip()
         request.add_header("Authorization", "Basic %s" % base64string)
         request.add_header("Content-Type", "application/json")
@@ -719,23 +719,23 @@ def call_api(url, data=None, method='GET'):
             result = urllib_urlopen(request)
         jsonresult = json.load(result)
         if options.verbose:
-            print 'result: %s' % json.dumps(jsonresult, sort_keys=False, indent=2)
+            print('result: %s' % json.dumps(jsonresult, sort_keys=False, indent=2))
         return jsonresult
     except urllib_urlerror, exception:
-        print 'An error occurred: %s' % exception
-        print 'url: %s' % url
+        print('An error occurred: %s' % exception)
+        print('url: %s' % url)
         if isinstance(exception, urllib_httperror):
-            print 'code: %s' % exception.code  # pylint:disable=no-member
+            print('code: %s' % exception.code)  # pylint:disable=no-member
         if data:
-            print 'data: %s' % json.dumps(data, sort_keys=False, indent=2)
+            print('data: %s' % json.dumps(data, sort_keys=False, indent=2))
         try:
             jsonerr = json.load(exception)
-            print 'error: %s' % json.dumps(jsonerr, sort_keys=False, indent=2)
+            print('error: %s' % json.dumps(jsonerr, sort_keys=False, indent=2))
         except:  # noqa: E722, pylint:disable=bare-except
-            print 'error: %s' % exception
+            print('error: %s' % exception)
         sys.exit(1)
     except Exception, exception:  # pylint:disable=broad-except
-        print "FATAL Error - %s" % (exception)
+        print("FATAL Error - %s" % (exception))
         sys.exit(2)
 
 
@@ -1031,7 +1031,7 @@ def prepare_rhel5_migration():
         subscribed_channels = me.get_subscribed_channels_list()
         me.print_banner(("System is currently subscribed to these RHNClassic Channels:"))
         for channel in subscribed_channels:
-            print channel
+            print(channel)
         me.check_for_conflicting_channels(subscribed_channels)
         me.deploy_prod_certificates(subscribed_channels)
         me.clean_up(subscribed_channels)
@@ -1080,8 +1080,8 @@ if __name__ == '__main__':
 
     # pylint:disable=invalid-name
 
-    print "Foreman Bootstrap Script"
-    print "This script is designed to register new systems or to migrate an existing system to a Foreman server with Katello"
+    print("Foreman Bootstrap Script")
+    print("This script is designed to register new systems or to migrate an existing system to a Foreman server with Katello")
 
     # > Register our better HTTP processor as default opener for URLs.
     opener = urllib_build_opener(BetterHTTPErrorProcessor)
@@ -1208,11 +1208,11 @@ if __name__ == '__main__':
             (options.foreman_fqdn and options.org and options.activationkey and ('foreman' in options.skip or options.hostgroup)) or
             (options.foreman_fqdn and options.new_capsule)):
         if not options.remove and not options.new_capsule:
-            print "Must specify server, login, organization, hostgroup and activation key.  See usage:"
+            print("Must specify server, login, organization, hostgroup and activation key.  See usage:")
         elif options.new_capsule:
-            print "Must use both --new-capsule and --server. See usage:"
+            print("Must use both --new-capsule and --server. See usage:")
         else:
-            print "Must specify server.  See usage:"
+            print("Must specify server.  See usage:")
         parser.print_help()
         sys.exit(1)
 
@@ -1230,12 +1230,12 @@ if __name__ == '__main__':
 
     # > Exit if DOMAIN isn't set and Puppet must be installed (without force)
     if not DOMAIN and not (options.force or 'puppet' in options.skip):
-        print "We could not determine the domain of this machine, most probably `hostname -f` does not return the FQDN."
-        print "This can lead to Puppet missbehaviour and thus the script will terminate now."
-        print "You can override this by passing one of the following"
-        print "\t--force - to disable all checking"
-        print "\t--skip puppet - to omit installing the puppet agent"
-        print "\t--fqdn <FQDN> - to set an explicit FQDN, overriding detected FQDN"
+        print("We could not determine the domain of this machine, most probably `hostname -f` does not return the FQDN.")
+        print("This can lead to Puppet missbehaviour and thus the script will terminate now.")
+        print("You can override this by passing one of the following")
+        print("\t--force - to disable all checking")
+        print("\t--skip puppet - to omit installing the puppet agent")
+        print("\t--fqdn <FQDN> - to set an explicit FQDN, overriding detected FQDN")
         sys.exit(1)
 
     # > Gather primary IP address if none was given
@@ -1266,33 +1266,33 @@ if __name__ == '__main__':
 
     # > Output all parameters if verbose.
     if options.verbose:
-        print "HOSTNAME - %s" % HOSTNAME
-        print "DOMAIN - %s" % DOMAIN
-        print "FQDN - %s" % FQDN
-        print "OS RELEASE - %s" % RELEASE
-        print "MAC - %s" % MAC
-        print "IP - %s" % options.ip
-        print "foreman_fqdn - %s" % options.foreman_fqdn
-        print "LOGIN - %s" % options.login
-        print "PASSWORD - %s" % options.password
-        print "HOSTGROUP - %s" % options.hostgroup
-        print "LOCATION - %s" % options.location
-        print "OPERATINGSYSTEM - %s" % options.operatingsystem
-        print "PARTITIONTABLE - %s" % options.partitiontable
-        print "ORG - %s" % options.org
-        print "ACTIVATIONKEY - %s" % options.activationkey
-        print "CONTENT RELEASE - %s" % options.release
-        print "UPDATE - %s" % options.update
-        print "LEGACY LOGIN - %s" % options.legacy_login
-        print "LEGACY PASSWORD - %s" % options.legacy_password
-        print "DOWNLOAD METHOD - %s" % options.download_method
-        print "SKIP - %s" % options.skip
-        print "TIMEOUT - %s" % options.timeout
-        print "PUPPET SERVER - %s" % options.puppet_server
-        print "PUPPET CA SERVER - %s" % options.puppet_ca_server
-        print "PUPPET CA PORT - %s" % options.puppet_ca_port
-        print "IGNORE REGISTRATION FAILURES - %s" % options.ignore_registration_failures
-        print "PRESERVE RHSM PROXY CONFIGURATION - %s" % options.preserve_rhsm_proxy
+        print("HOSTNAME - %s" % HOSTNAME)
+        print("DOMAIN - %s" % DOMAIN)
+        print("FQDN - %s" % FQDN)
+        print("OS RELEASE - %s" % RELEASE)
+        print("MAC - %s" % MAC)
+        print("IP - %s" % options.ip)
+        print("foreman_fqdn - %s" % options.foreman_fqdn)
+        print("LOGIN - %s" % options.login)
+        print("PASSWORD - %s" % options.password)
+        print("HOSTGROUP - %s" % options.hostgroup)
+        print("LOCATION - %s" % options.location)
+        print("OPERATINGSYSTEM - %s" % options.operatingsystem)
+        print("PARTITIONTABLE - %s" % options.partitiontable)
+        print("ORG - %s" % options.org)
+        print("ACTIVATIONKEY - %s" % options.activationkey)
+        print("CONTENT RELEASE - %s" % options.release)
+        print("UPDATE - %s" % options.update)
+        print("LEGACY LOGIN - %s" % options.legacy_login)
+        print("LEGACY PASSWORD - %s" % options.legacy_password)
+        print("DOWNLOAD METHOD - %s" % options.download_method)
+        print("SKIP - %s" % options.skip)
+        print("TIMEOUT - %s" % options.timeout)
+        print("PUPPET SERVER - %s" % options.puppet_server)
+        print("PUPPET CA SERVER - %s" % options.puppet_ca_server)
+        print("PUPPET CA PORT - %s" % options.puppet_ca_port)
+        print("IGNORE REGISTRATION FAILURES - %s" % options.ignore_registration_failures)
+        print("PRESERVE RHSM PROXY CONFIGURATION - %s" % options.preserve_rhsm_proxy)
 
     # > Exit if the user isn't root.
     # Done here to allow an unprivileged user to run the script to see
