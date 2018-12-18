@@ -283,8 +283,11 @@ def is_fips():
     """
     Checks to see if the system is FIPS enabled.
     """
-    fips_file = open("/proc/sys/crypto/fips_enabled", "r")
-    fips_status = fips_file.read(1)
+    try:
+        fips_file = open("/proc/sys/crypto/fips_enabled", "r")
+        fips_status = fips_file.read(1)
+    except IOError:
+        fips_status = "0"
     return fips_status == "1"
 
 
