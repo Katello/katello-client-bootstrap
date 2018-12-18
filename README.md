@@ -666,6 +666,7 @@ Options:
   --rex-urlkeyfile=REMOTE_EXEC_URL
                         HTTP/S location to install a file containing one or
                         multiple Foreman's SSH keys for remote execution.
+  --rex-apikeys         Fetch Foreman's SSH keys from the API.
   --rex-authpath=REMOTE_EXEC_AUTHPATH
                         Full path to local authorized_keys file in order to
                         install Foreman's SSH keys for remote execution.
