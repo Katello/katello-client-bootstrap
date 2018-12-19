@@ -292,13 +292,13 @@ def is_fips():
 
 def get_rhsm_proxy():
     """
-    Save the proxy server settings from /etc/rhsm/rhsm.conf
+    Return the proxy server settings from /etc/rhsm/rhsm.conf as dictionary proxy_config.
     """
     rhsmconfig = SafeConfigParser()
     rhsmconfig.read('/etc/rhsm/rhsm.conf')
-    proxy_settings = [option for option in rhsmconfig.options('server') if option.startswith('proxy')]
-    saved_proxy_config = {setting: rhsmconfig.get('server', setting) for setting in proxy_settings}
-    return saved_proxy_config
+    proxy_options = [option for option in rhsmconfig.options('server') if option.startswith('proxy')]
+    proxy_config = {option: rhsmconfig.get('server', option) for option in proxy_options}
+    return proxy_config
 
 def set_rhsm_proxy(saved_proxy_config):
     """
