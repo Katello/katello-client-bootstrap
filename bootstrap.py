@@ -297,7 +297,10 @@ def get_rhsm_proxy():
     rhsmconfig = SafeConfigParser()
     rhsmconfig.read('/etc/rhsm/rhsm.conf')
     proxy_options = [option for option in rhsmconfig.options('server') if option.startswith('proxy')]
-    proxy_config = {option: rhsmconfig.get('server', option) for option in proxy_options}
+    #proxy_config = {option: rhsmconfig.get('server', option) for option in proxy_options}
+    proxy_config = {}
+    for option in proxy_options:
+        proxy_config[option] = rhsmconfig.get('server', option)
     return proxy_config
 
 def set_rhsm_proxy(saved_proxy_config):
