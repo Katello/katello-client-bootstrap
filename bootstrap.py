@@ -63,6 +63,8 @@ ERROR_COLORS = {
     'ENDC': '\033[0m',
 }
 
+SUBSCRIPTION_MANAGER_SERVER_TIMEOUT_VERSION = '1.18.2'
+
 
 def filter_string(string):
     """Helper function to filter out passwords from strings"""
@@ -177,20 +179,39 @@ def check_migration_version():
     """
     Verify that the command 'subscription-manager-migration' isn't too old.
     """
-    required_version = ('0', '1.14.2', '1')
-    err = "subscription-manager-migration not found"
+    required_version = '1.14.2'
+    _, err = check_package_version('subscription-manager-migration', required_version)
+
+    if err:
+        print_error(err)
+        sys.exit(1)
+
+
+def check_subman_version(required_version):
+    """
+    Verify that the command 'subscription-manager' isn't too old.
+    """
+    status, _ = check_package_version('subscription-manager', required_version)
+
+    return status
+
+
+def check_package_version(package_name, package_version):
+    """
+    Verify that the version of a package
+    """
+    required_version = ('0', package_version, '1')
+    err = "%s not found" % package_name
 
     transaction_set = rpm.TransactionSet()
-    db_result = transaction_set.dbMatch('name', 'subscription-manager-migration')
+    db_result = transaction_set.dbMatch('name', package_name)
     for package in db_result:
         if rpm.labelCompare(('0', package['version'].decode('ascii'), '1'), required_version) < 0:
             err = "%s %s is too old" % (package['name'], package['version'])
         else:
             err = None
 
-    if err:
-        print_error(err)
-        sys.exit(1)
+    return (err is None, err)
 
 
 def setup_yum_repo(url, gpg_key):
@@ -382,7 +403,8 @@ def migrate_systems(org_name, activationkey):
         options.rhsmargs += " --legacy-user '%s' --legacy-password '%s'" % (options.legacy_login, options.legacy_password)
     else:
         options.rhsmargs += " --keep"
-    exec_failok("/usr/sbin/subscription-manager config --server.server_timeout=%s" % options.timeout)
+    if check_subman_version(SUBSCRIPTION_MANAGER_SERVER_TIMEOUT_VERSION):
+        exec_failok("/usr/sbin/subscription-manager config --server.server_timeout=%s" % options.timeout)
     exec_command("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key '%s' %s" % (org_label, activationkey, options.rhsmargs), options.ignore_registration_failures)
     exec_command("subscription-manager config --rhsm.baseurl=https://%s/pulp/repos" % options.foreman_fqdn, options.ignore_registration_failures)
     if options.release:
@@ -411,7 +433,8 @@ def register_systems(org_name, activationkey):
         options.smargs += " --force"
     if options.release:
         options.smargs += " --release %s" % options.release
-    exec_failok("/usr/sbin/subscription-manager config --server.server_timeout=%s" % options.timeout)
+    if check_subman_version(SUBSCRIPTION_MANAGER_SERVER_TIMEOUT_VERSION):
+        exec_failok("/usr/sbin/subscription-manager config --server.server_timeout=%s" % options.timeout)
     exec_command("/usr/sbin/subscription-manager register --org '%s' --name '%s' --activationkey '%s' %s" % (org_label, FQDN, activationkey, options.smargs), options.ignore_registration_failures)
     enable_rhsmcertd()
 
@@ -586,7 +609,10 @@ def install_foreman_ssh_key(remote_url):
         print_error("Foreman's SSH key not installed. File where authorized_keys must be located is not found: %s" % options.remote_exec_authpath)
         return
     try:
-        foreman_ssh_key = urllib2.urlopen(remote_url, timeout=options.timeout).read()
+        if sys.version_info >= (2, 6):
+            foreman_ssh_key = urllib2.urlopen(remote_url, timeout=options.timeout).read()
+        else:
+            foreman_ssh_key = urllib2.urlopen(remote_url).read()
     except urllib2.HTTPError, exception:
         print_generic("The server was unable to fulfill the request. Error: %s - %s" % (exception.code, exception.reason))
         print_generic("Please ensure the Remote Execution feature is configured properly")
@@ -644,7 +670,10 @@ def call_api(url, data=None, method='GET'):
         if data:
             request.add_data(json.dumps(data))
         request.get_method = lambda: method
-        result = urllib2.urlopen(request, timeout=options.timeout)
+        if sys.version_info >= (2, 6):
+            result = urllib2.urlopen(request, timeout=options.timeout)
+        else:
+            result = urllib2.urlopen(request)
         jsonresult = json.load(result)
         if options.verbose:
             print 'result: %s' % json.dumps(jsonresult, sort_keys=False, indent=2)
