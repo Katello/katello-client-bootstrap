@@ -1071,6 +1071,11 @@ if __name__ == '__main__':
         RELEASE = platform.linux_distribution()[1]
     except AttributeError:
         RELEASE = platform.dist()[1]
+    IS_EL5 = int(RELEASE[0]) == 5
+    if not IS_EL5:
+        DEFAULT_DOWNLOAD_METHOD = 'https'
+    else:
+        DEFAULT_DOWNLOAD_METHOD = 'http'
 
     SKIP_STEPS = ['foreman', 'puppet', 'migration', 'prereq-update', 'katello-agent', 'remove-obsolete-packages', 'puppet-enable']
 
@@ -1108,7 +1113,7 @@ if __name__ == '__main__':
     parser.add_option("--remove", dest="remove", action="store_true", help="Instead of registering the machine to Foreman remove it")
     parser.add_option("-r", "--release", dest="release", help="Specify release version")
     parser.add_option("-R", "--remove-obsolete-packages", dest="removepkgs", action="store_true", help="Remove old Red Hat Network and RHUI Packages (default)", default=True)
-    parser.add_option("--download-method", dest="download_method", default="https", help="Method to download katello-ca-consumer package (e.g. http or https)", metavar="DOWNLOADMETHOD", choices=['http', 'https'])
+    parser.add_option("--download-method", dest="download_method", default=DEFAULT_DOWNLOAD_METHOD, help="Method to download katello-ca-consumer package (e.g. http or https)", metavar="DOWNLOADMETHOD", choices=['http', 'https'])
     parser.add_option("--no-remove-obsolete-packages", dest="removepkgs", action="store_false", help="Don't remove old Red Hat Network and RHUI Packages")
     parser.add_option("--unmanaged", dest="unmanaged", action="store_true", help="Add the server as unmanaged. Useful to skip provisioning dependencies.")
     parser.add_option("--rex", dest="remote_exec", action="store_true", help="Install Foreman's SSH key for remote execution.", default=False)
@@ -1275,7 +1280,7 @@ if __name__ == '__main__':
     clean_environment()
 
     # > IF RHEL 5, not removing, and not moving to new capsule prepare the migration.
-    if not options.remove and int(RELEASE[0]) == 5 and not options.new_capsule:
+    if not options.remove and IS_EL5 and not options.new_capsule:
         prepare_rhel5_migration()
 
     if options.remove:
