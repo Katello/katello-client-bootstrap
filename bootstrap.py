@@ -290,6 +290,7 @@ def is_fips():
         fips_status = "0"
     return fips_status == "1"
 
+
 def get_rhsm_proxy():
     """
     Return the proxy server settings from /etc/rhsm/rhsm.conf as dictionary proxy_config.
@@ -297,21 +298,22 @@ def get_rhsm_proxy():
     rhsmconfig = SafeConfigParser()
     rhsmconfig.read('/etc/rhsm/rhsm.conf')
     proxy_options = [option for option in rhsmconfig.options('server') if option.startswith('proxy')]
-    #proxy_config = {option: rhsmconfig.get('server', option) for option in proxy_options}
     proxy_config = {}
     for option in proxy_options:
         proxy_config[option] = rhsmconfig.get('server', option)
     return proxy_config
 
-def set_rhsm_proxy(saved_proxy_config):
+
+def set_rhsm_proxy(proxy_config):
     """
     Set proxy server settings in /etc/rhsm/rhsm.conf from dictionary saved_proxy_config.
     """
     rhsmconfig = SafeConfigParser()
     rhsmconfig.read('/etc/rhsm/rhsm.conf')
-    for option in saved_proxy_config.keys():
-        rhsmconfig.set('server', option, saved_proxy_config[option])
+    for option in proxy_config.keys():
+        rhsmconfig.set('server', option, proxy_config[option])
     rhsmconfig.write(open('/etc/rhsm/rhsm.conf', 'w'))
+
 
 def get_bootstrap_rpm(clean=False, unreg=True):
     """
