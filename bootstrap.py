@@ -312,6 +312,30 @@ def is_fips():
     return fips_status == "1"
 
 
+def get_rhsm_proxy():
+    """
+    Return the proxy server settings from /etc/rhsm/rhsm.conf as dictionary proxy_config.
+    """
+    rhsmconfig = SafeConfigParser()
+    rhsmconfig.read('/etc/rhsm/rhsm.conf')
+    proxy_options = [option for option in rhsmconfig.options('server') if option.startswith('proxy')]
+    proxy_config = {}
+    for option in proxy_options:
+        proxy_config[option] = rhsmconfig.get('server', option)
+    return proxy_config
+
+
+def set_rhsm_proxy(proxy_config):
+    """
+    Set proxy server settings in /etc/rhsm/rhsm.conf from dictionary saved_proxy_config.
+    """
+    rhsmconfig = SafeConfigParser()
+    rhsmconfig.read('/etc/rhsm/rhsm.conf')
+    for option in proxy_config.keys():
+        rhsmconfig.set('server', option, proxy_config[option])
+    rhsmconfig.write(open('/etc/rhsm/rhsm.conf', 'w'))
+
+
 def get_bootstrap_rpm(clean=False, unreg=True):
     """
     Retrieve Client CA Certificate RPMs from the Satellite 6 server.
@@ -1131,6 +1155,7 @@ if __name__ == '__main__':
     parser.add_option("-t", "--timeout", dest="timeout", type="int", help="Timeout (in seconds) for API calls and subscription-manager registration. Defaults to %default", metavar="timeout", default=900)
     parser.add_option("-c", "--comment", dest="comment", help="Add a host comment")
     parser.add_option("--ignore-registration-failures", dest="ignore_registration_failures", action="store_true", help="Continue running even if registration via subscription-manager/rhn-migrate-classic-to-rhsm returns a non-zero return code.")
+    parser.add_option("--preserve-rhsm-proxy", dest="preserve_rhsm_proxy", help="Preserve proxy settings in /etc/rhsm/rhsm.conf when migrating RHSM -> RHSM")
     (options, args) = parser.parse_args()
 
     if options.no_foreman:
@@ -1248,6 +1273,7 @@ if __name__ == '__main__':
         print "PUPPET CA SERVER - %s" % options.puppet_ca_server
         print "PUPPET CA PORT - %s" % options.puppet_ca_port
         print "IGNORE REGISTRATION FAILURES - %s" % options.ignore_registration_failures
+        print "PRESERVE RHSM PROXY CONFIGURATION - %s" % options.preserve_rhsm_proxy
 
     # > Exit if the user isn't root.
     # Done here to allow an unprivileged user to run the script to see
@@ -1282,6 +1308,9 @@ if __name__ == '__main__':
     # > IF RHEL 5, not removing, and not moving to new capsule prepare the migration.
     if not options.remove and IS_EL5 and not options.new_capsule:
         prepare_rhel5_migration()
+
+    if options.preserve_rhsm_proxy:
+        saved_proxy_config = get_rhsm_proxy()
 
     if options.remove:
         # > IF remove, disassociate/delete host, unregister,
@@ -1400,6 +1429,8 @@ if __name__ == '__main__':
         if 'foreman' not in options.skip:
             create_host()
         configure_subscription_manager()
+        if options.preserve_rhsm_proxy:
+            set_rhsm_proxy(saved_proxy_config)
         register_systems(options.org, options.activationkey)
         if options.enablerepos:
             enable_repos()
