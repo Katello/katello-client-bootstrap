@@ -62,7 +62,7 @@ except ImportError:
 import rpm  # pylint:disable=import-error
 
 
-VERSION = '1.6.0'
+VERSION = '1.7.0'
 
 # Python 2.4 only supports octal numbers by prefixing '0'
 # Python 3 only support octal numbers by prefixing '0o'
