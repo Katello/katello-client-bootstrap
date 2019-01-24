@@ -556,6 +556,21 @@ When registering a client, it is sometimes desired to ignore registration failur
     --ignore-registration-failures
 ~~~
 
+### Preserving RHSM Proxy Settings
+
+When moving clients from RHSM to Katello or a different RHSM provider, the proxy settings in `/etc/rhsm/rhsm.conf` might get lost. Using `--preserve-rhsm-proxy` you can ensure that the old settings will be restored for the new configuration.
+
+
+~~~
+./bootstrap.py -l admin \
+    -s foreman.example.com \
+    -o "Red Hat" \
+    -L RDU \
+    -g "RHEL7/Crash" \
+    -a ak-Reg_To_Crash \
+    --preserve-rhsm-proxy
+~~~
+
 # Help / Available options:
 
 ~~~
@@ -684,6 +699,9 @@ Options:
                         Continue running even if registration via
                         subscription-manager/rhn-migrate-classic-to-rhsm
                         returns a non-zero return code.
+  --preserve-rhsm-proxy
+                        Preserve proxy settings in /etc/rhsm/rhsm.conf when
+                        migrating RHSM -> RHSM
 ~~~
 
 # Additional Notes
