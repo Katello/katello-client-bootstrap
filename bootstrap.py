@@ -643,22 +643,10 @@ def fully_update_the_box():
 
 # curl https://satellite.example.com:9090/ssh/pubkey >> ~/.ssh/authorized_keys
 # sort -u ~/.ssh/authorized_keys
-def install_foreman_ssh_key(remote_url):
+def install_ssh_key_from_url(remote_url):
     """
-    Download and install the Satellite's SSH public key into the foreman user's
-    authorized keys file location, so that remote execution becomes possible.
-    If not set default is ~/.ssh/authorized_keys
+    Download and install Foreman's SSH public key.
     """
-    if not options.remote_exec_authpath:
-        userpw = pwd.getpwnam(options.remote_exec_user)
-        options.remote_exec_authpath = os.path.join(userpw.pw_dir, '.ssh', 'authorized_keys')
-        foreman_ssh_dir = os.path.join(userpw.pw_dir, '.ssh')
-        if not os.path.isdir(foreman_ssh_dir):
-            os.mkdir(foreman_ssh_dir, OWNER_ONLY_DIR)
-            os.chown(foreman_ssh_dir, userpw.pw_uid, userpw.pw_gid)
-    elif not os.path.isfile(options.remote_exec_authpath):
-        print_error("Foreman's SSH key not installed. File where authorized_keys must be located is not found: %s" % options.remote_exec_authpath)
-        return
     try:
         if sys.version_info >= (2, 6):
             foreman_ssh_key = urllib_urlopen(remote_url, timeout=options.timeout).read()
@@ -673,6 +661,36 @@ def install_foreman_ssh_key(remote_url):
     except urllib_urlerror:
         exception = sys.exc_info()[1]
         print_generic("Could not reach the server. Error: %s" % exception.reason)
+        return
+    install_ssh_key_from_string(foreman_ssh_key)
+
+
+def install_ssh_key_from_api():
+    """
+    Download and install all Foreman's SSH public keys.
+    """
+    url = "https://" + options.foreman_fqdn + ":" + str(API_PORT) + "/api/v2/smart_proxies/"
+    smart_proxies = get_json(url)
+    for smart_proxy in smart_proxies['results']:
+        if 'remote_execution_pubkey' in smart_proxy:
+            install_ssh_key_from_string(smart_proxy['remote_execution_pubkey'])
+
+
+def install_ssh_key_from_string(foreman_ssh_key):
+    """
+    Install Foreman's SSH public key into the foreman user's
+    authorized keys file location, so that remote execution becomes possible.
+    If not set default is ~/.ssh/authorized_keys
+    """
+    if not options.remote_exec_authpath:
+        userpw = pwd.getpwnam(options.remote_exec_user)
+        options.remote_exec_authpath = os.path.join(userpw.pw_dir, '.ssh', 'authorized_keys')
+        foreman_ssh_dir = os.path.join(userpw.pw_dir, '.ssh')
+        if not os.path.isdir(foreman_ssh_dir):
+            os.mkdir(foreman_ssh_dir, OWNER_ONLY_DIR)
+            os.chown(foreman_ssh_dir, userpw.pw_uid, userpw.pw_gid)
+    elif not os.path.isfile(options.remote_exec_authpath):
+        print_error("Foreman's SSH key not installed. File where authorized_keys must be located is not found: %s" % options.remote_exec_authpath)
         return
     if os.path.isfile(options.remote_exec_authpath):
         if foreman_ssh_key in open(options.remote_exec_authpath, 'r').read():
@@ -1179,6 +1197,7 @@ if __name__ == '__main__':
     parser.add_option("--rex-user", dest="remote_exec_user", default="root", help="Local user used by Foreman's remote execution feature.")
     parser.add_option("--rex-proxies", dest="remote_exec_proxies", help="Comma separated list of proxies to install Foreman's SSH keys for remote execution.")
     parser.add_option("--rex-urlkeyfile", dest="remote_exec_url", help="HTTP/S location to install a file containing one or multiple Foreman's SSH keys for remote execution.")
+    parser.add_option("--rex-apikeys", dest="remote_exec_apikeys", action="store_true", help="Fetch Foreman's SSH keys from the API.")
     parser.add_option("--rex-authpath", dest="remote_exec_authpath", help="Full path to local authorized_keys file in order to install Foreman's SSH keys for remote execution. Default ~/.ssh/authorized_keys")
     parser.add_option("--enablerepos", dest="enablerepos", help="Repositories to be enabled via subscription-manager - comma separated", metavar="enablerepos")
     parser.add_option("--skip", dest="skip", action="append", help="Skip the listed steps (choices: %s)" % SKIP_STEPS, choices=SKIP_STEPS, default=[])
@@ -1498,9 +1517,11 @@ if __name__ == '__main__':
                 listproxies = options.remote_exec_proxies.split(",")
                 for proxy_fqdn in listproxies:
                     remote_exec_url = "https://" + str(proxy_fqdn) + ":9090/ssh/pubkey"
-                    install_foreman_ssh_key(remote_exec_url)
+                    install_ssh_key_from_url(remote_exec_url)
             elif options.remote_exec_url:
-                install_foreman_ssh_key(options.remote_exec_url)
+                install_ssh_key_from_url(options.remote_exec_url)
+            elif options.remote_exec_apikeys:
+                install_ssh_key_from_api()
             else:
                 remote_exec_url = "https://" + str(options.foreman_fqdn) + ":9090/ssh/pubkey"
-                install_foreman_ssh_key(remote_exec_url)
+                install_ssh_key_from_url(remote_exec_url)
