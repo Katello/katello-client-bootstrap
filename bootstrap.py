@@ -1190,7 +1190,7 @@ if __name__ == '__main__':
     parser.add_option("-t", "--timeout", dest="timeout", type="int", help="Timeout (in seconds) for API calls and subscription-manager registration. Defaults to %default", metavar="timeout", default=900)
     parser.add_option("-c", "--comment", dest="comment", help="Add a host comment")
     parser.add_option("--ignore-registration-failures", dest="ignore_registration_failures", action="store_true", help="Continue running even if registration via subscription-manager/rhn-migrate-classic-to-rhsm returns a non-zero return code.")
-    parser.add_option("--preserve-rhsm-proxy", dest="preserve_rhsm_proxy", help="Preserve proxy settings in /etc/rhsm/rhsm.conf when migrating RHSM -> RHSM")
+    parser.add_option("--preserve-rhsm-proxy", dest="preserve_rhsm_proxy", action="store_true", help="Preserve proxy settings in /etc/rhsm/rhsm.conf when migrating RHSM -> RHSM")
     (options, args) = parser.parse_args()
 
     if options.no_foreman:
