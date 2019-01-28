@@ -89,6 +89,8 @@ ERROR_COLORS = {
 }
 
 SUBSCRIPTION_MANAGER_SERVER_TIMEOUT_VERSION = '1.18.2'
+SUBSCRIPTION_MANAGER_MIGRATION_MINIMAL_VERSION = '1.14.2'
+SUBSCRIPTION_MANAGER_MIGRATION_REMOVE_PKGS_VERSION = '1.18.2'
 
 
 def filter_string(string):
@@ -202,16 +204,13 @@ def call_yum(command, params="", failonerror=True):
     exec_command("/usr/bin/yum -y %s %s" % (command, params), not failonerror)
 
 
-def check_migration_version():
+def check_migration_version(required_version):
     """
     Verify that the command 'subscription-manager-migration' isn't too old.
     """
-    required_version = '1.14.2'
-    _, err = check_package_version('subscription-manager-migration', required_version)
+    status, err = check_package_version('subscription-manager-migration', required_version)
 
-    if err:
-        print_error(err)
-        sys.exit(1)
+    return (status, err)
 
 
 def check_subman_version(required_version):
@@ -454,6 +453,8 @@ def migrate_systems(org_name, activationkey):
         options.rhsmargs += " --legacy-user '%s' --legacy-password '%s'" % (options.legacy_login, options.legacy_password)
     else:
         options.rhsmargs += " --keep"
+    if options.removepkgs and check_migration_version(SUBSCRIPTION_MANAGER_MIGRATION_REMOVE_PKGS_VERSION)[0]:
+        options.rhsmargs += " --remove-rhn-packages"
     if check_subman_version(SUBSCRIPTION_MANAGER_SERVER_TIMEOUT_VERSION):
         exec_failok("/usr/sbin/subscription-manager config --server.server_timeout=%s" % options.timeout)
     exec_command("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key '%s' %s" % (org_label, activationkey, options.rhsmargs), options.ignore_registration_failures)
@@ -1386,7 +1387,12 @@ if __name__ == '__main__':
         # >                         migrate via rhn-classic-migrate-to-rhsm
         print_generic('This system is registered to RHN. Attempting to migrate via rhn-classic-migrate-to-rhsm')
         install_prereqs()
-        check_migration_version()
+
+        _, versionerr = check_migration_version(SUBSCRIPTION_MANAGER_MIGRATION_MINIMAL_VERSION)
+        if versionerr:
+            print_error(versionerr)
+            sys.exit(1)
+
         get_bootstrap_rpm(clean=options.force)
         generate_katello_facts()
         API_PORT = get_api_port()
