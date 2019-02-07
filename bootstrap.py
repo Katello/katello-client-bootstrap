@@ -800,9 +800,9 @@ def update_host_capsule_mapping(attribute, capsule_id, host_id):
     """
     url = "https://" + options.foreman_fqdn + ":" + str(API_PORT) + "/api/v2/hosts/" + str(host_id)
     if attribute == 'content_source_id':
-        jdata = json.loads('{"host": {"content_facet_attributes": {"content_source_id": "%s"}, "content_source_id": "%s"}}' % (capsule_id, capsule_id))
+        jdata = {"host": {"content_facet_attributes": {"content_source_id": capsule_id}, "content_source_id": capsule_id}}
     else:
-        jdata = json.loads('{"host": {"%s": "%s"}}' % (attribute, capsule_id))
+        jdata = {"host": {attribute: capsule_id}}
     return put_json(url, jdata)
 
 
@@ -820,7 +820,7 @@ def update_host_config(attribute, value, host_id):
     """
     attribute_id = return_matching_foreman_key(attribute + 's', 'title="%s"' % value, 'id', False)
     json_key = attribute + "_id"
-    jdata = json.loads('{"host": {"%s": "%s"}}' % (json_key, attribute_id))
+    jdata = {"host": {json_key: attribute_id}}
     put_json("https://" + options.foreman_fqdn + ":" + API_PORT + "/api/hosts/%s" % host_id, jdata)
 
 
@@ -884,7 +884,7 @@ def create_domain(domain, orgid, locid):
     myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/domains"
     domid = return_matching_foreman_key('domains', 'name="%s"' % domain, 'id', True)
     if not domid:
-        jsondata = json.loads('{"domain": {"name": "%s", "organization_ids": [%s], "location_ids": [%s]}}' % (domain, orgid, locid))
+        jsondata = {"domain": {"name": domain, "organization_ids": [orgid], "location_ids": [locid]}}
         print_running("Calling Foreman API to create domain %s associated with the org & location" % domain)
         post_json(myurl, jsondata)
 
@@ -928,7 +928,7 @@ def create_host():
     architecture_id = return_matching_foreman_key('architectures', 'name="%s"' % ARCHITECTURE, 'id', False)
     host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', True)
     # create the starting json, to be filled below
-    jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s, "mac":"%s","architecture_id":%s,"build":"false"}}' % (HOSTNAME, myhgid, myorgid, MAC, architecture_id))
+    jsondata = {"host": {"name": HOSTNAME, "hostgroup_id": myhgid, "organization_id": myorgid, "mac": MAC, "architecture_id": architecture_id, "build": False}}
     # optional parameters
     if my_content_src_id:
         jsondata['host']['content_facet_attributes'] = {'content_source_id': my_content_src_id}
