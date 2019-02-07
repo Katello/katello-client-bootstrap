@@ -494,7 +494,7 @@ def register_systems(org_name, activationkey):
 def unregister_system():
     """Unregister the host using `subscription-manager`."""
     print_generic("Cleaning old yum metadata")
-    call_yum("clean", "metadata dbcache")
+    call_yum("clean", "metadata dbcache", False)
     print_generic("Unregistering")
     exec_failok("/usr/sbin/subscription-manager unregister")
     exec_failok("/usr/sbin/subscription-manager clean")
