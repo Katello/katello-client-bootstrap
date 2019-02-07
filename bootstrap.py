@@ -928,7 +928,7 @@ def create_host():
     architecture_id = return_matching_foreman_key('architectures', 'name="%s"' % ARCHITECTURE, 'id', False)
     host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', True)
     # create the starting json, to be filled below
-    jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s, "mac":"%s","architecture_id":%s}}' % (HOSTNAME, myhgid, myorgid, MAC, architecture_id))
+    jsondata = json.loads('{"host": {"name": "%s","hostgroup_id": %s,"organization_id": %s, "mac":"%s","architecture_id":%s,"build":"false"}}' % (HOSTNAME, myhgid, myorgid, MAC, architecture_id))
     # optional parameters
     if my_content_src_id:
         jsondata['host']['content_facet_attributes'] = {'content_source_id': my_content_src_id}
