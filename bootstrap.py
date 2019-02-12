@@ -47,6 +47,7 @@ import pwd
 import glob
 import shutil
 import tempfile
+import distutils.util  # pylint:disable=import-error,no-name-in-module
 from datetime import datetime
 from optparse import OptionParser
 try:
@@ -469,6 +470,20 @@ def migrate_systems(org_name, activationkey):
     disable_rhn_plugin()
 
 
+def set_auto_attach_on_content_host(auto_attach_value):
+    """
+    :string auto_attach_value : value passed as argument on the command line (true/false)
+    Set the value of the content-host's auto-attach parameter to true/false
+    """
+    my_key = 'name="%s"' % (FQDN)
+    host_id = return_matching_foreman_key(api_name='hosts', search_key=my_key, return_key='id', null_result_ok=False)
+    autoheal_value = bool(distutils.util.strtobool(auto_attach_value))  # pylint:disable=no-member
+    payload = {'subscription_facet_attributes':
+               {'autoheal': autoheal_value}}
+    endpoint = "https://%s:%s//api/v2/hosts/%s" % (options.foreman_fqdn, API_PORT, host_id)
+    call_api(endpoint, data=payload, method='PUT')
+
+
 def register_systems(org_name, activationkey):
     """
     Register the host to Satellite 6's organization using
@@ -488,6 +503,8 @@ def register_systems(org_name, activationkey):
     if check_subman_version(SUBSCRIPTION_MANAGER_SERVER_TIMEOUT_VERSION):
         exec_failok("/usr/sbin/subscription-manager config --server.server_timeout=%s" % options.timeout)
     exec_command("/usr/sbin/subscription-manager register --org '%s' --name '%s' --activationkey '%s' %s" % (org_label, FQDN, activationkey, options.smargs), options.ignore_registration_failures)
+    if options.set_auto_attach is not None:
+        set_auto_attach_on_content_host(options.set_auto_attach)
     enable_rhsmcertd()
 
 
@@ -1168,6 +1185,7 @@ if __name__ == '__main__':
     parser.add_option("--legacy-password", dest="legacy_password", help="Password for specified Satellite 5 user. Will prompt if omitted", metavar="PASSWORD")
     parser.add_option("--legacy-purge", dest="legacy_purge", action="store_true", help="Purge system from the Legacy environment (e.g. Sat5)")
     parser.add_option("-a", "--activationkey", dest="activationkey", help="Activation Key to register the system", metavar="ACTIVATIONKEY")
+    parser.add_option("--set-auto-attach", dest="set_auto_attach", default=None, help="Set the content-host's auto-attach value to true or false")
     parser.add_option("-P", "--skip-puppet", dest="no_puppet", action="store_true", default=False, help="Do not install Puppet")
     parser.add_option("--skip-foreman", dest="no_foreman", action="store_true", default=False, help="Do not create a Foreman host. Implies --skip-puppet. When using --skip-foreman, you MUST pass the Organization's LABEL, not NAME")
     parser.add_option("--force-content-source", dest="force_content_source", action="store_true", default=False, help="Force the content source to be the registration capsule (it overrides the value in the host group if any is defined)")

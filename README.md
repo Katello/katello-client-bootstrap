@@ -597,6 +597,8 @@ Options:
   --legacy-purge        Purge system from the Legacy environment (e.g. Sat5)
   -a ACTIVATIONKEY, --activationkey=ACTIVATIONKEY
                         Activation Key to register the system
+  --set-auto-attach     Set the content-host's auto-attach value to true or
+                        false
   -P, --skip-puppet     Do not install Puppet
   --skip-foreman        Do not create a Foreman host. Implies --skip-puppet.
                         When using --skip-foreman, you MUST pass the
