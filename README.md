@@ -295,6 +295,46 @@ cat ~/.ssh/authorized_keys
 ssh-rsa AAAAB3Nz.... foreman-proxy@foreman.example.com
 ~~~
 
+#### Fetching Remote Execution SSH keys from an URL
+
+~~~
+# ./bootstrap.py -l admin \
+    -s foreman.example.com \
+    -o "Red Hat" \
+    -L RDU \
+    -g "RHEL7/Crash" \
+    -a ak-Reg_To_Crash \
+    --rex \
+    --rex-urlkeyfile https://idm.example.com/users/root/keys
+~~~
+
+#### Fetching Remote Execution SSH keys from proxies
+
+~~~
+# ./bootstrap.py -l admin \
+    -s foreman.example.com \
+    -o "Red Hat" \
+    -L RDU \
+    -g "RHEL7/Crash" \
+    -a ak-Reg_To_Crash \
+    --rex \
+    --rex-proxies foreman.example.com,proxy01.example.com,proxy02.example.com
+~~~
+
+#### Deploying Remote Execution SSH keys to a non-default location
+
+~~~
+# ./bootstrap.py -l admin \
+    -s foreman.example.com \
+    -o "Red Hat" \
+    -L RDU \
+    -g "RHEL7/Crash" \
+    -a ak-Reg_To_Crash \
+    --rex \
+    --rex-user root \
+    --rex-authpath /etc/ssh/keys/root
+~~~
+
 ### Skipping particular steps:
 
 Sometimes, you may want to skip certain steps of the bootstrapping process. the `--skip` switch provides this. It currently has the following parameters
@@ -502,6 +542,35 @@ When registering a client, it is sometimes desirable to add a comment, denoting 
     --comment 'Crash Testing Server'
 ~~~
 
+### Ignoring Registration Failures
+
+When registering a client, it is sometimes desired to ignore registration failures reported via `subscription-manager` or `rhn-migrate-classic-to-rhsm`. The `--ignore-registration-failures` option allows `bootstrap.py` to continue running even when these commands return a non-zero error code. **NOTE**: it is the responsibility of the end-user to ensure, when using this option, that registration has completed successfully. 
+
+~~~
+./bootstrap.py -l admin \
+    -s foreman.example.com \
+    -o "Red Hat" \
+    -L RDU \
+    -g "RHEL7/Crash" \
+    -a ak-Reg_To_Crash \
+    --ignore-registration-failures
+~~~
+
+### Preserving RHSM Proxy Settings
+
+When moving clients from RHSM to Katello or a different RHSM provider, the proxy settings in `/etc/rhsm/rhsm.conf` might get lost. Using `--preserve-rhsm-proxy` you can ensure that the old settings will be restored for the new configuration.
+
+
+~~~
+./bootstrap.py -l admin \
+    -s foreman.example.com \
+    -o "Red Hat" \
+    -L RDU \
+    -g "RHEL7/Crash" \
+    -a ak-Reg_To_Crash \
+    --preserve-rhsm-proxy
+~~~
+
 # Help / Available options:
 
 ~~~
@@ -533,7 +602,9 @@ Options:
                         When using --skip-foreman, you MUST pass the
                         Organization's LABEL, not NAME
   --force-content-source
-                        Force the content source to be the registration capsule (it overrides the value in the host group if any is defined)
+                        Force the content source to be the registration
+                        capsule (it overrides the value in the host group if
+                        any is defined)
   --content-only        Setup host for content only. Alias to --skip foreman.
                         Implies --skip-puppet. When using --content-only, you
                         MUST pass the Organization's LABEL, not NAME
@@ -589,6 +660,17 @@ Options:
   --rex                 Install Foreman's SSH key for remote execution.
   --rex-user=REMOTE_EXEC_USER
                         Local user used by Foreman's remote execution feature.
+  --rex-proxies=REMOTE_EXEC_PROXIES
+                        Comma separated list of proxies to install Foreman's
+                        SSH keys for remote execution.
+  --rex-urlkeyfile=REMOTE_EXEC_URL
+                        HTTP/S location to install a file containing one or
+                        multiple Foreman's SSH keys for remote execution.
+  --rex-apikeys         Fetch Foreman's SSH keys from the API.
+  --rex-authpath=REMOTE_EXEC_AUTHPATH
+                        Full path to local authorized_keys file in order to
+                        install Foreman's SSH keys for remote execution.
+                        Default ~/.ssh/authorized_keys
   --enablerepos=enablerepos
                         Repositories to be enabled via subscription-manager -
                         comma separated
@@ -614,6 +696,13 @@ Options:
                         manager registration. Defaults to 900
   -c COMMENT, --comment=COMMENT
                         Add a host comment
+  --ignore-registration-failures
+                        Continue running even if registration via
+                        subscription-manager/rhn-migrate-classic-to-rhsm
+                        returns a non-zero return code.
+  --preserve-rhsm-proxy
+                        Preserve proxy settings in /etc/rhsm/rhsm.conf when
+                        migrating RHSM -> RHSM
 ~~~
 
 # Additional Notes
