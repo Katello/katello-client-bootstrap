@@ -571,6 +571,21 @@ When moving clients from RHSM to Katello or a different RHSM provider, the proxy
     --preserve-rhsm-proxy
 ~~~
 
+### Installing the Katello agent
+
+Bootstrap no longer defaults to installing the `katello-agent` package. The recommended default is to install the `katello-host-tools` package. If it is desired to install the `katello-agent` package, pass `--install-katello-agent` as a parameter. 
+
+
+~~~
+./bootstrap.py -l admin \
+    -s foreman.example.com \
+    -o "Red Hat" \
+    -L RDU \
+    -g "RHEL7/Crash" \
+    -a ak-Reg_To_Crash \
+    --install-katello-agent
+~~~
+
 # Help / Available options:
 
 ~~~
@@ -703,6 +718,8 @@ Options:
   --preserve-rhsm-proxy
                         Preserve proxy settings in /etc/rhsm/rhsm.conf when
                         migrating RHSM -> RHSM
+  --install-katello-agent
+                        Installs the Katello Agent
 ~~~
 
 # Additional Notes

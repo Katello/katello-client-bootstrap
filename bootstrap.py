@@ -516,10 +516,7 @@ def install_katello_agent():
 
 
 def install_katello_host_tools():
-    """
-    Install Katello host tools. Note: if the older AMQP agent (goferd) is required,
-    pass `--install-packages katello-agent` as an argument.
-    """
+    """Install Katello Host Tools"""
     print_generic("Installing the Katello Host Tools")
     call_yum("install", "katello-host-tools")
 
@@ -1164,7 +1161,7 @@ if __name__ == '__main__':
     else:
         DEFAULT_DOWNLOAD_METHOD = 'http'
 
-    SKIP_STEPS = ['foreman', 'puppet', 'migration', 'prereq-update', 'katello-agent', 'remove-obsolete-packages', 'puppet-enable']
+    SKIP_STEPS = ['foreman', 'puppet', 'migration', 'prereq-update', 'katello-agent', 'remove-obsolete-packages', 'puppet-enable', 'katello-host-tools']
 
     # > Define and parse the options
     usage_string = "Usage: %prog -l admin -s foreman.example.com -o 'Default Organization' -L 'Default Location' -g My_Hostgroup -a My_Activation_Key"
@@ -1220,6 +1217,7 @@ if __name__ == '__main__':
     parser.add_option("-c", "--comment", dest="comment", help="Add a host comment")
     parser.add_option("--ignore-registration-failures", dest="ignore_registration_failures", action="store_true", help="Continue running even if registration via subscription-manager/rhn-migrate-classic-to-rhsm returns a non-zero return code.")
     parser.add_option("--preserve-rhsm-proxy", dest="preserve_rhsm_proxy", action="store_true", help="Preserve proxy settings in /etc/rhsm/rhsm.conf when migrating RHSM -> RHSM")
+    parser.add_option("--install-katello-agent", dest="install_katello_agent", action="store_true", help="Installs the Katello Agent", default=False)
     (options, args) = parser.parse_args()
 
     if options.no_foreman:
@@ -1386,7 +1384,9 @@ if __name__ == '__main__':
             if hostid is not None:
                 disassociate_host(hostid)
                 delete_host(hostid)
-        if 'katello-agent' not in options.skip:
+        if 'katello-agent' in options.skip:
+            print_warning("Skipping the installation of the Katello Agent is now the default behavior. passing --skip katello-agent is deprecated")
+        if 'katello-agent' or 'katello-host-tools' not in options.skip:
             clean_katello_agent()
         if 'puppet' not in options.skip:
             clean_puppet()
@@ -1428,6 +1428,10 @@ if __name__ == '__main__':
         install_prereqs()
         get_bootstrap_rpm(clean=True, unreg=False)
         install_katello_host_tools()
+        if options.install_katello_agent:
+            install_katello_agent()
+        if 'katello-agent' in options.skip:
+            print_warning("Skipping the installation of the Katello Agent is now the default behavior. passing --skip katello-agent is deprecated")
         API_PORT = get_api_port()
         smart_proxy_id = return_matching_foreman_key('smart_proxies', 'name="%s"' % options.foreman_fqdn, 'id', False)
         current_host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', False)
@@ -1511,7 +1515,11 @@ if __name__ == '__main__':
         # > IF not removing, install Katello agent, optionally update host,
         # >                  optionally clean and install Puppet agent
         # >                  optionally remove legacy RHN packages
-        if 'katello-agent' not in options.skip:
+        if options.install_katello_agent:
+            install_katello_agent()
+        if 'katello-agent' in options.skip:
+            print_warning("Skipping the installation of the Katello Agent is now the default behavior. passing --skip katello-agent is deprecated")
+        if 'katello-host-tools' not in options.skip:
             install_katello_host_tools()
         if options.update:
             fully_update_the_box()
