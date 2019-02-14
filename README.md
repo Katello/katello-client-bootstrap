@@ -343,7 +343,8 @@ Sometimes, you may want to skip certain steps of the bootstrapping process. the 
 * `puppet` - Does not install puppet (equivalent to the deprecated `--skip-puppet` option)
 * `migration` - Skips RHN/Spacewalk registration detection. This option prevents `rhn-classic-migrate-to-rhsm` from timing out and failing on RHN/Spacewalk systems that aren't available.
 * `prereq-update` - Skips update of `yum`, `openssl` and `python`
-* `katello-agent` - Does not install the `katello-agent` package
+* `katello-agent` - Does not install the `katello-agent` package (DEPRECATED)
+* `katello-host-tools` - Does not install the `katello-host-tools` package
 * `remove-obsolete-packages` - Does not remove the Classic/RHN/Spacewalk/RHUI packages.  (equivalent to `--no-remove-obsolete-packages`)
 * `puppet-enable` - Does not enable and start the puppet daemon on the client.
 
@@ -691,7 +692,7 @@ Options:
                         comma separated
   --skip=SKIP           Skip the listed steps (choices: ['foreman', 'puppet',
                         'migration', 'prereq-update', 'katello-agent',
-                        'remove-obsolete-packages', 'puppet-enable'])
+                        'remove-obsolete-packages', 'puppet-enable', 'katello-host-tools'])
   --ip=IP               IPv4 address of the primary interface in Foreman
                         (defaults to the address used to make request to
                         Foreman)
