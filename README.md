@@ -343,7 +343,8 @@ Sometimes, you may want to skip certain steps of the bootstrapping process. the 
 * `puppet` - Does not install puppet (equivalent to the deprecated `--skip-puppet` option)
 * `migration` - Skips RHN/Spacewalk registration detection. This option prevents `rhn-classic-migrate-to-rhsm` from timing out and failing on RHN/Spacewalk systems that aren't available.
 * `prereq-update` - Skips update of `yum`, `openssl` and `python`
-* `katello-agent` - Does not install the `katello-agent` package
+* `katello-agent` - Does not install the `katello-agent` package (DEPRECATED)
+* `katello-host-tools` - Does not install the `katello-host-tools` package
 * `remove-obsolete-packages` - Does not remove the Classic/RHN/Spacewalk/RHUI packages.  (equivalent to `--no-remove-obsolete-packages`)
 * `puppet-enable` - Does not enable and start the puppet daemon on the client.
 
@@ -571,6 +572,21 @@ When moving clients from RHSM to Katello or a different RHSM provider, the proxy
     --preserve-rhsm-proxy
 ~~~
 
+### Installing the Katello agent
+
+Bootstrap no longer defaults to installing the `katello-agent` package. The recommended default is to install the `katello-host-tools` package. If it is desired to install the `katello-agent` package, pass `--install-katello-agent` as a parameter. 
+
+
+~~~
+./bootstrap.py -l admin \
+    -s foreman.example.com \
+    -o "Red Hat" \
+    -L RDU \
+    -g "RHEL7/Crash" \
+    -a ak-Reg_To_Crash \
+    --install-katello-agent
+~~~
+
 # Help / Available options:
 
 ~~~
@@ -676,7 +692,7 @@ Options:
                         comma separated
   --skip=SKIP           Skip the listed steps (choices: ['foreman', 'puppet',
                         'migration', 'prereq-update', 'katello-agent',
-                        'remove-obsolete-packages', 'puppet-enable'])
+                        'remove-obsolete-packages', 'puppet-enable', 'katello-host-tools'])
   --ip=IP               IPv4 address of the primary interface in Foreman
                         (defaults to the address used to make request to
                         Foreman)
@@ -703,6 +719,8 @@ Options:
   --preserve-rhsm-proxy
                         Preserve proxy settings in /etc/rhsm/rhsm.conf when
                         migrating RHSM -> RHSM
+  --install-katello-agent
+                        Installs the Katello Agent
 ~~~
 
 # Additional Notes
