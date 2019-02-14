@@ -648,6 +648,7 @@ def install_ssh_key_from_url(remote_url):
     """
     Download and install Foreman's SSH public key.
     """
+    print_generic("Fetching Remote Execution SSH key from %s" % remote_url)
     try:
         if sys.version_info >= (2, 6):
             foreman_ssh_key = urllib_urlopen(remote_url, timeout=options.timeout).read()
@@ -670,6 +671,7 @@ def install_ssh_key_from_api():
     """
     Download and install all Foreman's SSH public keys.
     """
+    print_generic("Fetching Remote Execution SSH keys from the Foreman API")
     url = "https://" + options.foreman_fqdn + ":" + str(API_PORT) + "/api/v2/smart_proxies/"
     smart_proxies = get_json(url)
     for smart_proxy in smart_proxies['results']:
@@ -683,6 +685,7 @@ def install_ssh_key_from_string(foreman_ssh_key):
     authorized keys file location, so that remote execution becomes possible.
     If not set default is ~/.ssh/authorized_keys
     """
+    print_generic("Installing Remote Execution SSH key for user %s" % options.remote_exec_user)
     if not options.remote_exec_authpath:
         userpw = pwd.getpwnam(options.remote_exec_user)
         options.remote_exec_authpath = os.path.join(userpw.pw_dir, '.ssh', 'authorized_keys')
@@ -1329,6 +1332,13 @@ if __name__ == '__main__':
         print("PUPPET CA PORT - %s" % options.puppet_ca_port)
         print("IGNORE REGISTRATION FAILURES - %s" % options.ignore_registration_failures)
         print("PRESERVE RHSM PROXY CONFIGURATION - %s" % options.preserve_rhsm_proxy)
+        print("REX - %s" % options.remote_exec)
+        if options.remote_exec:
+            print("REX USER - %s" % options.remote_exec_user)
+            print("REX PROXIES - %s" % options.remote_exec_proxies)
+            print("REX KEY URL - %s" % options.remote_exec_url)
+            print("REX KEYS FROM API - %s" % options.remote_exec_apikeys)
+            print("REX AUTHPATH - %s" % options.remote_exec_authpath)
 
     # > Exit if the user isn't root.
     # Done here to allow an unprivileged user to run the script to see
