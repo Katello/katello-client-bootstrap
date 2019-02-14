@@ -1386,7 +1386,7 @@ if __name__ == '__main__':
                 delete_host(hostid)
         if 'katello-agent' in options.skip:
             print_warning("Skipping the installation of the Katello Agent is now the default behavior. passing --skip katello-agent is deprecated")
-        if 'katello-agent' or 'katello-host-tools' not in options.skip:
+        if 'katello-agent' not in options.skip or 'katello-host-tools' not in options.skip:
             clean_katello_agent()
         if 'puppet' not in options.skip:
             clean_puppet()
