@@ -1197,7 +1197,7 @@ if __name__ == '__main__':
     parser.add_option("--rex", dest="remote_exec", action="store_true", help="Install Foreman's SSH key for remote execution.", default=False)
     parser.add_option("--rex-user", dest="remote_exec_user", default="root", help="Local user used by Foreman's remote execution feature.")
     parser.add_option("--rex-proxies", dest="remote_exec_proxies", help="Comma separated list of proxies to install Foreman's SSH keys for remote execution.")
-    parser.add_option("--rex-urlkeyfile", dest="remote_exec_url", help="HTTP/S location to install a file containing one or multiple Foreman's SSH keys for remote execution.")
+    parser.add_option("--rex-urlkeyfile", dest="remote_exec_url", help="HTTP/S location of a file containing one or more Foreman's SSH keys for remote execution.")
     parser.add_option("--rex-apikeys", dest="remote_exec_apikeys", action="store_true", help="Fetch Foreman's SSH keys from the API.")
     parser.add_option("--rex-authpath", dest="remote_exec_authpath", help="Full path to local authorized_keys file in order to install Foreman's SSH keys for remote execution. Default ~/.ssh/authorized_keys")
     parser.add_option("--enablerepos", dest="enablerepos", help="Repositories to be enabled via subscription-manager - comma separated", metavar="enablerepos")
