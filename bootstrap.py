@@ -692,8 +692,8 @@ def install_ssh_key_from_string(foreman_ssh_key):
     If not set default is ~/.ssh/authorized_keys
     """
     print_generic("Installing Remote Execution SSH key for user %s" % options.remote_exec_user)
+    userpw = pwd.getpwnam(options.remote_exec_user)
     if not options.remote_exec_authpath:
-        userpw = pwd.getpwnam(options.remote_exec_user)
         options.remote_exec_authpath = os.path.join(userpw.pw_dir, '.ssh', 'authorized_keys')
         foreman_ssh_dir = os.path.join(userpw.pw_dir, '.ssh')
         if not os.path.isdir(foreman_ssh_dir):
