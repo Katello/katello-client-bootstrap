@@ -699,8 +699,8 @@ def install_ssh_key_from_string(foreman_ssh_key):
         if not os.path.isdir(foreman_ssh_dir):
             os.mkdir(foreman_ssh_dir, OWNER_ONLY_DIR)
             os.chown(foreman_ssh_dir, userpw.pw_uid, userpw.pw_gid)
-    elif not os.path.isfile(options.remote_exec_authpath):
-        print_error("Foreman's SSH key not installed. File where authorized_keys must be located is not found: %s" % options.remote_exec_authpath)
+    elif os.path.exists(options.remote_exec_authpath) and not os.path.isfile(options.remote_exec_authpath):
+        print_error("Foreman's SSH key not installed. You need to provide a full path to an authorized_keys file, you provided: '%s'" % options.remote_exec_authpath)
         return
     if os.path.isfile(options.remote_exec_authpath):
         if foreman_ssh_key in open(options.remote_exec_authpath, 'r').read():
