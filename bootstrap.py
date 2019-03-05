@@ -1013,6 +1013,27 @@ def check_rhn_registration():
     return False
 
 
+def validate_connection():
+    """Validate that servers are up """
+    print_generic("Beginning service status and response-time check on port %s " % API_PORT)
+    print_generic("Ensuring services are online and accessible on within %s milliseconds" % options.service_timeout)
+    url = "https://" + options.foreman_fqdn + ":" + API_PORT + "/katello/api/ping"
+    features = get_json(url)['services']
+    svc_list = ["candlepin", "pulp", "pulp_auth", "candlepin_auth", "foreman_tasks"]
+    for service in svc_list:
+        if features[service]['status'] != 'ok':
+            print_error("Error detected in the Service Health Check. Cleaning up install")
+            clean_katello_agent()
+            print_error("service %s reports a state of %s" % (service, features[service]['status']))
+            sys.exit(3)
+        if int(features[service]['duration_ms']) >= options.service_timeout:
+            print_error("Error detected in the Service Health Check. Cleaning up install")
+            clean_katello_agent()
+            print_error("service %s reponds in %s ms which exceeds maximum of %s ms" % (service, features[service]['duration_ms'], str(options.service_timeout)))
+            sys.exit(3)
+    print_success("Service status and response-time check finished")
+
+
 def enable_repos():
     """Enable necessary repositories using subscription-manager."""
     repostoenable = " ".join(['--enable=%s' % i for i in options.enablerepos.split(',')])
@@ -1164,7 +1185,7 @@ if __name__ == '__main__':
     else:
         DEFAULT_DOWNLOAD_METHOD = 'http'
 
-    SKIP_STEPS = ['foreman', 'puppet', 'migration', 'prereq-update', 'katello-agent', 'remove-obsolete-packages', 'puppet-enable', 'katello-host-tools']
+    SKIP_STEPS = ['foreman', 'puppet', 'migration', 'prereq-update', 'katello-agent', 'remove-obsolete-packages', 'puppet-enable', 'katello-host-tools', 'connection-check']
 
     # > Define and parse the options
     usage_string = "Usage: %prog -l admin -s foreman.example.com -o 'Default Organization' -L 'Default Location' -g My_Hostgroup -a My_Activation_Key"
@@ -1221,6 +1242,7 @@ if __name__ == '__main__':
     parser.add_option("--ignore-registration-failures", dest="ignore_registration_failures", action="store_true", help="Continue running even if registration via subscription-manager/rhn-migrate-classic-to-rhsm returns a non-zero return code.")
     parser.add_option("--preserve-rhsm-proxy", dest="preserve_rhsm_proxy", action="store_true", help="Preserve proxy settings in /etc/rhsm/rhsm.conf when migrating RHSM -> RHSM")
     parser.add_option("--install-katello-agent", dest="install_katello_agent", action="store_true", help="Installs the Katello Agent", default=False)
+    parser.add_option("--service-timeout", dest="service_timeout", type="int", help="Time (in milliseconds) that server services must respond to be healthy prior to registration. Defaults to %default", metavar="service_timeout", default=1000)
     (options, args) = parser.parse_args()
 
     if options.no_foreman:
@@ -1339,6 +1361,7 @@ if __name__ == '__main__':
         print("PUPPET CA PORT - %s" % options.puppet_ca_port)
         print("IGNORE REGISTRATION FAILURES - %s" % options.ignore_registration_failures)
         print("PRESERVE RHSM PROXY CONFIGURATION - %s" % options.preserve_rhsm_proxy)
+        print("SERVICE TIMEOUT - %s" % options.service_timeout)
         print("REX - %s" % options.remote_exec)
         if options.remote_exec:
             print("REX USER - %s" % options.remote_exec_user)
@@ -1415,6 +1438,8 @@ if __name__ == '__main__':
         get_bootstrap_rpm(clean=options.force)
         generate_katello_facts()
         API_PORT = get_api_port()
+        if 'connection-check' not in options.skip:
+            validate_connection()
         if 'foreman' not in options.skip:
             create_host()
         configure_subscription_manager()
@@ -1443,6 +1468,8 @@ if __name__ == '__main__':
         if 'katello-agent' in options.skip:
             print_warning("Skipping the installation of the Katello Agent is now the default behavior. passing --skip katello-agent is deprecated")
         API_PORT = get_api_port()
+        if 'connection-check' not in options.skip:
+            validate_connection()
         smart_proxy_id = return_matching_foreman_key('smart_proxies', 'name="%s"' % options.foreman_fqdn, 'id', False)
         current_host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', False)
         capsule_features = get_capsule_features(smart_proxy_id)
@@ -1509,6 +1536,8 @@ if __name__ == '__main__':
         get_bootstrap_rpm(clean=options.force)
         generate_katello_facts()
         API_PORT = get_api_port()
+        if 'connection-check' not in options.skip:
+            validate_connection()
         if 'foreman' not in options.skip:
             create_host()
         configure_subscription_manager()
