@@ -5,6 +5,7 @@ or move it from Satellite 5 to 6.
 
 Use `pydoc ./bootstrap.py` to get the documentation.
 Use `awk -F'# >' 'NF>1 {print $2}' ./bootstrap.py` to see the flow.
+Use `/usr/libexec/platform-python bootstrap.py` on RHEL8
 """
 
 import getpass
