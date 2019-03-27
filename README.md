@@ -115,7 +115,7 @@ When using the `--legacy-purge` option, a user account on the legacy environment
 
 # Usage:
 
-On a RHEL8 host, call the bootstrap.py script as follows:
+On an EL8 (RHEL8, CentOS8, etc) host, there is no `/usr/bin/python` or `/usr/bin/python3` by default. The `bootstrap.py` script can be used with the `platform-python` as follows:
 ~~~
 # /usr/libexec/platform-python bootstrap.py
 ~~~
