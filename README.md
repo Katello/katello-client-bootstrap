@@ -113,7 +113,12 @@ When using the `--legacy-purge` option, a user account on the legacy environment
 * system group administrator for a system group that the system is a member of
 * granted permissions to the system explicitly via Users-> account-> 'Systems Administered by this User'
 
-# Usages:
+# Usage:
+
+On a RHEL8 host, call the bootstrap.py script as follows:
+~~~
+# /usr/libexec/platform-python bootstrap.py
+~~~
 
 ### Registering a system to Foreman + Katello
 
