@@ -119,6 +119,7 @@ On an EL8 (RHEL8, CentOS8, etc) host, there is no `/usr/bin/python` or `/usr/bin
 ~~~
 # /usr/libexec/platform-python bootstrap.py
 ~~~
+When the `python36` module is installed, `/usr/bin/python3` can also be used.
 
 ### Registering a system to Foreman + Katello
 
