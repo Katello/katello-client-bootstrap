@@ -113,7 +113,13 @@ When using the `--legacy-purge` option, a user account on the legacy environment
 * system group administrator for a system group that the system is a member of
 * granted permissions to the system explicitly via Users-> account-> 'Systems Administered by this User'
 
-# Usages:
+# Usage:
+
+On an EL8 (RHEL8, CentOS8, etc) host, there is no `/usr/bin/python` or `/usr/bin/python3` by default. The `bootstrap.py` script can be used with the `platform-python` as follows:
+~~~
+# /usr/libexec/platform-python bootstrap.py
+~~~
+When the `python36` module is installed, `/usr/bin/python3` can also be used.
 
 ### Registering a system to Foreman + Katello
 
