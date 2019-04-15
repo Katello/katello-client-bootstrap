@@ -1475,7 +1475,7 @@ if __name__ == '__main__':
             print_running("Calling Foreman API to update content source for %s to %s" % (FQDN, options.foreman_fqdn))
             update_host_capsule_mapping("content_source_id", smart_proxy_id, current_host_id)
 
-        if 'puppet' not in options.skip and 'foreman' not in options.skip:
+        if 'puppet' not in options.skip:
             puppet_version = get_puppet_version()
             if puppet_version == 3:
                 puppet_conf_path = '/etc/puppet/puppet.conf'
