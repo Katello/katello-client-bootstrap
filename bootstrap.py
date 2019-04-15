@@ -375,8 +375,10 @@ def get_bootstrap_rpm(clean=False, unreg=True):
     if clean:
         clean_katello_agent()
     if os.path.exists('/etc/rhsm/ca/katello-server-ca.pem'):
-        print_generic("A Katello CA certificate is already installed. Assuming system is registered")
-        print_generic("To override this behavior, run the script with the --force option. Exiting.")
+        print_generic("A Katello CA certificate is already installed. Assuming system is registered.")
+        print_generic("If you want to move the system to a different Content Proxy in the same setup, please use --new-capsule.")
+        print_generic("If you want to remove the old host record and all data associated with it, please use --force.")
+        print_generic("Exiting.")
         sys.exit(1)
     if os.path.exists('/etc/pki/consumer/cert.pem') and unreg:
         print_generic('System appears to be registered via another entitlement server. Attempting unregister')
