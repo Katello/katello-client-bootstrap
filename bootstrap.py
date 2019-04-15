@@ -1447,6 +1447,8 @@ if __name__ == '__main__':
             install_katello_agent()
         if 'katello-agent' in options.skip:
             print_warning("Skipping the installation of the Katello Agent is now the default behavior. passing --skip katello-agent is deprecated")
+        enable_rhsmcertd()
+
         API_PORT = get_api_port()
         if 'foreman' not in options.skip:
             current_host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', False)
@@ -1474,8 +1476,6 @@ if __name__ == '__main__':
 
             print_running("Calling Foreman API to update content source for %s to %s" % (FQDN, options.foreman_fqdn))
             update_host_capsule_mapping("content_source_id", smart_proxy_id, current_host_id)
-
-        enable_rhsmcertd()
 
         if 'puppet' not in options.skip and 'foreman' not in options.skip:
             puppet_version = get_puppet_version()
