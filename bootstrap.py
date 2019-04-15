@@ -1448,31 +1448,32 @@ if __name__ == '__main__':
         if 'katello-agent' in options.skip:
             print_warning("Skipping the installation of the Katello Agent is now the default behavior. passing --skip katello-agent is deprecated")
         API_PORT = get_api_port()
-        smart_proxy_id = return_matching_foreman_key('smart_proxies', 'name="%s"' % options.foreman_fqdn, 'id', False)
-        current_host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', False)
-        capsule_features = get_capsule_features(smart_proxy_id)
+        if 'foreman' not in options.skip:
+            current_host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', False)
 
-        # Optionally configure new hostgroup, location
-        if options.hostgroup:
-            print_running("Calling Foreman API to switch hostgroup for %s to %s" % (FQDN, options.hostgroup))
-            update_host_config('hostgroup', options.hostgroup, current_host_id)
-        if options.location:
-            print_running("Calling Foreman API to switch location for %s to %s" % (FQDN, options.location))
-            update_host_config('location', options.location, current_host_id)
+            # Optionally configure new hostgroup, location
+            if options.hostgroup:
+                print_running("Calling Foreman API to switch hostgroup for %s to %s" % (FQDN, options.hostgroup))
+                update_host_config('hostgroup', options.hostgroup, current_host_id)
+            if options.location:
+                print_running("Calling Foreman API to switch location for %s to %s" % (FQDN, options.location))
+                update_host_config('location', options.location, current_host_id)
 
-        # Configure new proxy_id for Puppet (if not skipped), and OpenSCAP (if available and not skipped)
-        if 'foreman' not in options.skip and 'puppet' not in options.skip:
-            print_running("Calling Foreman API to update Puppet master and Puppet CA for %s to %s" % (FQDN, options.foreman_fqdn))
-            update_host_capsule_mapping("puppet_proxy_id", smart_proxy_id, current_host_id)
-            update_host_capsule_mapping("puppet_ca_proxy_id", smart_proxy_id, current_host_id)
-        if 'foreman' not in options.skip and 'Openscap' in capsule_features:
-            print_running("Calling Foreman API to update OpenSCAP proxy for %s to %s" % (FQDN, options.foreman_fqdn))
-            update_host_capsule_mapping("openscap_proxy_id", smart_proxy_id, current_host_id)
-        elif 'foreman' not in options.skip and 'Openscap' not in capsule_features:
-            print_warning("New capsule doesn't have OpenSCAP capability, not switching / configuring openscap_proxy_id")
+            # Configure new proxy_id for Puppet (if not skipped), and OpenSCAP (if available and not skipped)
+            smart_proxy_id = return_matching_foreman_key('smart_proxies', 'name="%s"' % options.foreman_fqdn, 'id', False)
+            capsule_features = get_capsule_features(smart_proxy_id)
+            if 'puppet' not in options.skip:
+                print_running("Calling Foreman API to update Puppet master and Puppet CA for %s to %s" % (FQDN, options.foreman_fqdn))
+                update_host_capsule_mapping("puppet_proxy_id", smart_proxy_id, current_host_id)
+                update_host_capsule_mapping("puppet_ca_proxy_id", smart_proxy_id, current_host_id)
+            if 'Openscap' in capsule_features:
+                print_running("Calling Foreman API to update OpenSCAP proxy for %s to %s" % (FQDN, options.foreman_fqdn))
+                update_host_capsule_mapping("openscap_proxy_id", smart_proxy_id, current_host_id)
+            else:
+                print_warning("New capsule doesn't have OpenSCAP capability, not switching / configuring openscap_proxy_id")
 
-        print_running("Calling Foreman API to update content source for %s to %s" % (FQDN, options.foreman_fqdn))
-        update_host_capsule_mapping("content_source_id", smart_proxy_id, current_host_id)
+            print_running("Calling Foreman API to update content source for %s to %s" % (FQDN, options.foreman_fqdn))
+            update_host_capsule_mapping("content_source_id", smart_proxy_id, current_host_id)
 
         enable_rhsmcertd()
 
