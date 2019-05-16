@@ -304,13 +304,17 @@ def get_puppet_path():
     """
     puppet_major_version = get_puppet_version()
 
+    puppet_path = None
     if puppet_major_version == 3:
-        return '/usr/bin/puppet'
+        puppet_path = '/usr/bin/puppet'
     elif puppet_major_version in [4, 5]:
-        return '/opt/puppetlabs/puppet/bin/puppet'
-    else:
+        puppet_path = '/opt/puppetlabs/puppet/bin/puppet'
+
+    if not puppet_path:
         print_error("Cannot find puppet path. Is it installed?")
         sys.exit(1)
+
+    return puppet_path
 
 
 def get_puppet_version():
@@ -865,13 +869,14 @@ def return_matching_key(api_path, search_key, return_key, null_result_ok=False):
     result_len = len(return_values['results'])
     if result_len == 1:
         return_values_return_key = return_values['results'][0][return_key]
-        return return_values_return_key
     elif result_len == 0 and null_result_ok is True:
-        return None
+        return_values_return_key = None
     else:
         print_error("%d element in array for search key '%s' in API '%s'. Please note that all searches are case-sensitive." % (result_len, search_key, api_path))
         print_error("Please also ensure that the user has permissions to view the searched objects. Fatal error.")
         sys.exit(2)
+
+    return return_values_return_key
 
 
 def return_puppetenv_for_hg(hg_id):
@@ -882,12 +887,13 @@ def return_puppetenv_for_hg(hg_id):
     """
     myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/hostgroups/" + str(hg_id)
     hostgroup = get_json(myurl)
+    environment_name = 'production'
     if hostgroup['environment_name']:
-        return hostgroup['environment_name']
+        environment_name = hostgroup['environment_name']
     elif hostgroup['ancestry']:
         parent = hostgroup['ancestry'].split('/')[-1]
-        return return_puppetenv_for_hg(parent)
-    return 'production'
+        environment_name = return_puppetenv_for_hg(parent)
+    return environment_name
 
 
 def create_domain(domain, orgid, locid):
@@ -1160,8 +1166,10 @@ if __name__ == '__main__':
     API_PORT = "443"
     ARCHITECTURE = get_architecture()
     try:
+        # pylint:disable=deprecated-method
         RELEASE = platform.linux_distribution()[1]
     except AttributeError:
+        # pylint:disable=deprecated-method
         RELEASE = platform.dist()[1]
     IS_EL5 = int(RELEASE[0]) == 5
     if not IS_EL5:
