@@ -233,8 +233,10 @@ def check_package_version(package_name, package_version):
     transaction_set = rpm.TransactionSet()
     db_result = transaction_set.dbMatch('name', package_name)
     for package in db_result:
-        if rpm.labelCompare(('0', package['version'].decode('ascii'), '1'), required_version) < 0:
-            err = "%s %s is too old" % (package['name'], package['version'])
+        p_name = package['name'].decode('ascii')
+        p_version = package['version'].decode('ascii')
+        if rpm.labelCompare(('0', p_version, '1'), required_version) < 0:
+            err = "%s %s is too old" % (p_name, p_version)
         else:
             err = None
 
@@ -325,8 +327,10 @@ def get_puppet_version():
     for name in ['puppet', 'puppet-agent']:
         db_results = transaction_set.dbMatch('name', name)
         for result in db_results:
-            puppet_major_version = int(result['version'].split('.')[0])
-            if result['name'] == 'puppet-agent' and puppet_major_version == 1:
+            package_name = result['name'].decode('ascii')
+            package_version = result['version'].decode('ascii')
+            puppet_major_version = int(package_version.split('.')[0])
+            if package_name == 'puppet-agent' and puppet_major_version == 1:
                 puppet_major_version = 4
             return puppet_major_version
 
@@ -1054,8 +1058,9 @@ def check_rpm_installed():
     transaction_set = rpm.TransactionSet()
     db_results = transaction_set.dbMatch()
     for package in db_results:
-        if package['name'] in rpm_sat:
-            print_error("%s RPM found. bootstrap.py should not be used on a Katello/Spacewalk/Satellite host." % (package['name']))
+        package_name = package['name'].decode('ascii')
+        if package_name in rpm_sat:
+            print_error("%s RPM found. bootstrap.py should not be used on a Katello/Spacewalk/Satellite host." % (package_name))
             sys.exit(1)
 
 
