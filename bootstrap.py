@@ -1295,7 +1295,7 @@ if __name__ == '__main__':
     # > Exit if DOMAIN isn't set and Puppet must be installed (without force)
     if not DOMAIN and not (options.force or 'puppet' in options.skip):
         print("We could not determine the domain of this machine, most probably `hostname -f` does not return the FQDN.")
-        print("This can lead to Puppet missbehaviour and thus the script will terminate now.")
+        print("This can lead to Puppet misbehaviour and thus the script will terminate now.")
         print("You can override this by passing one of the following")
         print("\t--force - to disable all checking")
         print("\t--skip puppet - to omit installing the puppet agent")
