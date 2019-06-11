@@ -6,8 +6,7 @@ bootstrap Script for migrating existing running systems to Foreman with the Kate
 * The goal is to take a Red Hat Enterprise Linux (RHEL) client and get it registered to Foreman
 This script can take a system that is registered to Spacewalk, Satellite 5, Red Hat
 Network Classic and get it registered to Foreman & Katello.
-
-Optionally, you can also move systems between Capsules (both internal and
+* Optionally, you can also move systems between Capsules (both internal and
 external) of one Katello installation by using the `--new-capsule` option.
 
 # What does the Script do?
@@ -77,6 +76,30 @@ external) of one Katello installation by using the `--new-capsule` option.
 * An Activation Key that provides a content view with access to Puppet and other tools
 * If `subscription-manager` is not installed or is unavailable in the host's configured repositories, a URL pointing to a repository with the `subscription-manager` RPMs is required.
 
+
+# Frequently asked Questions:
+
+We *strongly* recommend reading this document in its entirety _prior_ to running `bootstrap.py`. The script has a plethora of options for near any migration or Registration use-case.
+
+* **Q**: Why does `bootstrap.py` require a username and password to be used?
+* **A**: By default, `bootstrap.py` attempts to configure a host with a proper hostgroup, environment, organization, and location by making API calls to Foreman. The API requires authentication, and as such so does `bootstrap.py`. Alternatively, in many cases, hostgroups aren't used, and it is desired to register a host solely for content management. In this usage (when either the `--skip foreman` or `--content-only` options are provided), only an activation key.
+
+
+* **Q**: Why doesn't `bootstrap.py` use python-requests?
+* **A**: When designing `bootstrap.py` we wanted to make (and keep) the number of additional packages as minimal as possible, especially as `bootstrap.py` is only run once, it seems wasteful to install packages for a one-time use case. `bootstrap.py` assumes that only the standard python modules are available.
+
+
+* **Q**: Why didn't you write `bootstrap.py` in Ruby (or $OTHER language)?
+* **A**: Ruby is not a default package in most installations of RPM family distributions. To be as applicable to the largest number of users (and to not require a large amount of dependencies), `bootstrap.py` is written in Python.  
+
+
+* **Q**: Why are the SSH keys for remote execution not deployed by default?
+* **A**: The remote execution public keys, if copied locally will allow a user with appropriate permissions to run jobs against that system. We believe that changing the security profile of an existing system should be 'opt-in', not 'opt-out'. Please pass the `--rex*` options to setup Remote Execution.
+
+
+* **Q**: My systems have short hostname, why does `bootstrap.py` not work properly?
+* **A**: Hostnames are a unique identifier within Foreman and are used in many places such as Puppet certificate generation. They are required to be FQDNs. If you have short hostnames and cannot change them, see the [**Providing an arbitrary Fully Qualified Domain Name**](#providing-an-arbitrary-fully-qualified-domain-name) section below.
+
 # Permissions
 
 The script requires certain permissions to work properly. These heavily depend on the amount of enabled features.
@@ -105,7 +128,7 @@ When using the `--add-domain` option, the following additional permission is nee
 
 * Create domains
 
-When using the `--skip foreman` option, no user account in Foreman is needed at all.
+When using the `--skip foreman` or `--content-only` option, no user account in Foreman is needed at all.
 
 When using the `--legacy-purge` option, a user account on the legacy environment (RHN/Satellite5) is required. The user needs to be an admin of the system in the legacy environment by having any of the following roles:
 
@@ -186,6 +209,7 @@ By default, bootstrap.py does not delete the system's profile from the legacy pl
 - The `--legacy-purge` switch requires a user account on RHN/Satellite 5 with permissions to remove the systems in question.
 - The `--legacy-login` and `--legacy-password` options allow the correct RHN/Satellite 5 username/password to be provided to bootstrap.py.
 - bootstrap.py will prompt the user for the Legacy Password if not provided via CLI parameter.
+- If you wish to skip the migration of the system from RHN or Satellite 5 to Foreman, pass `--skip migration` as a CLI option.
 
 
 ~~~
@@ -198,9 +222,10 @@ By default, bootstrap.py does not delete the system's profile from the legacy pl
     --legacy-purge \
     --legacy-login rhn-user
 ~~~
+
 ### Migrating a system from one Foreman + Katello installation to another.
 
-There are times where it is necessary to migrate clients from one Foreman + Katello installation to another. For instance, in lieu of upgrading an older Foreman + Katello installation, you choose to build a new installation in parallel. bootstrap.py can then be used to migrate clients from one Foreman + Katello installation to another. Simply provide the `--force` option, and bootstrap.py will remove the previous `katello-ca-consumer-*` package (from the old system), and will install the `katello-ca-consumer-*` package (from the new system), and continue registration as usual.
+There are times where it is necessary to migrate clients from one Foreman + Katello installation to another. For instance, in lieu of upgrading an older Foreman + Katello installation, you choose to build a new installation in parallel. bootstrap.py can then be used to migrate clients from one Foreman + Katello installation to another. Simply provide the `--force` option, and `bootstrap.py` will remove the previous `katello-ca-consumer-*` package (from the old system), and will install the `katello-ca-consumer-*` package (from the new system), and continue registration as usual.
 
 ### Migrating a system from one Foreman + Katello installation 6 or Capsule / to another in the same infrastructure
 
@@ -237,7 +262,7 @@ It is recommended to set which repositories that you want enabled on your activa
 
 ### Creating a domain for a host at registration time.
 
-To create a host record, the DNS domain of a host needs to exist  (in Foreman) prior to running bootstrap.py. If the domain does not exist, it can be added via the `--add-domain` switch.
+To create a host record, the DNS domain of a host needs to exist  (in Foreman) prior to running `bootstrap.py`. If the domain does not exist, it can be added via the `--add-domain` switch.
 
 ~~~
 # hostname
@@ -551,7 +576,7 @@ When registering a client, it is sometimes desirable to add a comment, denoting 
 
 ### Ignoring Registration Failures
 
-When registering a client, it is sometimes desired to ignore registration failures reported via `subscription-manager` or `rhn-migrate-classic-to-rhsm`. The `--ignore-registration-failures` option allows `bootstrap.py` to continue running even when these commands return a non-zero error code. **NOTE**: it is the responsibility of the end-user to ensure, when using this option, that registration has completed successfully. 
+When registering a client, it is sometimes desired to ignore registration failures reported via `subscription-manager` or `rhn-migrate-classic-to-rhsm`. The `--ignore-registration-failures` option allows `bootstrap.py` to continue running even when these commands return a non-zero error code. **NOTE**: it is the responsibility of the end-user to ensure, when using this option, that registration has completed successfully.
 
 ~~~
 ./bootstrap.py -l admin \
@@ -580,7 +605,7 @@ When moving clients from RHSM to Katello or a different RHSM provider, the proxy
 
 ### Installing the Katello agent
 
-Bootstrap no longer defaults to installing the `katello-agent` package. The recommended default is to install the `katello-host-tools` package. If it is desired to install the `katello-agent` package, pass `--install-katello-agent` as a parameter. 
+Bootstrap no longer defaults to installing the `katello-agent` package. The recommended default is to install the `katello-host-tools` package. If it is desired to install the `katello-agent` package, pass `--install-katello-agent` as a parameter.
 
 
 ~~~
