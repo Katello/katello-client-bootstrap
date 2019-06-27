@@ -462,10 +462,10 @@ def migrate_systems(org_name, activationkey):
     options.rhsmargs += " --force --destination-url=https://%s:%s/rhsm" % (options.foreman_fqdn, API_PORT)
     if options.legacy_purge:
         options.rhsmargs += " --legacy-user '%s' --legacy-password '%s'" % (options.legacy_login, options.legacy_password)
+        if options.removepkgs and check_migration_version(SUBSCRIPTION_MANAGER_MIGRATION_REMOVE_PKGS_VERSION)[0]:
+            options.rhsmargs += " --remove-rhn-packages"
     else:
         options.rhsmargs += " --keep"
-    if options.removepkgs and check_migration_version(SUBSCRIPTION_MANAGER_MIGRATION_REMOVE_PKGS_VERSION)[0]:
-        options.rhsmargs += " --remove-rhn-packages"
     if check_subman_version(SUBSCRIPTION_MANAGER_SERVER_TIMEOUT_VERSION):
         exec_failok("/usr/sbin/subscription-manager config --server.server_timeout=%s" % options.timeout)
     exec_command("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key '%s' %s" % (org_label, activationkey, options.rhsmargs), options.ignore_registration_failures)
