@@ -599,7 +599,7 @@ ssldir = /etc/puppetlabs/puppet/ssl
     if is_fips():
         main_section += "digest_algorithm = sha256"
         print_generic("System is in FIPS mode. Setting digest_algorithm to SHA256 in puppet.conf")
-    puppet_conf = open(puppet_conf_file, 'wb')
+    puppet_conf = open(puppet_conf_file, 'w')
 
     # set puppet.conf certname to lowercase FQDN, as capitalized characters would
     # get translated anyway generating our certificate
