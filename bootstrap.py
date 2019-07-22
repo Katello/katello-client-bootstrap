@@ -1177,6 +1177,7 @@ if __name__ == '__main__':
         # pylint:disable=deprecated-method
         RELEASE = platform.dist()[1]
     IS_EL5 = int(RELEASE[0]) == 5
+    IS_EL8 = int(RELEASE[0]) == 8
     if not IS_EL5:
         DEFAULT_DOWNLOAD_METHOD = 'https'
     else:
@@ -1418,7 +1419,7 @@ if __name__ == '__main__':
             clean_katello_agent()
         if 'puppet' not in options.skip:
             clean_puppet()
-    elif check_rhn_registration() and 'migration' not in options.skip:
+    elif check_rhn_registration() and 'migration' not in options.skip and not IS_EL8:
         # > ELIF registered to RHN, install subscription-manager prerequs
         # >                         get CA RPM, optionally create host,
         # >                         migrate via rhn-classic-migrate-to-rhsm
