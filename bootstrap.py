@@ -309,7 +309,7 @@ def get_puppet_path():
     puppet_path = None
     if puppet_major_version == 3:
         puppet_path = '/usr/bin/puppet'
-    elif puppet_major_version in [4, 5]:
+    elif puppet_major_version in [4, 5, 6]:
         puppet_path = '/opt/puppetlabs/puppet/bin/puppet'
 
     if not puppet_path:
@@ -585,7 +585,7 @@ logdir = /var/log/puppet
 rundir = /var/run/puppet
 ssldir = $vardir/ssl
 """
-    elif puppet_major_version in [4, 5]:
+    elif puppet_major_version in [4, 5, 6]:
         puppet_conf_file = '/etc/puppetlabs/puppet/puppet.conf'
         main_section = """[main]
 vardir = /opt/puppetlabs/puppet/cache
@@ -1496,7 +1496,7 @@ if __name__ == '__main__':
                 puppet_conf_path = '/etc/puppet/puppet.conf'
                 var_dir = '/var/lib/puppet'
                 ssl_dir = '/var/lib/puppet/ssl'
-            elif puppet_version in [4, 5]:
+            elif puppet_version in [4, 5, 6]:
                 puppet_conf_path = '/etc/puppetlabs/puppet/puppet.conf'
                 var_dir = '/opt/puppetlabs/puppet/cache'
                 ssl_dir = '/etc/puppetlabs/puppet/ssl'
