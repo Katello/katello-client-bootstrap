@@ -946,7 +946,9 @@ def create_host():
     else:
         mydomainid = None
     if options.force_content_source:
-        my_content_src_id = return_matching_foreman_key(api_name='smart_proxies', search_key='name="%s"' % options.foreman_fqdn, return_key='id', null_result_ok=False)
+        my_content_src_id = return_matching_foreman_key(api_name='smart_proxies', search_key='name="%s"' % options.foreman_fqdn, return_key='id', null_result_ok=True)
+        if my_content_src_id is None:
+            print_warning("You requested to set the content source to %s, but we could not find such a Smart Proxy configured. The content source WILL NOT be updated!" % (options.foreman_fqdn,))
     else:
         my_content_src_id = None
     architecture_id = return_matching_foreman_key('architectures', 'name="%s"' % ARCHITECTURE, 'id', False)
@@ -1476,20 +1478,23 @@ if __name__ == '__main__':
                 update_host_config('location', options.location, current_host_id)
 
             # Configure new proxy_id for Puppet (if not skipped), and OpenSCAP (if available and not skipped)
-            smart_proxy_id = return_matching_foreman_key('smart_proxies', 'name="%s"' % options.foreman_fqdn, 'id', False)
-            capsule_features = get_capsule_features(smart_proxy_id)
-            if 'puppet' not in options.skip:
-                print_running("Calling Foreman API to update Puppet master and Puppet CA for %s to %s" % (FQDN, options.foreman_fqdn))
-                update_host_capsule_mapping("puppet_proxy_id", smart_proxy_id, current_host_id)
-                update_host_capsule_mapping("puppet_ca_proxy_id", smart_proxy_id, current_host_id)
-            if 'Openscap' in capsule_features:
-                print_running("Calling Foreman API to update OpenSCAP proxy for %s to %s" % (FQDN, options.foreman_fqdn))
-                update_host_capsule_mapping("openscap_proxy_id", smart_proxy_id, current_host_id)
-            else:
-                print_warning("New capsule doesn't have OpenSCAP capability, not switching / configuring openscap_proxy_id")
+            smart_proxy_id = return_matching_foreman_key('smart_proxies', 'name="%s"' % options.foreman_fqdn, 'id', True)
+            if smart_proxy_id:
+                capsule_features = get_capsule_features(smart_proxy_id)
+                if 'puppet' not in options.skip:
+                    print_running("Calling Foreman API to update Puppet master and Puppet CA for %s to %s" % (FQDN, options.foreman_fqdn))
+                    update_host_capsule_mapping("puppet_proxy_id", smart_proxy_id, current_host_id)
+                    update_host_capsule_mapping("puppet_ca_proxy_id", smart_proxy_id, current_host_id)
+                if 'Openscap' in capsule_features:
+                    print_running("Calling Foreman API to update OpenSCAP proxy for %s to %s" % (FQDN, options.foreman_fqdn))
+                    update_host_capsule_mapping("openscap_proxy_id", smart_proxy_id, current_host_id)
+                else:
+                    print_warning("New capsule doesn't have OpenSCAP capability, not switching / configuring openscap_proxy_id")
 
-            print_running("Calling Foreman API to update content source for %s to %s" % (FQDN, options.foreman_fqdn))
-            update_host_capsule_mapping("content_source_id", smart_proxy_id, current_host_id)
+                print_running("Calling Foreman API to update content source for %s to %s" % (FQDN, options.foreman_fqdn))
+                update_host_capsule_mapping("content_source_id", smart_proxy_id, current_host_id)
+            else:
+                print_warning("Could not find Smart Proxy '%s'! Will not inform Foreman about the new Puppet/OpenSCAP/content source for %s." % (options.foreman_fqdn, FQDN))
 
         if 'puppet' not in options.skip:
             puppet_version = get_puppet_version()
