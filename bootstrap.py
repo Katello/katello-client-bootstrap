@@ -668,9 +668,12 @@ def install_ssh_key_from_url(remote_url):
     print_generic("Fetching Remote Execution SSH key from %s" % remote_url)
     try:
         if sys.version_info >= (2, 6):
-            foreman_ssh_key = urllib_urlopen(remote_url, timeout=options.timeout).read()
+            foreman_ssh_key_req = urllib_urlopen(remote_url, timeout=options.timeout)
         else:
-            foreman_ssh_key = urllib_urlopen(remote_url).read()
+            foreman_ssh_key_req = urllib_urlopen(remote_url)
+        foreman_ssh_key = foreman_ssh_key_req.read()
+        if sys.version_info >= (3, 0):
+            foreman_ssh_key = foreman_ssh_key.decode(foreman_ssh_key_req.headers.get_content_charset('utf-8'))
     except urllib_httperror:
         exception = sys.exc_info()[1]
         print_generic("The server was unable to fulfill the request. Error: %s - %s" % (exception.code, exception.reason))
