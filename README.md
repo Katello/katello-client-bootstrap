@@ -207,6 +207,7 @@ By default, bootstrap.py does not delete the system's profile from the legacy pl
 **NOTES**:
 
 - The `--legacy-purge` switch requires a user account on RHN/Satellite 5 with permissions to remove the systems in question.
+- The `--legacy-purge` switch does not work on EL5 systems, as they lack the tooling to instruct the RHN/Satellite5 API to purge the old system entry.
 - The `--legacy-login` and `--legacy-password` options allow the correct RHN/Satellite 5 username/password to be provided to bootstrap.py.
 - bootstrap.py will prompt the user for the Legacy Password if not provided via CLI parameter.
 - If you wish to skip the migration of the system from RHN or Satellite 5 to Foreman, pass `--skip migration` as a CLI option.

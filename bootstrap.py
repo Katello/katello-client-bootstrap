@@ -1403,6 +1403,8 @@ if __name__ == '__main__':
 
     # > IF RHEL 5, not removing, and not moving to new capsule prepare the migration.
     if not options.remove and IS_EL5 and not options.new_capsule:
+        if options.legacy_purge:
+            print_warning("Purging the system from the Legacy environment is not supported on EL5.")
         prepare_rhel5_migration()
 
     if options.preserve_rhsm_proxy:
