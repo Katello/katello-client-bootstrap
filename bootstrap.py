@@ -498,6 +498,20 @@ def register_systems(org_name, activationkey):
         options.smargs += " --release %s" % options.release
     if check_subman_version(SUBSCRIPTION_MANAGER_SERVER_TIMEOUT_VERSION):
         exec_failok("/usr/sbin/subscription-manager config --server.server_timeout=%s" % options.timeout)
+    if options.preserve_rhsm_proxy_settings:
+        exec_failok("/usr/sbin/subscription-manager config --server.proxy_hostname=%s" % options.rhsm_proxy_name)
+        exec_failok("/usr/sbin/subscription-manager config --server.proxy_port=%s" % options.rhsm_proxy_port)
+        exec_failok("/usr/sbin/subscription-manager config --server.proxy_user=%s" % options.rhsm_proxy_user)
+        exec_failok("/usr/sbin/subscription-manager config --server.proxy_password=%s" % options.rhsm_proxy_password)
+        options.smargs += " --proxy=%s:%s" % (options.rhsm_proxy_name, options.rhsm_proxy_port)
+        options.smargs += " --proxyuser=%s" % options.rhsm_proxy_user
+        options.smargs += " --proxypassword=%s" % options.rhsm_proxy_password
+    elif options.rhsm_proxy_name and options.rhsm_proxy_port:
+        options.smargs += " --proxy=%s:%s" % (options.rhsm_proxy_name, options.rhsm_proxy_port)
+    elif options.rhsm_proxy_user:
+        options.smargs += " --proxyuser=%s" % options.rhsm_proxy_user
+    elif options.rhsm_proxy_password:
+        options.smargs += " --proxypassword=%s" % options.rhsm_proxy_password
     exec_command("/usr/sbin/subscription-manager register --org '%s' --name '%s' --activationkey '%s' %s" % (org_label, FQDN, activationkey, options.smargs), options.ignore_registration_failures)
     enable_rhsmcertd()
 
@@ -1244,6 +1258,11 @@ if __name__ == '__main__':
     parser.add_option("-c", "--comment", dest="comment", help="Add a host comment")
     parser.add_option("--ignore-registration-failures", dest="ignore_registration_failures", action="store_true", help="Continue running even if registration via subscription-manager/rhn-migrate-classic-to-rhsm returns a non-zero return code.")
     parser.add_option("--preserve-rhsm-proxy", dest="preserve_rhsm_proxy", action="store_true", help="Preserve proxy settings in /etc/rhsm/rhsm.conf when migrating RHSM -> RHSM")
+    parser.add_option("--rhsm-proxy-name", dest="rhsm_proxy_name", action="store", help="Proxy Server Name which shall be passed to subscription-manager")
+    parser.add_option("--rhsm-proxy-port", dest="rhsm_proxy_port", action="store", help="Proxy Server Port which shall be passed to subscription-manager")
+    parser.add_option("--rhsm-proxy-user", dest="rhsm_proxy_user", action="store", help="Proxy Server Username which shall be passed to subscription-manager")
+    parser.add_option("--rhsm-proxy-password", dest="rhsm_proxy_password", action="store", help="Proxy Server Password which shall be passed to subscription-manager")
+    parser.add_option("--preserve-rhsm-proxy-settings", dest="preserve_rhsm_proxy_settings", action="store_true", help="Preserve proxy settings in /etc/rhsm/rhsm.conf when RHSM Proxy Settings are used")
     parser.add_option("--install-katello-agent", dest="install_katello_agent", action="store_true", help="Installs the Katello Agent", default=False)
     (options, args) = parser.parse_args()
 
@@ -1362,6 +1381,10 @@ if __name__ == '__main__':
         print("PUPPET CA SERVER - %s" % options.puppet_ca_server)
         print("PUPPET CA PORT - %s" % options.puppet_ca_port)
         print("IGNORE REGISTRATION FAILURES - %s" % options.ignore_registration_failures)
+        print("RHSM PROXY NAME - %s" % options.rhsm_proxy_name)
+        print("RHSM PROXY PORT - %s" % options.rhsm_proxy_port)
+        print("RHSM PROXY USERNAME - %s" % options.rhsm_proxy_user)
+        print("RHSM PROXY PASSWORD - %s" % options.rhsm_proxy_password)
         print("PRESERVE RHSM PROXY CONFIGURATION - %s" % options.preserve_rhsm_proxy)
         print("REX - %s" % options.remote_exec)
         if options.remote_exec:
