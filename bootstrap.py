@@ -532,6 +532,12 @@ def install_katello_host_tools():
     call_yum("install", "katello-host-tools")
 
 
+def install_katello_tracer():
+    """Install Katello Host Tools Tracer"""
+    print_generic("Installing Katello Host Tools Tracer")
+    call_yum("install", "katello-host-tools-tracer")
+
+
 def clean_puppet():
     """Remove old Puppet Agent and its configuration"""
     print_generic("Cleaning old Puppet Agent")
@@ -1245,6 +1251,7 @@ if __name__ == '__main__':
     parser.add_option("--ignore-registration-failures", dest="ignore_registration_failures", action="store_true", help="Continue running even if registration via subscription-manager/rhn-migrate-classic-to-rhsm returns a non-zero return code.")
     parser.add_option("--preserve-rhsm-proxy", dest="preserve_rhsm_proxy", action="store_true", help="Preserve proxy settings in /etc/rhsm/rhsm.conf when migrating RHSM -> RHSM")
     parser.add_option("--install-katello-agent", dest="install_katello_agent", action="store_true", help="Installs the Katello Agent", default=False)
+    parser.add_option("--install-katello-host-tools-tracer", dest="install_katello_host_tools_tracer", action="store_true", help="Installs the Katello Host Tools Tracer Plugin for Yum or DNF", default=False)
     (options, args) = parser.parse_args()
 
     if options.no_foreman:
@@ -1561,6 +1568,8 @@ if __name__ == '__main__':
             print_warning("Skipping the installation of the Katello Agent is now the default behavior. passing --skip katello-agent is deprecated")
         if 'katello-host-tools' not in options.skip:
             install_katello_host_tools()
+        if options.install_katello_host_tools_tracer:
+            install_katello_tracer()
         if options.update:
             fully_update_the_box()
 
