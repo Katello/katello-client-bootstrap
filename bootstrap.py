@@ -300,41 +300,6 @@ def install_prereqs():
         delete_file('/etc/yum.repos.d/katello-client-bootstrap-deps.repo')
 
 
-def get_puppet_path():
-    """
-    Get the path of where the puppet excutable is located.
-    """
-    puppet_major_version = get_puppet_version()
-
-    puppet_path = None
-    if puppet_major_version == 3:
-        puppet_path = '/usr/bin/puppet'
-    elif puppet_major_version in [4, 5, 6]:
-        puppet_path = '/opt/puppetlabs/puppet/bin/puppet'
-
-    if not puppet_path:
-        print_error("Cannot find puppet path. Is it installed?")
-        sys.exit(1)
-
-    return puppet_path
-
-
-def get_puppet_version():
-    """
-    Retrieve the Major version of puppet install.
-    """
-    transaction_set = rpm.TransactionSet()
-    for name in ['puppet', 'puppet-agent']:
-        db_results = transaction_set.dbMatch('name', name)
-        for result in db_results:
-            package_name = result['name'].decode('ascii')
-            package_version = result['version'].decode('ascii')
-            puppet_major_version = int(package_version.split('.')[0])
-            if package_name == 'puppet-agent' and puppet_major_version == 1:
-                puppet_major_version = 4
-            return puppet_major_version
-
-
 def is_fips():
     """
     Checks to see if the system is FIPS enabled.
@@ -535,7 +500,7 @@ def install_katello_host_tools():
 def clean_puppet():
     """Remove old Puppet Agent and its configuration"""
     print_generic("Cleaning old Puppet Agent")
-    call_yum("remove", "puppet", False)
+    call_yum("remove", "puppet-agent", False)
     delete_directory("/var/lib/puppet/")
     delete_directory("/opt/puppetlabs/puppet/cache")
     delete_directory("/etc/puppetlabs/puppet/ssl")
@@ -573,29 +538,16 @@ def install_puppet_agent():
     """Install and configure, then enable and start the Puppet Agent"""
     puppet_env = return_puppetenv_for_hg(return_matching_foreman_key('hostgroups', 'title="%s"' % options.hostgroup, 'id', False))
     print_generic("Installing the Puppet Agent")
-    call_yum("install", "puppet")
+    call_yum("install", "puppet-agent")
     enable_service("puppet")
 
-    puppet_major_version = get_puppet_version()
-    if puppet_major_version == 3:
-        puppet_conf_file = '/etc/puppet/puppet.conf'
-        main_section = """[main]
-vardir = /var/lib/puppet
-logdir = /var/log/puppet
-rundir = /var/run/puppet
-ssldir = $vardir/ssl
-"""
-    elif puppet_major_version in [4, 5, 6]:
-        puppet_conf_file = '/etc/puppetlabs/puppet/puppet.conf'
-        main_section = """[main]
+    puppet_conf_file = '/etc/puppetlabs/puppet/puppet.conf'
+    main_section = """[main]
 vardir = /opt/puppetlabs/puppet/cache
 logdir = /var/log/puppetlabs/puppet
 rundir = /var/run/puppetlabs
 ssldir = /etc/puppetlabs/puppet/ssl
 """
-    else:
-        print_error("Unsupported puppet version")
-        sys.exit(1)
     if is_fips():
         main_section += "digest_algorithm = sha256"
         print_generic("System is in FIPS mode. Setting digest_algorithm to SHA256 in puppet.conf")
@@ -641,7 +593,7 @@ def noop_puppet_signing_run():
     print_generic("Running Puppet in noop mode to generate SSL certs")
     print_generic("Visit the UI and approve this certificate via Infrastructure->Capsules")
     print_generic("if auto-signing is disabled")
-    exec_failexit("%s agent --test --noop --tags no_such_tag --waitforcert 10" % (get_puppet_path()))
+    exec_failexit("/opt/puppetlabs/puppet/bin/puppet agent --test --noop --tags no_such_tag --waitforcert 10")
     if 'puppet-enable' not in options.skip:
         enable_service("puppet")
         exec_service("puppet", "restart")
@@ -1502,18 +1454,9 @@ if __name__ == '__main__':
                 print_warning("Could not find Smart Proxy '%s'! Will not inform Foreman about the new Puppet/OpenSCAP/content source for %s." % (options.foreman_fqdn, FQDN))
 
         if 'puppet' not in options.skip:
-            puppet_version = get_puppet_version()
-            if puppet_version == 3:
-                puppet_conf_path = '/etc/puppet/puppet.conf'
-                var_dir = '/var/lib/puppet'
-                ssl_dir = '/var/lib/puppet/ssl'
-            elif puppet_version in [4, 5, 6]:
-                puppet_conf_path = '/etc/puppetlabs/puppet/puppet.conf'
-                var_dir = '/opt/puppetlabs/puppet/cache'
-                ssl_dir = '/etc/puppetlabs/puppet/ssl'
-            else:
-                print_error("Unsupported puppet version")
-                sys.exit(1)
+            puppet_conf_path = '/etc/puppetlabs/puppet/puppet.conf'
+            var_dir = '/opt/puppetlabs/puppet/cache'
+            ssl_dir = '/etc/puppetlabs/puppet/ssl'
 
             print_running("Stopping the Puppet agent for configuration update")
             exec_service("puppet", "stop")
