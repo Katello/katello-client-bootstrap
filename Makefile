@@ -1,5 +1,5 @@
 DOCKER=docker
-TEST_TARGETS=centos\:5 centos\:6 centos\:7
+TEST_TARGETS=centos\:6 centos\:7 
 TEST3_TARGETS=fedora\:29
 TEST_PLATFORM_TARGETS=ubi8
 USE_SELINUX=$(shell test -d /sys/fs/selinux && echo ":Z")

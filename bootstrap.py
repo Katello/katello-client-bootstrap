@@ -72,6 +72,25 @@ OWNER_ONLY_DIR = 448  # octal: 700
 OWNER_ONLY_FILE = 384  # octal: 600
 
 
+def get_os():
+    """
+    Helper function to get the operating system (debian,ubuntu,sles,centos,..).
+    Reads the content of ID in /etc/os-release.
+    """
+    os_name_str = ""
+    with open("/etc/os-release", "r") as release_file:
+        for line in release_file:
+            key, val = line.rstrip().split("=")
+            if key == "ID":
+                os_name_str = val
+                break
+
+    if os_name_str == "":
+        raise Exception("Cannot read operating system ID from /etc/os-release")
+
+    return os_name_str.lower()
+
+
 def get_architecture():
     """
     Helper function to get the architecture x86_64 vs. x86.
@@ -197,376 +216,535 @@ def delete_directory(directoryname):
         sys.exit(1)
 
 
-def call_yum(command, params="", failonerror=True):
+def enable_service(service, failonerror=True):
     """
-    Helper function to call a yum command on a list of packages.
-    pass failonerror = False to make yum commands non-fatal
+    Helper function to enable a service using proper init system.
+    pass failonerror = False to make init system's commands non-fatal
     """
-    exec_command("/usr/bin/yum -y %s %s" % (command, params), not failonerror)
+    if os.path.exists("/run/systemd"):
+        exec_command("/usr/bin/systemctl enable %s" % (service), not failonerror)
+    else:
+        exec_command("/sbin/chkconfig %s on" % (service), not failonerror)
 
 
-def check_migration_version(required_version):
+def exec_service(service, command, failonerror=True):
     """
-    Verify that the command 'subscription-manager-migration' isn't too old.
+    Helper function to call a service command using proper init system.
+    Available command values = start, stop, restart
+    pass failonerror = False to make init system's commands non-fatal
     """
-    status, err = check_package_version('subscription-manager-migration', required_version)
+    if os.path.exists("/run/systemd"):
+        exec_command("/usr/bin/systemctl %s %s" % (command, service), not failonerror)
+    else:
+        exec_command("/sbin/service %s %s" % (service, command), not failonerror)
 
-    return (status, err)
 
-
-def check_subman_version(required_version):
+class OSHandler:
     """
-    Verify that the command 'subscription-manager' isn't too old.
+    An abstract class that handles the interaction and configuration of the
+    operating system used. It defines general functions and empty function
+    bodies which need system-specific implementations.
     """
-    status, _ = check_package_version('subscription-manager', required_version)
 
-    return status
+    def __init__(self, in_options):
+        self._options = in_options
 
+    @classmethod
+    def install_prereqs(cls):
+        """
+        Install subscription manager and its prerequisites.
+        If subscription-manager is installed already, check to see if we are migrating. If yes, install subscription-manager-migration.
+        Else if subscription-manager and subscription-manager-migration are available in a configured repo, install them both.
+        Otherwise, exit and inform user that we cannot proceed
+        """
+        raise Exception("Not implemented")
 
-def check_package_version(package_name, package_version):
-    """
-    Verify that the version of a package
-    """
-    required_version = ('0', package_version, '1')
-    err = "%s not found" % package_name
+    @classmethod
+    def check_package_version(cls, package_name, package_version):  # parameters are used by function implementation => pylint: disable=unused-argument
+        """
+        Verify the version of a given package, using the respective package manager.
+        """
+        raise Exception("Not implemented")
 
-    transaction_set = rpm.TransactionSet()
-    db_result = transaction_set.dbMatch('name', package_name)
-    for package in db_result:
-        p_name = package['name'].decode('ascii')
-        p_version = package['version'].decode('ascii')
-        if rpm.labelCompare(('0', p_version, '1'), required_version) < 0:
-            err = "%s %s is too old" % (p_name, p_version)
+    @classmethod
+    def configure_subscription_manager(cls):
+        """
+        Configure subscription-manager.
+        """
+        raise Exception("Not implemented")
+
+    @classmethod
+    def install_simplejson(cls):
+        """
+        Install simplejson, using the respective package manager.
+        """
+        raise Exception("Not implemented")
+
+    def check_subman_version(self, required_version):
+        """
+        Verify that the command 'subscription-manager' isn't too old.
+        """
+        status, _ = self.check_package_version('subscription-manager', required_version)
+
+        return status
+
+    @classmethod
+    def get_api_port(cls):
+        """Helper function to get the server port from Subscription Manager."""
+        configparser = SafeConfigParser()
+        configparser.read('/etc/rhsm/rhsm.conf')
+        try:
+            return configparser.get('server', 'port')
+        except Exception:  # noqa: E722, pylint:disable=broad-except
+            return "443"
+
+    @classmethod
+    def is_fips(cls):
+        """
+        Checks to see if the system is FIPS enabled.
+        """
+        try:
+            fips_file = open("/proc/sys/crypto/fips_enabled", "r")
+            fips_status = fips_file.read(1)
+        except IOError:
+            fips_status = "0"
+        return fips_status == "1"
+
+    @classmethod
+    def get_rhsm_proxy(cls):
+        """
+        Return the proxy server settings from /etc/rhsm/rhsm.conf as dictionary proxy_config.
+        """
+        rhsmconfig = SafeConfigParser()
+        rhsmconfig.read('/etc/rhsm/rhsm.conf')
+        proxy_options = [option for option in rhsmconfig.options('server') if option.startswith('proxy')]
+        proxy_config = {}
+        for option in proxy_options:
+            proxy_config[option] = rhsmconfig.get('server', option)
+        return proxy_config
+
+    @classmethod
+    def set_rhsm_proxy(cls, proxy_config):
+        """
+        Set proxy server settings in /etc/rhsm/rhsm.conf from dictionary saved_proxy_config.
+        """
+        rhsmconfig = SafeConfigParser()
+        rhsmconfig.read('/etc/rhsm/rhsm.conf')
+        for option in proxy_config.keys():
+            rhsmconfig.set('server', option, proxy_config[option])
+        rhsmconfig.write(open('/etc/rhsm/rhsm.conf', 'w'))
+
+    @classmethod
+    def disable_rhn_plugin(cls):
+        """
+        Disable the RHN plugin for Yum
+        """
+        if os.path.exists('/etc/yum/pluginconf.d/rhnplugin.conf'):
+            rhnpluginconfig = SafeConfigParser()
+            rhnpluginconfig.read('/etc/yum/pluginconf.d/rhnplugin.conf')
+            if rhnpluginconfig.get('main', 'enabled') == '1':
+                print_generic("RHN yum plugin was enabled. Disabling...")
+                rhnpluginconfig.set('main', 'enabled', '0')
+                rhnpluginconfig.write(open('/etc/yum/pluginconf.d/rhnplugin.conf', 'w'))
+        if os.path.exists('/etc/sysconfig/rhn/systemid'):
+            os.rename('/etc/sysconfig/rhn/systemid', '/etc/sysconfig/rhn/systemid.bootstrap-bak')
+
+    @classmethod
+    def enable_rhsmcertd(cls):
+        """
+        Enable and restart the rhsmcertd service
+        """
+        enable_service("rhsmcertd")
+        exec_service("rhsmcertd", "restart")
+
+    @classmethod
+    def is_registered(cls):
+        """
+        Check if all required certificates are in place (i.e. a system is
+        registered to begin with) before we start changing things
+        """
+        return (os.path.exists('/etc/rhsm/ca/katello-server-ca.pem') and
+                os.path.exists('/etc/pki/consumer/cert.pem'))
+
+    def register_systems(self, org_name, activationkey):
+        """
+        Register the host to Satellite 6's organization using
+        `subscription-manager` and the given activation key.
+        Option "--force" is given further.
+        """
+        if 'foreman' in self._options.skip:
+            org_label = org_name
         else:
-            err = None
+            org_label = return_matching_katello_key('organizations', 'name="%s"' % org_name, 'label', False)
+        print_generic("Calling subscription-manager")
+        self._options.smargs += " --serverurl=https://%s:%s/rhsm --baseurl=https://%s/pulp/repos" % (self._options.foreman_fqdn, API_PORT, self._options.foreman_fqdn)
+        if self._options.force:
+            self._options.smargs += " --force"
+        if self._options.release:
+            self._options.smargs += " --release %s" % self._options.release
+        if self.check_subman_version(SUBSCRIPTION_MANAGER_SERVER_TIMEOUT_VERSION):
+            exec_failok("/usr/sbin/subscription-manager config --server.server_timeout=%s" % self._options.timeout)
+        exec_command("/usr/sbin/subscription-manager register --org '%s' --name '%s' --activationkey '%s' %s" % (org_label, FQDN, activationkey, self._options.smargs), self._options.ignore_registration_failures)
+        self.enable_rhsmcertd()
 
-    return (err is None, err)
+    @classmethod
+    def clean_environment(cls):
+        """
+        Undefine `GEM_PATH`, `LD_LIBRARY_PATH` and `LD_PRELOAD` as many environments
+        have it defined non-sensibly.
+        """
+        for key in ['GEM_PATH', 'LD_LIBRARY_PATH', 'LD_PRELOAD']:
+            os.environ.pop(key, None)
+
+    def generate_katello_facts(self):
+        """
+        Write katello_facts file based on FQDN. Done after installation
+        of katello-ca-consumer RPM in case the script is overriding the
+        FQDN. Place the location if the location option is included
+        """
+
+        print_generic("Writing FQDN katello-fact")
+        katellofacts = open('/etc/rhsm/facts/katello.facts', 'w')
+        katellofacts.write('{"network.hostname-override":"%s"}\n' % (FQDN))
+        katellofacts.close()
+
+        if self._options.location and 'foreman' in self._options.skip:
+            print_generic("Writing LOCATION RHSM fact")
+            locationfacts = open('/etc/rhsm/facts/location.facts', 'w')
+            locationfacts.write('{"foreman_location":"%s"}\n' % (self._options.location))
+            locationfacts.close()
+
+    def noop_puppet_signing_run(self):
+        """
+        Execute Puppet with --noop to generate and sign certs
+        """
+        print_generic("Running Puppet in noop mode to generate SSL certs")
+        print_generic("Visit the UI and approve this certificate via Infrastructure->Capsules")
+        print_generic("if auto-signing is disabled")
+        exec_failexit("/opt/puppetlabs/puppet/bin/puppet agent --test --noop --tags no_such_tag --waitforcert 10")
+        if 'puppet-enable' not in self._options.skip:
+            enable_service("puppet")
+            exec_service("puppet", "restart")
+
+    # curl https://satellite.example.com:9090/ssh/pubkey >> ~/.ssh/authorized_keys
+    # sort -u ~/.ssh/authorized_keys
+    def install_ssh_key_from_url(self, remote_url):
+        """
+        Download and install Foreman's SSH public key.
+        """
+        print_generic("Fetching Remote Execution SSH key from %s" % remote_url)
+        try:
+            if sys.version_info >= (2, 6):
+                foreman_ssh_key_req = urllib_urlopen(remote_url, timeout=options.timeout)
+            else:
+                foreman_ssh_key_req = urllib_urlopen(remote_url)
+            foreman_ssh_key = foreman_ssh_key_req.read()
+            if sys.version_info >= (3, 0):
+                foreman_ssh_key = foreman_ssh_key.decode(foreman_ssh_key_req.headers.get_content_charset('utf-8'))
+        except urllib_httperror:
+            exception = sys.exc_info()[1]
+            print_generic("The server was unable to fulfill the request. Error: %s - %s" % (exception.code, exception.reason))
+            print_generic("Please ensure the Remote Execution feature is configured properly")
+            print_warning("Installing Foreman SSH key")
+            return
+        except urllib_urlerror:
+            exception = sys.exc_info()[1]
+            print_generic("Could not reach the server. Error: %s" % exception.reason)
+            return
+        self.install_ssh_key_from_string(foreman_ssh_key)
+
+    def install_ssh_key_from_api(self):
+        """
+        Download and install all Foreman's SSH public keys.
+        """
+        print_generic("Fetching Remote Execution SSH keys from the Foreman API")
+        url = "https://" + self._options.foreman_fqdn + ":" + str(API_PORT) + "/api/v2/smart_proxies/"
+        smart_proxies = get_json(url)
+        for smart_proxy in smart_proxies['results']:
+            if 'remote_execution_pubkey' in smart_proxy:
+                self.install_ssh_key_from_string(smart_proxy['remote_execution_pubkey'])
+
+    def install_ssh_key_from_string(self, foreman_ssh_key):
+        """
+        Install Foreman's SSH public key into the foreman user's
+        authorized keys file location, so that remote execution becomes possible.
+        If not set default is ~/.ssh/authorized_keys
+        """
+        print_generic("Installing Remote Execution SSH key for user %s" % self._options.remote_exec_user)
+        foreman_ssh_key = foreman_ssh_key.strip()
+        userpw = pwd.getpwnam(options.remote_exec_user)
+        if not self._options.remote_exec_authpath:
+            self._options.remote_exec_authpath = os.path.join(userpw.pw_dir, '.ssh', 'authorized_keys')
+            foreman_ssh_dir = os.path.join(userpw.pw_dir, '.ssh')
+            if not os.path.isdir(foreman_ssh_dir):
+                os.mkdir(foreman_ssh_dir, OWNER_ONLY_DIR)
+                os.chown(foreman_ssh_dir, userpw.pw_uid, userpw.pw_gid)
+        elif os.path.exists(self._options.remote_exec_authpath) and not os.path.isfile(self._options.remote_exec_authpath):
+            print_error("Foreman's SSH key not installed. You need to provide a full path to an authorized_keys file, you provided: '%s'" % self._options.remote_exec_authpath)
+            return
+        if os.path.isfile(self._options.remote_exec_authpath):
+            if foreman_ssh_key in open(self._options.remote_exec_authpath, 'r').read():
+                print_generic("Foreman's SSH key already present in %s" % self._options.remote_exec_authpath)
+                return
+        output = os.fdopen(os.open(self._options.remote_exec_authpath, os.O_WRONLY | os.O_CREAT, OWNER_ONLY_FILE), 'a')
+        output.write("\n")
+        output.write(foreman_ssh_key)
+        os.chown(self._options.remote_exec_authpath, userpw.pw_uid, userpw.pw_gid)
+        print_generic("Foreman's SSH key added to %s" % self._options.remote_exec_authpath)
+        output.close()
+
+    def enable_repos(self):
+        """Enable necessary repositories using subscription-manager."""
+        repostoenable = " ".join(['--enable=%s' % i for i in self._options.enablerepos.split(',')])
+        print_running("Enabling repositories - %s" % self._options.enablerepos)
+        exec_failok("subscription-manager repos %s" % repostoenable)
+
+    @classmethod
+    def check_rpm_installed(cls):
+        """Check if the machine already has Katello/Spacewalk RPMs installed"""
+        rpm_sat = ['katello', 'foreman-proxy-content', 'katello-capsule', 'spacewalk-proxy-common', 'spacewalk-backend']
+        transaction_set = rpm.TransactionSet()
+        db_results = transaction_set.dbMatch()
+        for package in db_results:
+            package_name = package['name'].decode('ascii')
+            if package_name in rpm_sat:
+                print_error("%s RPM found. bootstrap.py should not be used on a Katello/Spacewalk/Satellite host." % (package_name))
+                sys.exit(1)
+
+    def prepare_rhel5_migration(self):
+        """
+        Execute specific preparations steps for RHEL 5. Older releases of RHEL 5
+        did not have a version of rhn-classic-migrate-to-rhsm which supported
+        activation keys. This function allows those systems to get a proper
+        product certificate.
+        """
+        self.install_prereqs()
+
+        # only do the certificate magic if 69.pem is not present
+        # and we have active channels
+        if self.check_rhn_registration() and not os.path.exists('/etc/pki/product/69.pem'):
+            # pylint:disable=W,C,R
+            _LIBPATH = "/usr/share/rhsm"
+            # add to the path if need be
+            if _LIBPATH not in sys.path:
+                sys.path.append(_LIBPATH)
+            from subscription_manager.migrate import migrate  # pylint:disable=import-error
+
+            class MEOptions:
+                force = True
+
+            me = migrate.MigrationEngine()
+            me.options = MEOptions()
+            subscribed_channels = me.get_subscribed_channels_list()
+            me.print_banner(("System is currently subscribed to these RHNClassic Channels:"))
+            for channel in subscribed_channels:
+                print(channel)
+            me.check_for_conflicting_channels(subscribed_channels)
+            me.deploy_prod_certificates(subscribed_channels)
+            me.clean_up(subscribed_channels)
+
+        # at this point we should have at least 69.pem available, but lets
+        # doublecheck and copy it manually if not
+        if not os.path.exists('/etc/pki/product/'):
+            os.mkdir("/etc/pki/product/")
+        mapping_file = "/usr/share/rhsm/product/RHEL-5/channel-cert-mapping.txt"
+        if not os.path.exists('/etc/pki/product/69.pem') and os.path.exists(mapping_file):
+            for line in open(mapping_file):
+                if line.startswith('rhel-%s-server-5' % ARCHITECTURE):
+                    cert = line.split(" ")[1]
+                    shutil.copy('/usr/share/rhsm/product/RHEL-5/' + cert.strip(),
+                                '/etc/pki/product/69.pem')
+                    break
+
+        # cleanup
+        self.disable_rhn_plugin()
+
+    @classmethod
+    def check_rhn_registration(cls):
+        """Helper function to check if host is registered to legacy RHN."""
+        if os.path.exists('/etc/sysconfig/rhn/systemid'):
+            retcode = getstatusoutput('rhn-channel -l')[0]
+            if NEED_STATUS_SHIFT:
+                retcode = os.WEXITSTATUS(retcode)
+            return retcode == 0
+        return False
 
 
-def setup_yum_repo(url, gpg_key):
+class OSHandlerRHEL(OSHandler):
     """
-    Configures a yum repository at /etc/yum.repos.d/katello-client-bootstrap-deps.repo
-    """
-    submanrepoconfig = SafeConfigParser()
-    submanrepoconfig.add_section('kt-bootstrap')
-    submanrepoconfig.set('kt-bootstrap', 'name', 'Subscription-manager dependencies for katello-client-bootstrap')
-    submanrepoconfig.set('kt-bootstrap', 'baseurl', url)
-    submanrepoconfig.set('kt-bootstrap', 'enabled', '1')
-    submanrepoconfig.set('kt-bootstrap', 'gpgcheck', '1')
-    submanrepoconfig.set('kt-bootstrap', 'gpgkey', gpg_key)
-    submanrepoconfig.write(open('/etc/yum.repos.d/katello-client-bootstrap-deps.repo', 'w'))
-    print_generic('Building yum metadata cache. This may take a few minutes')
-    call_yum('makecache')
-
-
-def install_prereqs():
-    """
-    Install subscription manager and its prerequisites.
-    If subscription-manager is installed already, check to see if we are migrating. If yes, install subscription-manager-migration.
-    Else if subscription-manager and subscription-manager-migration are available in a configured repo, install them both.
-    Otherwise, exit and inform user that we cannot proceed
-    """
-    print_generic("Checking subscription manager prerequisites")
-    if options.deps_repository_url:
-        print_generic("Enabling %s as a repository for dependency RPMs" % options.deps_repository_url)
-        setup_yum_repo(options.deps_repository_url, options.deps_repository_gpg_key)
-    if USE_YUM:
-        yum_base = yum.YumBase()
-        pkg_list = yum_base.doPackageLists(patterns=['subscription-manager'])
-        subman_installed = pkg_list.installed
-        subman_available = pkg_list.available
-    else:
-        dnf_base = dnf.Base()
-        dnf_base.conf.read()
-        dnf_base.conf.substitutions.update_from_etc('/')
-        dnf_base.read_all_repos()
-        dnf_base.fill_sack()
-        pkg_list = dnf_base.sack.query().filter(name='subscription-manager')
-        subman_installed = pkg_list.installed().run()
-        subman_available = pkg_list.available().run()
-    call_yum("remove", "subscription-manager-gnome", False)
-    if subman_installed:
-        if check_rhn_registration() and 'migration' not in options.skip:
-            print_generic("installing subscription-manager-migration")
-            call_yum("install", "'subscription-manager-migration-*'", False)
-        print_generic("subscription-manager is installed already. Attempting update")
-        call_yum("update", "subscription-manager", False)
-        call_yum("update", "'subscription-manager-migration-*'", False)
-    elif subman_available:
-        print_generic("subscription-manager NOT installed. Installing.")
-        call_yum("install", "subscription-manager")
-        call_yum("install", "'subscription-manager-migration-*'", False)
-    else:
-        print_error("Cannot find subscription-manager in any configured repository. Consider using the --deps-repository-url switch to specify a repository with the subscription-manager RPMs")
-        sys.exit(1)
-    if 'prereq-update' not in options.skip:
-        call_yum("update", "yum openssl python", False)
-    if options.deps_repository_url:
-        delete_file('/etc/yum.repos.d/katello-client-bootstrap-deps.repo')
-
-
-def is_fips():
-    """
-    Checks to see if the system is FIPS enabled.
-    """
-    try:
-        fips_file = open("/proc/sys/crypto/fips_enabled", "r")
-        fips_status = fips_file.read(1)
-    except IOError:
-        fips_status = "0"
-    return fips_status == "1"
-
-
-def get_rhsm_proxy():
-    """
-    Return the proxy server settings from /etc/rhsm/rhsm.conf as dictionary proxy_config.
-    """
-    rhsmconfig = SafeConfigParser()
-    rhsmconfig.read('/etc/rhsm/rhsm.conf')
-    proxy_options = [option for option in rhsmconfig.options('server') if option.startswith('proxy')]
-    proxy_config = {}
-    for option in proxy_options:
-        proxy_config[option] = rhsmconfig.get('server', option)
-    return proxy_config
-
-
-def set_rhsm_proxy(proxy_config):
-    """
-    Set proxy server settings in /etc/rhsm/rhsm.conf from dictionary saved_proxy_config.
-    """
-    rhsmconfig = SafeConfigParser()
-    rhsmconfig.read('/etc/rhsm/rhsm.conf')
-    for option in proxy_config.keys():
-        rhsmconfig.set('server', option, proxy_config[option])
-    rhsmconfig.write(open('/etc/rhsm/rhsm.conf', 'w'))
-
-
-def get_bootstrap_rpm(clean=False, unreg=True):
-    """
-    Retrieve Client CA Certificate RPMs from the Satellite 6 server.
-    Uses --insecure options to curl(1) if instructed to download via HTTPS
-    This function is usually called with clean=options.force, which ensures
-    clean_katello_agent() is called if --force is specified. You can optionally
-    pass unreg=False to bypass unregistering a system (e.g. when moving between
-    capsules.
-    """
-    if clean:
-        clean_katello_agent()
-    if os.path.exists('/etc/rhsm/ca/katello-server-ca.pem'):
-        print_generic("A Katello CA certificate is already installed. Assuming system is registered.")
-        print_generic("If you want to move the system to a different Content Proxy in the same setup, please use --new-capsule.")
-        print_generic("If you want to remove the old host record and all data associated with it, please use --force.")
-        print_generic("Exiting.")
-        sys.exit(1)
-    if os.path.exists('/etc/pki/consumer/cert.pem') and unreg:
-        print_generic('System appears to be registered via another entitlement server. Attempting unregister')
-        unregister_system()
-    if options.download_method == "https":
-        print_generic("Writing custom cURL configuration to allow download via HTTPS without certificate verification")
-        curl_config_dir = tempfile.mkdtemp()
-        curl_config = open(os.path.join(curl_config_dir, '.curlrc'), 'w')
-        curl_config.write("insecure")
-        curl_config.close()
-        os.environ["CURL_HOME"] = curl_config_dir
-        print_generic("Retrieving Client CA Certificate RPMs")
-        exec_failexit("rpm -Uvh https://%s/pub/katello-ca-consumer-latest.noarch.rpm" % options.foreman_fqdn)
-        print_generic("Deleting cURL configuration")
-        delete_directory(curl_config_dir)
-        os.environ.pop("CURL_HOME", None)
-    else:
-        print_generic("Retrieving Client CA Certificate RPMs")
-        exec_failexit("rpm -Uvh http://%s/pub/katello-ca-consumer-latest.noarch.rpm" % options.foreman_fqdn)
-
-
-def disable_rhn_plugin():
-    """
-    Disable the RHN plugin for Yum
-    """
-    if os.path.exists('/etc/yum/pluginconf.d/rhnplugin.conf'):
-        rhnpluginconfig = SafeConfigParser()
-        rhnpluginconfig.read('/etc/yum/pluginconf.d/rhnplugin.conf')
-        if rhnpluginconfig.get('main', 'enabled') == '1':
-            print_generic("RHN yum plugin was enabled. Disabling...")
-            rhnpluginconfig.set('main', 'enabled', '0')
-            rhnpluginconfig.write(open('/etc/yum/pluginconf.d/rhnplugin.conf', 'w'))
-    if os.path.exists('/etc/sysconfig/rhn/systemid'):
-        os.rename('/etc/sysconfig/rhn/systemid', '/etc/sysconfig/rhn/systemid.bootstrap-bak')
-
-
-def enable_rhsmcertd():
-    """
-    Enable and restart the rhsmcertd service
-    """
-    enable_service("rhsmcertd")
-    exec_service("rhsmcertd", "restart")
-
-
-def is_registered():
-    """
-    Check if all required certificates are in place (i.e. a system is
-    registered to begin with) before we start changing things
-    """
-    return (os.path.exists('/etc/rhsm/ca/katello-server-ca.pem') and
-            os.path.exists('/etc/pki/consumer/cert.pem'))
-
-
-def migrate_systems(org_name, activationkey):
-    """
-    Call `rhn-migrate-classic-to-rhsm` to migrate the machine from Satellite
-    5 to 6 using the organization name/label and the given activation key, and
-    configure subscription manager with the baseurl of Satellite6's pulp.
-    This allows the administrator to override the URL provided in the
-    katello-ca-consumer-latest RPM, which is useful in scenarios where the
-    Capsules/Servers are load-balanced or using subjectAltName certificates.
-    If called with "--legacy-purge", uses "legacy-user" and "legacy-password"
-    to remove the machine.
-    Option "--force" is always passed so that `rhn-migrate-classic-to-rhsm`
-    does not fail on channels which cannot be mapped either because they
-    are cloned channels, custom channels, or do not exist in the destination.
-    """
-    if 'foreman' in options.skip:
-        org_label = org_name
-    else:
-        org_label = return_matching_katello_key('organizations', 'name="%s"' % org_name, 'label', False)
-    print_generic("Calling rhn-migrate-classic-to-rhsm")
-    options.rhsmargs += " --force --destination-url=https://%s:%s/rhsm" % (options.foreman_fqdn, API_PORT)
-    if options.legacy_purge:
-        options.rhsmargs += " --legacy-user '%s' --legacy-password '%s'" % (options.legacy_login, options.legacy_password)
-        if options.removepkgs and check_migration_version(SUBSCRIPTION_MANAGER_MIGRATION_REMOVE_PKGS_VERSION)[0]:
-            options.rhsmargs += " --remove-rhn-packages"
-    else:
-        options.rhsmargs += " --keep"
-    if check_subman_version(SUBSCRIPTION_MANAGER_SERVER_TIMEOUT_VERSION):
-        exec_failok("/usr/sbin/subscription-manager config --server.server_timeout=%s" % options.timeout)
-    exec_command("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key '%s' %s" % (org_label, activationkey, options.rhsmargs), options.ignore_registration_failures)
-    exec_command("subscription-manager config --rhsm.baseurl=https://%s/pulp/repos" % options.foreman_fqdn, options.ignore_registration_failures)
-    if options.release:
-        exec_failexit("subscription-manager release --set %s" % options.release)
-    enable_rhsmcertd()
-
-    # When rhn-migrate-classic-to-rhsm is called with --keep, it will leave the systemid
-    # file intact, which might confuse the (not yet removed) yum-rhn-plugin.
-    # Move the file to a backup name & disable the RHN plugin, so the user can still restore it if needed.
-    disable_rhn_plugin()
-
-
-def register_systems(org_name, activationkey):
-    """
-    Register the host to Satellite 6's organization using
-    `subscription-manager` and the given activation key.
-    Option "--force" is given further.
-    """
-    if 'foreman' in options.skip:
-        org_label = org_name
-    else:
-        org_label = return_matching_katello_key('organizations', 'name="%s"' % org_name, 'label', False)
-    print_generic("Calling subscription-manager")
-    options.smargs += " --serverurl=https://%s:%s/rhsm --baseurl=https://%s/pulp/repos" % (options.foreman_fqdn, API_PORT, options.foreman_fqdn)
-    if options.force:
-        options.smargs += " --force"
-    if options.release:
-        options.smargs += " --release %s" % options.release
-    if check_subman_version(SUBSCRIPTION_MANAGER_SERVER_TIMEOUT_VERSION):
-        exec_failok("/usr/sbin/subscription-manager config --server.server_timeout=%s" % options.timeout)
-    exec_command("/usr/sbin/subscription-manager register --org '%s' --name '%s' --activationkey '%s' %s" % (org_label, FQDN, activationkey, options.smargs), options.ignore_registration_failures)
-    enable_rhsmcertd()
-
-
-def unregister_system():
-    """Unregister the host using `subscription-manager`."""
-    print_generic("Cleaning old yum metadata")
-    call_yum("clean", "metadata dbcache", False)
-    print_generic("Unregistering")
-    exec_failok("/usr/sbin/subscription-manager unregister")
-    exec_failok("/usr/sbin/subscription-manager clean")
-
-
-def clean_katello_agent():
-    """Remove old Katello agent (aka Gofer) and certificate RPMs."""
-    print_generic("Removing old Katello agent and certs")
-    call_yum("remove", "'katello-ca-consumer-*' katello-agent gofer katello-host-tools katello-host-tools-fact-plugin", False)
-    delete_file("/etc/rhsm/ca/katello-server-ca.pem")
-
-
-def install_katello_agent():
-    """Install Katello agent (aka Gofer) and activate /start it."""
-    print_generic("Installing the Katello agent")
-    call_yum("install", "katello-agent")
-    enable_service("goferd")
-    exec_service("goferd", "restart")
-
-
-def install_katello_host_tools():
-    """Install Katello Host Tools"""
-    print_generic("Installing the Katello Host Tools")
-    call_yum("install", "katello-host-tools")
-
-
-def clean_puppet():
-    """Remove old Puppet Agent and its configuration"""
-    print_generic("Cleaning old Puppet Agent")
-    call_yum("remove", "puppet-agent", False)
-    delete_directory("/var/lib/puppet/")
-    delete_directory("/opt/puppetlabs/puppet/cache")
-    delete_directory("/etc/puppetlabs/puppet/ssl")
-
-
-def clean_environment():
-    """
-    Undefine `GEM_PATH`, `LD_LIBRARY_PATH` and `LD_PRELOAD` as many environments
-    have it defined non-sensibly.
-    """
-    for key in ['GEM_PATH', 'LD_LIBRARY_PATH', 'LD_PRELOAD']:
-        os.environ.pop(key, None)
-
-
-def generate_katello_facts():
-    """
-    Write katello_facts file based on FQDN. Done after installation
-    of katello-ca-consumer RPM in case the script is overriding the
-    FQDN. Place the location if the location option is included
+    An abstract class that handles the interaction and configuration of the
+    operating system used. It defines general functions and empty function
+    bodies which need system-specific implementations.
     """
 
-    print_generic("Writing FQDN katello-fact")
-    katellofacts = open('/etc/rhsm/facts/katello.facts', 'w')
-    katellofacts.write('{"network.hostname-override":"%s"}\n' % (FQDN))
-    katellofacts.close()
+    def __init__(self, in_options):
+        OSHandler.__init__(self, in_options)
 
-    if options.location and 'foreman' in options.skip:
-        print_generic("Writing LOCATION RHSM fact")
-        locationfacts = open('/etc/rhsm/facts/location.facts', 'w')
-        locationfacts.write('{"foreman_location":"%s"}\n' % (options.location))
-        locationfacts.close()
+    def install_simplejson(self):
+        self.call_yum("install", "simplejson")
 
+    @classmethod
+    def call_yum(cls, command, params="", failonerror=True):
+        """
+        Helper function to call a yum command on a list of packages.
+        pass failonerror = False to make yum commands non-fatal
+        """
+        exec_command("/usr/bin/yum -y %s %s" % (command, params), not failonerror)
 
-def install_puppet_agent():
-    """Install and configure, then enable and start the Puppet Agent"""
-    puppet_env = return_puppetenv_for_hg(return_matching_foreman_key('hostgroups', 'title="%s"' % options.hostgroup, 'id', False))
-    print_generic("Installing the Puppet Agent")
-    call_yum("install", "puppet-agent")
-    enable_service("puppet")
+    def check_migration_version(self, required_version):
+        """
+        Verify that the command 'subscription-manager-migration' isn't too old.
+        """
+        status, err = self.check_package_version('subscription-manager-migration', required_version)
 
-    puppet_conf_file = '/etc/puppetlabs/puppet/puppet.conf'
-    main_section = """[main]
-vardir = /opt/puppetlabs/puppet/cache
-logdir = /var/log/puppetlabs/puppet
-rundir = /var/run/puppetlabs
-ssldir = /etc/puppetlabs/puppet/ssl
-"""
-    if is_fips():
-        main_section += "digest_algorithm = sha256"
-        print_generic("System is in FIPS mode. Setting digest_algorithm to SHA256 in puppet.conf")
-    puppet_conf = open(puppet_conf_file, 'w')
+        return (status, err)
 
-    # set puppet.conf certname to lowercase FQDN, as capitalized characters would
-    # get translated anyway generating our certificate
-    # * https://puppet.com/docs/puppet/3.8/configuration.html#certname
-    # * https://puppet.com/docs/puppet/4.10/configuration.html#certname
-    # * https://puppet.com/docs/puppet/5.5/configuration.html#certname
-    # other links mentioning capitalized characters related issues:
-    # * https://grokbase.com/t/gg/puppet-users/152s27374y/forcing-a-variable-to-be-lower-case
-    # * https://groups.google.com/forum/#!topic/puppet-users/vRAu092ppzs
-    puppet_conf.write("""
+    def check_package_version(self, package_name, package_version):
+        """
+        Verify that the version of a package
+        """
+        required_version = ('0', package_version, '1')
+        err = "%s not found" % package_name
+
+        transaction_set = rpm.TransactionSet()
+        db_result = transaction_set.dbMatch('name', package_name)
+        for package in db_result:
+            p_name = package['name'].decode('ascii')
+            p_version = package['version'].decode('ascii')
+            if rpm.labelCompare(('0', p_version, '1'), required_version) < 0:
+                err = "%s %s is too old" % (p_name, p_version)
+            else:
+                err = None
+
+        return (err is None, err)
+
+    def setup_yum_repo(self, url, gpg_key):
+        """
+        Configures a yum repository at /etc/yum.repos.d/katello-client-bootstrap-deps.repo
+        """
+        submanrepoconfig = SafeConfigParser()
+        submanrepoconfig.add_section('kt-bootstrap')
+        submanrepoconfig.set('kt-bootstrap', 'name', 'Subscription-manager dependencies for katello-client-bootstrap')
+        submanrepoconfig.set('kt-bootstrap', 'baseurl', url)
+        submanrepoconfig.set('kt-bootstrap', 'enabled', '1')
+        submanrepoconfig.set('kt-bootstrap', 'gpgcheck', '1')
+        submanrepoconfig.set('kt-bootstrap', 'gpgkey', gpg_key)
+        submanrepoconfig.write(open('/etc/yum.repos.d/katello-client-bootstrap-deps.repo', 'w'))
+        print_generic('Building yum metadata cache. This may take a few minutes')
+        self.call_yum('makecache')
+
+    def install_prereqs(self):
+        """
+        Install subscription manager and its prerequisites.
+        If subscription-manager is installed already, check to see if we are migrating. If yes, install subscription-manager-migration.
+        Else if subscription-manager and subscription-manager-migration are available in a configured repo, install them both.
+        Otherwise, exit and inform user that we cannot proceed
+        """
+        print_generic("Checking subscription manager prerequisites")
+        if self._options.deps_repository_url:
+            print_generic("Enabling %s as a repository for dependency RPMs" % self._options.deps_repository_url)
+            self.setup_yum_repo(self._options.deps_repository_url, self._options.deps_repository_gpg_key)
+        if USE_YUM:
+            yum_base = yum.YumBase()
+            pkg_list = yum_base.doPackageLists(patterns=['subscription-manager'])
+            subman_installed = pkg_list.installed
+            subman_available = pkg_list.available
+        else:
+            dnf_base = dnf.Base()
+            dnf_base.fill_sack()
+            pkg_list = dnf_base.sack.query().filter(name='subscription-manager')
+            subman_installed = pkg_list.installed().run()
+            subman_available = pkg_list.available().run()
+        self.call_yum("remove", "subscription-manager-gnome", False)
+        if subman_installed:
+            if self.check_rhn_registration() and 'migration' not in self._options.skip:
+                print_generic("installing subscription-manager-migration")
+                self.call_yum("install", "'subscription-manager-migration-*'", False)
+            print_generic("subscription-manager is installed already. Attempting update")
+            self.call_yum("update", "subscription-manager 'subscription-manager-migration-*'", False)
+        elif subman_available:
+            print_generic("subscription-manager NOT installed. Installing.")
+            self.call_yum("install", "subscription-manager 'subscription-manager-migration-*'")
+        else:
+            print_error("Cannot find subscription-manager in any configured repository. Consider using the --deps-repository-url switch to specify a repository with the subscription-manager RPMs")
+            sys.exit(1)
+        if 'prereq-update' not in self._options.skip:
+            self.call_yum("update", "yum openssl python", False)
+        if self._options.deps_repository_url:
+            delete_file('/etc/yum.repos.d/katello-client-bootstrap-deps.repo')
+
+    def unregister_system(self):
+        """Unregister the host using `subscription-manager`."""
+        print_generic("Cleaning old yum metadata")
+        self.call_yum("clean", "metadata dbcache", False)
+        print_generic("Unregistering")
+        exec_failok("/usr/sbin/subscription-manager unregister")
+        exec_failok("/usr/sbin/subscription-manager clean")
+
+    def clean_katello_agent(self):
+        """Remove old Katello agent (aka Gofer) and certificate RPMs."""
+        print_generic("Removing old Katello agent and certs")
+        self.call_yum("remove", "'katello-ca-consumer-*' katello-agent gofer katello-host-tools katello-host-tools-fact-plugin", False)
+        delete_file("/etc/rhsm/ca/katello-server-ca.pem")
+
+    def install_katello_agent(self):
+        """Install Katello agent (aka Gofer) and activate /start it."""
+        print_generic("Installing the Katello agent")
+        self.call_yum("install", "katello-agent")
+        enable_service("goferd")
+        exec_service("goferd", "restart")
+
+    def install_katello_host_tools(self):
+        """Install Katello Host Tools"""
+        print_generic("Installing the Katello Host Tools")
+        self.call_yum("install", "katello-host-tools")
+
+    def clean_puppet(self):
+        """Remove old Puppet Agent and its configuration"""
+        print_generic("Cleaning old Puppet Agent")
+        self.call_yum("remove", "puppet-agent", False)
+        delete_directory("/var/lib/puppet/")
+        delete_directory("/opt/puppetlabs/puppet/cache")
+        delete_directory("/etc/puppetlabs/puppet/ssl")
+
+    def remove_obsolete_packages(self):
+        """Remove old RHN packages"""
+        print_generic("Removing old RHN packages")
+        self.call_yum("remove", "rhn-setup rhn-client-tools yum-rhn-plugin rhnsd rhn-check rhnlib spacewalk-abrt spacewalk-oscap osad 'rh-*-rhui-client' 'candlepin-cert-consumer-*'", False)
+
+    def fully_update_the_box(self):
+        """Call `yum -y update` to upgrade the host."""
+        print_generic("Fully Updating The Box")
+        self.call_yum("update")
+
+    def install_puppet_agent(self):
+        """Install and configure, then enable and start the Puppet Agent"""
+        puppet_env = return_puppetenv_for_hg(return_matching_foreman_key('hostgroups', 'title="%s"' % self._options.hostgroup, 'id', False))
+        print_generic("Installing the Puppet Agent")
+        self.call_yum("install", "puppet-agent")
+        enable_service("puppet")
+
+        puppet_conf_file = '/etc/puppetlabs/puppet/puppet.conf'
+        main_section = """[main]
+    vardir = /opt/puppetlabs/puppet/cache
+    logdir = /var/log/puppetlabs/puppet
+    rundir = /var/run/puppetlabs
+    ssldir = /etc/puppetlabs/puppet/ssl
+    """
+        if self.is_fips():
+            main_section += "digest_algorithm = sha256"
+            print_generic("System is in FIPS mode. Setting digest_algorithm to SHA256 in puppet.conf")
+        puppet_conf = open(puppet_conf_file, 'w')
+
+        # set puppet.conf certname to lowercase FQDN, as capitalized characters would
+        # get translated anyway generating our certificate
+        # * https://puppet.com/docs/puppet/3.8/configuration.html#certname
+        # * https://puppet.com/docs/puppet/4.10/configuration.html#certname
+        # * https://puppet.com/docs/puppet/5.5/configuration.html#certname
+        # other links mentioning capitalized characters related issues:
+        # * https://grokbase.com/t/gg/puppet-users/152s27374y/forcing-a-variable-to-be-lower-case
+        # * https://groups.google.com/forum/#!topic/puppet-users/vRAu092ppzs
+        puppet_conf.write("""
 %s
 [agent]
 pluginsync      = true
@@ -577,114 +755,117 @@ ca_server       = %s
 certname        = %s
 environment     = %s
 server          = %s
-""" % (main_section, options.puppet_ca_server, FQDN.lower(), puppet_env, options.puppet_server))
-    if options.puppet_ca_port:
-        puppet_conf.write("""ca_port         = %s
-""" % (options.puppet_ca_port))
-    if options.puppet_noop:
-        puppet_conf.write("""noop            = true
-""")
-    puppet_conf.close()
-    noop_puppet_signing_run()
-    if 'puppet-enable' not in options.skip:
-        enable_service("puppet")
-        exec_service("puppet", "restart")
+""" % (main_section, self._options.puppet_ca_server, FQDN.lower(), puppet_env, self._options.puppet_server))
+        if self._options.puppet_ca_port:
+            puppet_conf.write("""ca_port         = %s
+    """ % (options.puppet_ca_port))
+        if self._options.puppet_noop:
+            puppet_conf.write("""noop            = true
+    """)
+        puppet_conf.close()
+        self.noop_puppet_signing_run()
+        if 'puppet-enable' not in self._options.skip:
+            enable_service("puppet")
+            exec_service("puppet", "restart")
 
+    def install_packages(self):
+        """Install user-provided packages"""
+        packages = self._options.install_packages.replace(',', " ")
+        print_running("Installing the following packages %s" % packages)
+        self.call_yum("install", packages, False)
 
-def noop_puppet_signing_run():
-    """
-    Execute Puppet with --noop to generate and sign certs
-    """
-    print_generic("Running Puppet in noop mode to generate SSL certs")
-    print_generic("Visit the UI and approve this certificate via Infrastructure->Capsules")
-    print_generic("if auto-signing is disabled")
-    exec_failexit("/opt/puppetlabs/puppet/bin/puppet agent --test --noop --tags no_such_tag --waitforcert 10")
-    if 'puppet-enable' not in options.skip:
-        enable_service("puppet")
-        exec_service("puppet", "restart")
-
-
-def remove_obsolete_packages():
-    """Remove old RHN packages"""
-    print_generic("Removing old RHN packages")
-    call_yum("remove", "rhn-setup rhn-client-tools yum-rhn-plugin rhnsd rhn-check rhnlib spacewalk-abrt spacewalk-oscap osad 'rh-*-rhui-client' 'candlepin-cert-consumer-*'", False)
-
-
-def fully_update_the_box():
-    """Call `yum -y update` to upgrade the host."""
-    print_generic("Fully Updating The Box")
-    call_yum("update")
-
-
-# curl https://satellite.example.com:9090/ssh/pubkey >> ~/.ssh/authorized_keys
-# sort -u ~/.ssh/authorized_keys
-def install_ssh_key_from_url(remote_url):
-    """
-    Download and install Foreman's SSH public key.
-    """
-    print_generic("Fetching Remote Execution SSH key from %s" % remote_url)
-    try:
-        if sys.version_info >= (2, 6):
-            foreman_ssh_key_req = urllib_urlopen(remote_url, timeout=options.timeout)
+    def get_bootstrap_rpm(self, clean=False, unreg=True):
+        """
+        Retrieve Client CA Certificate RPMs from the Satellite 6 server.
+        Uses --insecure options to curl(1) if instructed to download via HTTPS
+        This function is usually called with clean=options.force, which ensures
+        clean_katello_agent() is called if --force is specified. You can optionally
+        pass unreg=False to bypass unregistering a system (e.g. when moving between
+        capsules.
+        """
+        if clean:
+            self.clean_katello_agent()
+        if os.path.exists('/etc/rhsm/ca/katello-server-ca.pem'):
+            print_generic("A Katello CA certificate is already installed. Assuming system is registered.")
+            print_generic("If you want to move the system to a different Content Proxy in the same setup, please use --new-capsule.")
+            print_generic("If you want to remove the old host record and all data associated with it, please use --force.")
+            print_generic("Exiting.")
+            sys.exit(1)
+        if os.path.exists('/etc/pki/consumer/cert.pem') and unreg:
+            print_generic('System appears to be registered via another entitlement server. Attempting unregister')
+            self.unregister_system()
+        if self._options.download_method == "https":
+            print_generic("Writing custom cURL configuration to allow download via HTTPS without certificate verification")
+            curl_config_dir = tempfile.mkdtemp()
+            curl_config = open(os.path.join(curl_config_dir, '.curlrc'), 'w')
+            curl_config.write("insecure")
+            curl_config.close()
+            os.environ["CURL_HOME"] = curl_config_dir
+            print_generic("Retrieving Client CA Certificate RPMs")
+            exec_failexit("rpm -Uvh https://%s/pub/katello-ca-consumer-latest.noarch.rpm" % self._options.foreman_fqdn)
+            print_generic("Deleting cURL configuration")
+            delete_directory(curl_config_dir)
+            os.environ.pop("CURL_HOME", None)
         else:
-            foreman_ssh_key_req = urllib_urlopen(remote_url)
-        foreman_ssh_key = foreman_ssh_key_req.read()
-        if sys.version_info >= (3, 0):
-            foreman_ssh_key = foreman_ssh_key.decode(foreman_ssh_key_req.headers.get_content_charset('utf-8'))
-    except urllib_httperror:
-        exception = sys.exc_info()[1]
-        print_generic("The server was unable to fulfill the request. Error: %s - %s" % (exception.code, exception.reason))
-        print_generic("Please ensure the Remote Execution feature is configured properly")
-        print_warning("Installing Foreman SSH key")
-        return
-    except urllib_urlerror:
-        exception = sys.exc_info()[1]
-        print_generic("Could not reach the server. Error: %s" % exception.reason)
-        return
-    install_ssh_key_from_string(foreman_ssh_key)
+            print_generic("Retrieving Client CA Certificate RPMs")
+            exec_failexit("rpm -Uvh http://%s/pub/katello-ca-consumer-latest.noarch.rpm" % self._options.foreman_fqdn)
 
+    def migrate_systems(self, org_name, activationkey):
+        """
+        Call `rhn-migrate-classic-to-rhsm` to migrate the machine from Satellite
+        5 to 6 using the organization name/label and the given activation key, and
+        configure subscription manager with the baseurl of Satellite6's pulp.
+        This allows the administrator to override the URL provided in the
+        katello-ca-consumer-latest RPM, which is useful in scenarios where the
+        Capsules/Servers are load-balanced or using subjectAltName certificates.
+        If called with "--legacy-purge", uses "legacy-user" and "legacy-password"
+        to remove the machine.
+        Option "--force" is always passed so that `rhn-migrate-classic-to-rhsm`
+        does not fail on channels which cannot be mapped either because they
+        are cloned channels, custom channels, or do not exist in the destination.
+        """
+        if 'foreman' in self._options.skip:
+            org_label = org_name
+        else:
+            org_label = return_matching_katello_key('organizations', 'name="%s"' % org_name, 'label', False)
+        print_generic("Calling rhn-migrate-classic-to-rhsm")
+        self._options.rhsmargs += " --force --destination-url=https://%s:%s/rhsm" % (self._options.foreman_fqdn, API_PORT)
+        if self._options.legacy_purge:
+            self._options.rhsmargs += " --legacy-user '%s' --legacy-password '%s'" % (self._options.legacy_login, self._options.legacy_password)
+            if self._options.removepkgs and self.check_migration_version(SUBSCRIPTION_MANAGER_MIGRATION_REMOVE_PKGS_VERSION)[0]:
+                self._options.rhsmargs += " --remove-rhn-packages"
+        else:
+            self._options.rhsmargs += " --keep"
+        if self.check_subman_version(SUBSCRIPTION_MANAGER_SERVER_TIMEOUT_VERSION):
+            exec_failok("/usr/sbin/subscription-manager config --server.server_timeout=%s" % self._options.timeout)
+        exec_command("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key '%s' %s" % (org_label, activationkey, self._options.rhsmargs), self._options.ignore_registration_failures)
+        exec_command("subscription-manager config --rhsm.baseurl=https://%s/pulp/repos" % self._options.foreman_fqdn, self._options.ignore_registration_failures)
+        if self._options.release:
+            exec_failexit("subscription-manager release --set %s" % self._options.release)
+        self.enable_rhsmcertd()
 
-def install_ssh_key_from_api():
-    """
-    Download and install all Foreman's SSH public keys.
-    """
-    print_generic("Fetching Remote Execution SSH keys from the Foreman API")
-    url = "https://" + options.foreman_fqdn + ":" + str(API_PORT) + "/api/v2/smart_proxies/"
-    smart_proxies = get_json(url)
-    for smart_proxy in smart_proxies['results']:
-        if 'remote_execution_pubkey' in smart_proxy:
-            install_ssh_key_from_string(smart_proxy['remote_execution_pubkey'])
+        # When rhn-migrate-classic-to-rhsm is called with --keep, it will leave the systemid
+        # file intact, which might confuse the (not yet removed) yum-rhn-plugin.
+        # Move the file to a backup name & disable the RHN plugin, so the user can still restore it if needed.
+        self.disable_rhn_plugin()
 
+    def configure_subscription_manager(self):
+        """
+        Configure subscription-manager plugins in Yum
+        """
+        productidconfig = SafeConfigParser()
+        productidconfig.read('/etc/yum/pluginconf.d/product-id.conf')
+        if productidconfig.get('main', 'enabled') == '0':
+            print_generic("Product-id yum plugin was disabled. Enabling...")
+            productidconfig.set('main', 'enabled', '1')
+            productidconfig.write(open('/etc/yum/pluginconf.d/product-id.conf', 'w'))
 
-def install_ssh_key_from_string(foreman_ssh_key):
-    """
-    Install Foreman's SSH public key into the foreman user's
-    authorized keys file location, so that remote execution becomes possible.
-    If not set default is ~/.ssh/authorized_keys
-    """
-    print_generic("Installing Remote Execution SSH key for user %s" % options.remote_exec_user)
-    foreman_ssh_key = foreman_ssh_key.strip()
-    userpw = pwd.getpwnam(options.remote_exec_user)
-    if not options.remote_exec_authpath:
-        options.remote_exec_authpath = os.path.join(userpw.pw_dir, '.ssh', 'authorized_keys')
-        foreman_ssh_dir = os.path.join(userpw.pw_dir, '.ssh')
-        if not os.path.isdir(foreman_ssh_dir):
-            os.mkdir(foreman_ssh_dir, OWNER_ONLY_DIR)
-            os.chown(foreman_ssh_dir, userpw.pw_uid, userpw.pw_gid)
-    elif os.path.exists(options.remote_exec_authpath) and not os.path.isfile(options.remote_exec_authpath):
-        print_error("Foreman's SSH key not installed. You need to provide a full path to an authorized_keys file, you provided: '%s'" % options.remote_exec_authpath)
-        return
-    if os.path.isfile(options.remote_exec_authpath):
-        if foreman_ssh_key in open(options.remote_exec_authpath, 'r').read():
-            print_generic("Foreman's SSH key already present in %s" % options.remote_exec_authpath)
-            return
-    output = os.fdopen(os.open(options.remote_exec_authpath, os.O_WRONLY | os.O_CREAT, OWNER_ONLY_FILE), 'a')
-    output.write("\n")
-    output.write(foreman_ssh_key)
-    output.write("\n")
-    os.chown(options.remote_exec_authpath, userpw.pw_uid, userpw.pw_gid)
-    print_generic("Foreman's SSH key added to %s" % options.remote_exec_authpath)
-    output.close()
+        submanconfig = SafeConfigParser()
+        submanconfig.read('/etc/yum/pluginconf.d/subscription-manager.conf')
+        if submanconfig.get('main', 'enabled') == '0':
+            print_generic("subscription-manager yum plugin was disabled. Enabling...")
+            submanconfig.set('main', 'enabled', '1')
+            submanconfig.write(open('/etc/yum/pluginconf.d/subscription-manager.conf', 'w'))
 
 
 class BetterHTTPErrorProcessor(urllib_basehandler):
@@ -748,7 +929,7 @@ def call_api(url, data=None, method='GET'):
         try:
             jsonerr = json.load(exception)
             print('error: %s' % json.dumps(jsonerr, sort_keys=False, indent=2))
-        except:  # noqa: E722, pylint:disable=bare-except
+        except Exception:  # noqa: E722, pylint:disable=broad-except
             print('error: %s' % exception)
         sys.exit(1)
     except Exception:  # pylint:disable=broad-except
@@ -962,143 +1143,6 @@ def disassociate_host(host_id):
     put_json(myurl)
 
 
-def configure_subscription_manager():
-    """
-    Configure subscription-manager plugins in Yum
-    """
-    productidconfig = SafeConfigParser()
-    productidconfig.read('/etc/yum/pluginconf.d/product-id.conf')
-    if productidconfig.get('main', 'enabled') == '0':
-        print_generic("Product-id yum plugin was disabled. Enabling...")
-        productidconfig.set('main', 'enabled', '1')
-        productidconfig.write(open('/etc/yum/pluginconf.d/product-id.conf', 'w'))
-
-    submanconfig = SafeConfigParser()
-    submanconfig.read('/etc/yum/pluginconf.d/subscription-manager.conf')
-    if submanconfig.get('main', 'enabled') == '0':
-        print_generic("subscription-manager yum plugin was disabled. Enabling...")
-        submanconfig.set('main', 'enabled', '1')
-        submanconfig.write(open('/etc/yum/pluginconf.d/subscription-manager.conf', 'w'))
-
-
-def check_rhn_registration():
-    """Helper function to check if host is registered to legacy RHN."""
-    if os.path.exists('/etc/sysconfig/rhn/systemid'):
-        retcode = getstatusoutput('rhn-channel -l')[0]
-        if NEED_STATUS_SHIFT:
-            retcode = os.WEXITSTATUS(retcode)
-        return retcode == 0
-    return False
-
-
-def enable_repos():
-    """Enable necessary repositories using subscription-manager."""
-    repostoenable = " ".join(['--enable=%s' % i for i in options.enablerepos.split(',')])
-    print_running("Enabling repositories - %s" % options.enablerepos)
-    exec_failok("subscription-manager repos %s" % repostoenable)
-
-
-def install_packages():
-    """Install user-provided packages"""
-    packages = options.install_packages.replace(',', " ")
-    print_running("Installing the following packages %s" % packages)
-    call_yum("install", packages, False)
-
-
-def get_api_port():
-    """Helper function to get the server port from Subscription Manager."""
-    configparser = SafeConfigParser()
-    configparser.read('/etc/rhsm/rhsm.conf')
-    try:
-        return configparser.get('server', 'port')
-    except:  # noqa: E722, pylint:disable=bare-except
-        return "443"
-
-
-def check_rpm_installed():
-    """Check if the machine already has Katello/Spacewalk RPMs installed"""
-    rpm_sat = ['katello', 'foreman-proxy-content', 'katello-capsule', 'spacewalk-proxy-common', 'spacewalk-backend']
-    transaction_set = rpm.TransactionSet()
-    db_results = transaction_set.dbMatch()
-    for package in db_results:
-        package_name = package['name'].decode('ascii')
-        if package_name in rpm_sat:
-            print_error("%s RPM found. bootstrap.py should not be used on a Katello/Spacewalk/Satellite host." % (package_name))
-            sys.exit(1)
-
-
-def prepare_rhel5_migration():
-    """
-    Execute specific preparations steps for RHEL 5. Older releases of RHEL 5
-    did not have a version of rhn-classic-migrate-to-rhsm which supported
-    activation keys. This function allows those systems to get a proper
-    product certificate.
-    """
-    install_prereqs()
-
-    # only do the certificate magic if 69.pem is not present
-    # and we have active channels
-    if check_rhn_registration() and not os.path.exists('/etc/pki/product/69.pem'):
-        # pylint:disable=W,C,R
-        _LIBPATH = "/usr/share/rhsm"
-        # add to the path if need be
-        if _LIBPATH not in sys.path:
-            sys.path.append(_LIBPATH)
-        from subscription_manager.migrate import migrate  # pylint:disable=import-error
-
-        class MEOptions:
-            force = True
-
-        me = migrate.MigrationEngine()
-        me.options = MEOptions()
-        subscribed_channels = me.get_subscribed_channels_list()
-        me.print_banner(("System is currently subscribed to these RHNClassic Channels:"))
-        for channel in subscribed_channels:
-            print(channel)
-        me.check_for_conflicting_channels(subscribed_channels)
-        me.deploy_prod_certificates(subscribed_channels)
-        me.clean_up(subscribed_channels)
-
-    # at this point we should have at least 69.pem available, but lets
-    # doublecheck and copy it manually if not
-    if not os.path.exists('/etc/pki/product/'):
-        os.mkdir("/etc/pki/product/")
-    mapping_file = "/usr/share/rhsm/product/RHEL-5/channel-cert-mapping.txt"
-    if not os.path.exists('/etc/pki/product/69.pem') and os.path.exists(mapping_file):
-        for line in open(mapping_file):
-            if line.startswith('rhel-%s-server-5' % ARCHITECTURE):
-                cert = line.split(" ")[1]
-                shutil.copy('/usr/share/rhsm/product/RHEL-5/' + cert.strip(),
-                            '/etc/pki/product/69.pem')
-                break
-
-    # cleanup
-    disable_rhn_plugin()
-
-
-def enable_service(service, failonerror=True):
-    """
-    Helper function to enable a service using proper init system.
-    pass failonerror = False to make init system's commands non-fatal
-    """
-    if os.path.exists("/run/systemd"):
-        exec_command("/usr/bin/systemctl enable %s" % (service), not failonerror)
-    else:
-        exec_command("/sbin/chkconfig %s on" % (service), not failonerror)
-
-
-def exec_service(service, command, failonerror=True):
-    """
-    Helper function to call a service command using proper init system.
-    Available command values = start, stop, restart
-    pass failonerror = False to make init system's commands non-fatal
-    """
-    if os.path.exists("/run/systemd"):
-        exec_command("/usr/bin/systemctl %s %s" % (command, service), not failonerror)
-    else:
-        exec_command("/sbin/service %s %s" % (service, command), not failonerror)
-
-
 if __name__ == '__main__':
 
     # pylint:disable=invalid-name
@@ -1275,7 +1319,7 @@ if __name__ == '__main__':
             s.connect((options.foreman_fqdn, 80))
             options.ip = s.getsockname()[0]
             s.close()
-        except:  # noqa: E722, pylint:disable=bare-except
+        except Exception:  # noqa: E722, pylint:disable=broad-except
             options.ip = None
 
     # > Ask for the password if not given as option
@@ -1336,8 +1380,32 @@ if __name__ == '__main__':
         print_error("This script requires root-level access")
         sys.exit(1)
 
+    # Determine OS
+    try:
+        os_name = get_os()
+    except Exception as e:
+        print_error("Error while reading operating system: %s" % e)
+        sys.exit(1)
+
+    # Create OSHandler instance depending on OS
+    if "suse" in os_name or "sles" in os_name:
+        print_error("SUSE and SLES support has not been implemented yet")
+        sys.exit(1)
+        # Implement OSHandlerSLES
+        # os_handler = OSHandlerSLES(options)
+    elif "debian" in os_name or "ubuntu" in os_name:
+        print_error("Debian and Ubuntu support has not been implemented yet")
+        sys.exit(1)
+        # Implement OSHandlerDebian
+        # os_handler = OSHandlerDebian(options)
+    elif "centos" in os_name or "rhel" in os_name or "ol" in os_name:
+        os_handler = OSHandlerRHEL(options)
+    else:
+        print_error("Detected OS %s is not supported" % os_name)
+        sys.exit(1)
+
     # > Check if Katello/Spacewalk/Satellite are installed already
-    check_rpm_installed()
+    os_handler.check_rpm_installed()
 
     # > Try to import json or simplejson.
     # do it at this point in the code to have our custom print and exec
@@ -1349,7 +1417,7 @@ if __name__ == '__main__':
             import simplejson as json
         except ImportError:
             print_warning("Could neither import json nor simplejson, will try to install simplejson and re-import")
-            call_yum("install", "python-simplejson")
+            os_handler.install_simplejson()
             try:
                 import simplejson as json
             except ImportError:
@@ -1357,22 +1425,22 @@ if __name__ == '__main__':
                 sys.exit(1)
 
     # > Clean the environment from LD_... variables
-    clean_environment()
+    os_handler.clean_environment()
 
     # > IF RHEL 5, not removing, and not moving to new capsule prepare the migration.
     if not options.remove and IS_EL5 and not options.new_capsule:
         if options.legacy_purge:
             print_warning("Purging the system from the Legacy environment is not supported on EL5.")
-        prepare_rhel5_migration()
+        os_handler.prepare_rhel5_migration()
 
     if options.preserve_rhsm_proxy:
-        saved_proxy_config = get_rhsm_proxy()
+        saved_proxy_config = os_handler.get_rhsm_proxy()
 
     if options.remove:
         # > IF remove, disassociate/delete host, unregister,
         # >            uninstall katello and optionally puppet agents
-        API_PORT = get_api_port()
-        unregister_system()
+        API_PORT = os_handler.get_api_port()
+        os_handler.unregister_system()
         if 'foreman' not in options.skip:
             hostid = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', True)
             if hostid is not None:
@@ -1381,30 +1449,30 @@ if __name__ == '__main__':
         if 'katello-agent' in options.skip:
             print_warning("Skipping the installation of the Katello Agent is now the default behavior. passing --skip katello-agent is deprecated")
         if 'katello-agent' not in options.skip or 'katello-host-tools' not in options.skip:
-            clean_katello_agent()
+            os_handler.clean_katello_agent()
         if 'puppet' not in options.skip:
-            clean_puppet()
-    elif check_rhn_registration() and 'migration' not in options.skip and not IS_EL8:
+            os_handler.clean_puppet()
+    elif os_handler.check_rhn_registration() and 'migration' not in options.skip and not IS_EL8:
         # > ELIF registered to RHN, install subscription-manager prerequs
         # >                         get CA RPM, optionally create host,
         # >                         migrate via rhn-classic-migrate-to-rhsm
         print_generic('This system is registered to RHN. Attempting to migrate via rhn-classic-migrate-to-rhsm')
-        install_prereqs()
+        os_handler.install_prereqs()
 
-        _, versionerr = check_migration_version(SUBSCRIPTION_MANAGER_MIGRATION_MINIMAL_VERSION)
+        _, versionerr = os_handler.check_migration_version(SUBSCRIPTION_MANAGER_MIGRATION_MINIMAL_VERSION)
         if versionerr:
             print_error(versionerr)
             sys.exit(1)
 
-        get_bootstrap_rpm(clean=options.force)
-        generate_katello_facts()
-        API_PORT = get_api_port()
+        os_handler.get_bootstrap_rpm(clean=options.force)
+        os_handler.generate_katello_facts()
+        API_PORT = os_handler.get_api_port()
         if 'foreman' not in options.skip:
             create_host()
-        configure_subscription_manager()
-        migrate_systems(options.org, options.activationkey)
+        os_handler.configure_subscription_manager()
+        os_handler.migrate_systems(options.org, options.activationkey)
         if options.enablerepos:
-            enable_repos()
+            os_handler.enable_repos()
     elif options.new_capsule:
         # > ELIF new_capsule and foreman_fqdn set, will migrate to other capsule
         #
@@ -1414,21 +1482,21 @@ if __name__ == '__main__':
         # > Puppet, OpenSCAP and update Puppet configuration (if applicable)
         # > MANUAL SIGNING OF CSR OR MANUALLY CREATING AUTO-SIGN RULE STILL REQUIRED!
         # > API doesn't have a public endpoint for creating auto-sign entries yet!
-        if not is_registered():
+        if not os_handler.is_registered():
             print_error("This system doesn't seem to be registered to a Capsule at this moment.")
             sys.exit(1)
 
         # Make system ready for switch, gather required data
-        install_prereqs()
-        get_bootstrap_rpm(clean=True, unreg=False)
-        install_katello_host_tools()
+        os_handler.install_prereqs()
+        os_handler.get_bootstrap_rpm(clean=True, unreg=False)
+        os_handler.install_katello_host_tools()
         if options.install_katello_agent:
-            install_katello_agent()
+            os_handler.install_katello_agent()
         if 'katello-agent' in options.skip:
             print_warning("Skipping the installation of the Katello Agent is now the default behavior. passing --skip katello-agent is deprecated")
-        enable_rhsmcertd()
+        os_handler.enable_rhsmcertd()
 
-        API_PORT = get_api_port()
+        API_PORT = os_handler.get_api_port()
         if 'foreman' not in options.skip:
             current_host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', False)
 
@@ -1476,7 +1544,7 @@ if __name__ == '__main__':
             delete_directory(ssl_dir)
             delete_file("%s/client_data/catalog/%s.json" % (var_dir, FQDN))
 
-            noop_puppet_signing_run()
+            os_handler.noop_puppet_signing_run()
             print_generic("Puppet agent is not running; please start manually if required.")
             print_generic("You also need to manually revoke the certificate on the old capsule.")
 
@@ -1484,18 +1552,18 @@ if __name__ == '__main__':
         # > ELSE get CA RPM, optionally create host,
         # >      register via subscription-manager
         print_generic('This system is not registered to RHN. Attempting to register via subscription-manager')
-        install_prereqs()
-        get_bootstrap_rpm(clean=options.force)
-        generate_katello_facts()
-        API_PORT = get_api_port()
+        os_handler.install_prereqs()
+        os_handler.get_bootstrap_rpm(clean=options.force)
+        os_handler.generate_katello_facts()
+        API_PORT = os_handler.get_api_port()
         if 'foreman' not in options.skip:
             create_host()
-        configure_subscription_manager()
+        os_handler.configure_subscription_manager()
         if options.preserve_rhsm_proxy:
-            set_rhsm_proxy(saved_proxy_config)
-        register_systems(options.org, options.activationkey)
+            os_handler.set_rhsm_proxy(saved_proxy_config)
+        os_handler.register_systems(options.org, options.activationkey)
         if options.enablerepos:
-            enable_repos()
+            os_handler.enable_repos()
 
     if options.location and 'foreman' in options.skip:
         delete_file('/etc/rhsm/facts/location.facts')
@@ -1505,35 +1573,35 @@ if __name__ == '__main__':
         # >                  optionally clean and install Puppet agent
         # >                  optionally remove legacy RHN packages
         if options.install_katello_agent:
-            install_katello_agent()
+            os_handler.install_katello_agent()
         if 'katello-agent' in options.skip:
             print_warning("Skipping the installation of the Katello Agent is now the default behavior. passing --skip katello-agent is deprecated")
         if 'katello-host-tools' not in options.skip:
-            install_katello_host_tools()
+            os_handler.install_katello_host_tools()
         if options.update:
-            fully_update_the_box()
+            os_handler.fully_update_the_box()
 
         if 'puppet' not in options.skip:
             if options.force:
-                clean_puppet()
-            install_puppet_agent()
+                os_handler.clean_puppet()
+            os_handler.install_puppet_agent()
 
         if options.install_packages:
-            install_packages()
+            os_handler.install_packages()
 
         if 'remove-obsolete-packages' not in options.skip:
-            remove_obsolete_packages()
+            os_handler.remove_obsolete_packages()
 
         if options.remote_exec:
             if options.remote_exec_proxies:
                 listproxies = options.remote_exec_proxies.split(",")
                 for proxy_fqdn in listproxies:
                     remote_exec_url = "https://" + str(proxy_fqdn) + ":9090/ssh/pubkey"
-                    install_ssh_key_from_url(remote_exec_url)
+                    os_handler.install_ssh_key_from_url(remote_exec_url)
             elif options.remote_exec_url:
-                install_ssh_key_from_url(options.remote_exec_url)
+                os_handler.install_ssh_key_from_url(options.remote_exec_url)
             elif options.remote_exec_apikeys:
-                install_ssh_key_from_api()
+                os_handler.install_ssh_key_from_api()
             else:
                 remote_exec_url = "https://" + str(options.foreman_fqdn) + ":9090/ssh/pubkey"
-                install_ssh_key_from_url(remote_exec_url)
+                os_handler.install_ssh_key_from_url(remote_exec_url)
