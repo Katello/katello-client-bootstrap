@@ -196,7 +196,8 @@ def exec_command(command, fail_ok=False, suppress_output=False):
     retcode, output = getstatusoutput(command)
     if NEED_STATUS_SHIFT:
         retcode = os.WEXITSTATUS(retcode)
-    print(output)
+    if not suppress_output:
+        print(output)
     if retcode != 0:
         if fail_ok:
             if not suppress_output:
@@ -208,7 +209,7 @@ def exec_command(command, fail_ok=False, suppress_output=False):
     else:
         if not suppress_output:
             print_success(filtered_command)
-    return retcode
+    return (retcode, output)
 
 
 def delete_file(filename):
@@ -247,9 +248,9 @@ def enable_service(service, failonerror=True):
     pass failonerror = False to make init system's commands non-fatal
     """
     if os.path.exists("/run/systemd"):
-        exec_command("/usr/bin/systemctl enable %s" % (service), not failonerror)
+        exec_command("systemctl enable %s" % (service), not failonerror)
     else:
-        exec_command("/sbin/chkconfig %s on" % (service), not failonerror)
+        exec_command("chkconfig %s on" % (service), not failonerror)
 
 
 def exec_service(service, command, failonerror=True):
@@ -259,15 +260,15 @@ def exec_service(service, command, failonerror=True):
     pass failonerror = False to make init system's commands non-fatal
     """
     if os.path.exists("/run/systemd"):
-        exec_command("/usr/bin/systemctl %s %s" % (command, service), not failonerror)
+        exec_command("systemctl %s %s" % (command, service), not failonerror)
     else:
-        exec_command("/sbin/service %s %s" % (service, command), not failonerror)
+        exec_command("service %s %s" % (service, command), not failonerror)
 
 
 class OSHandler(object):
     """
     An abstract class that handles the interaction and configuration of the
-    operating system used. It defines general functions and empty function
+    operating system used. It defines general functions and abstract function
     bodies which need system-specific implementations.
     """
 
@@ -276,10 +277,15 @@ class OSHandler(object):
         os_facts = get_os()
         self._os_name = os_facts[0]
         self._os_version = os_facts[1]
+        self._repo_base_url = "pulp/repos"
 
     ##
     # Empty Function Bodies
     ##
+
+    def _check_parameter(self):
+        """Check input parameters"""
+        pass
 
     def _clean_katello_agent(self):
         """Remove old Katello agent (aka Gofer) and certificate RPMs."""
@@ -293,7 +299,7 @@ class OSHandler(object):
 
     def _install_client_ca(self, clean=False, unreg=True):
         """
-        Retrieve Client CA Certificate RPMs from the Satellite 6 server.
+        Retrieve Client CA Certificate from the given server.
         Uses --insecure options to curl(1) if instructed to download via HTTPS
         This function is usually called with clean=options.force, which ensures
         clean_katello_agent() is called if --force is specified. You can optionally
@@ -305,45 +311,42 @@ class OSHandler(object):
     def _install_prereqs(self):
         """
         Install subscription manager and its prerequisites.
-        If subscription-manager is installed already, check to see if we are migrating. If yes, install subscription-manager-migration.
-        Else if subscription-manager and subscription-manager-migration are available in a configured repo, install them both.
-        Otherwise, exit and inform user that we cannot proceed
         """
         pass
 
     def _pm_clean_cache(self):
         """
-        Clean the cache of the system specific package manager (yum, zypper, apt).
+        Clean the cache of the system specific package manager.
         """
         pass
 
     def _pm_install(self, packages="", params="", fail_on_error=True):
         """
-        Use the system specific package manager (yum, zypper, apt) to install packages.
+        Use the system specific package manager to install packages.
         """
         pass
 
     def _pm_install_no_gpg(self, packages="", params="", fail_on_error=True):
         """
-        Use the system specific package manager (yum, zypper, apt) to install packages.
+        Use the system specific package manager to install packages.
         """
         pass
 
     def _pm_make_cache(self):
         """
-        Make the system specific package manager (yum, zypper, apt) cache the current repos.
+        Make the system specific package manager cache the current repos.
         """
         pass
 
     def _pm_remove(self, packages, fail_on_error=True):
         """
-        Use the system specific package manager (yum, zypper, apt) to remove packages.
+        Use the system specific package manager to remove packages.
         """
         pass
 
     def _pm_update(self, packages="", fail_on_error=True):
         """
-        Use the system specific package manager (yum, zypper, apt) to update packages.
+        Use the system specific package manager to update packages.
         """
         pass
 
@@ -425,7 +428,7 @@ class OSHandler(object):
     @classmethod
     def _disable_rhn_plugin(cls):
         """
-        Disable the RHN plugin for Yum
+        Disable the RHN plugin
         """
         if os.path.exists('/etc/yum/pluginconf.d/rhnplugin.conf'):
             rhnpluginconfig = SafeConfigParser()
@@ -459,7 +462,7 @@ class OSHandler(object):
     def _generate_katello_facts(self):
         """
         Write katello_facts file based on FQDN. Done after installation
-        of katello-ca-consumer RPM in case the script is overriding the
+        of katello-ca-consumer in case the script is overriding the
         FQDN. Place the location if the location option is included
         """
 
@@ -558,9 +561,9 @@ server          = %s
 
     def _install_ssh_key_from_api(self):
         """
-        Download and install all Foreman's SSH public keys.
+        Download and install Server's SSH public keys.
         """
-        print_generic("Fetching Remote Execution SSH keys from the Foreman API")
+        print_generic("Fetching Remote Execution SSH keys from the Server API")
         url = "https://" + self._options.foreman_fqdn + ":" + str(API_PORT) + "/api/v2/smart_proxies/"
         smart_proxies = get_json(url)
         for smart_proxy in smart_proxies['results']:
@@ -569,7 +572,7 @@ server          = %s
 
     def _install_ssh_key_from_string(self, foreman_ssh_key):
         """
-        Install Foreman's SSH public key into the foreman user's
+        Install the Server's SSH public key into the user's
         authorized keys file location, so that remote execution becomes possible.
         If not set default is ~/.ssh/authorized_keys
         """
@@ -583,24 +586,24 @@ server          = %s
                 os.mkdir(foreman_ssh_dir, OWNER_ONLY_DIR)
                 os.chown(foreman_ssh_dir, userpw.pw_uid, userpw.pw_gid)
         elif os.path.exists(self._options.remote_exec_authpath) and not os.path.isfile(self._options.remote_exec_authpath):
-            print_error("Foreman's SSH key not installed. You need to provide a full path to an authorized_keys file, you provided: '%s'" % self._options.remote_exec_authpath)
+            print_error("Server's SSH key not installed. You need to provide a full path to an authorized_keys file, you provided: '%s'" % self._options.remote_exec_authpath)
             return
         if os.path.isfile(self._options.remote_exec_authpath):
             if foreman_ssh_key in open(self._options.remote_exec_authpath, 'r').read():
-                print_generic("Foreman's SSH key already present in %s" % self._options.remote_exec_authpath)
+                print_generic("Server's SSH key already present in %s" % self._options.remote_exec_authpath)
                 return
         output = os.fdopen(os.open(self._options.remote_exec_authpath, os.O_WRONLY | os.O_CREAT, OWNER_ONLY_FILE), 'a')
         output.write("\n")
         output.write(foreman_ssh_key)
         os.chown(self._options.remote_exec_authpath, userpw.pw_uid, userpw.pw_gid)
-        print_generic("Foreman's SSH key added to %s" % self._options.remote_exec_authpath)
+        print_generic("Server's SSH key added to %s" % self._options.remote_exec_authpath)
         output.close()
 
     # curl https://satellite.example.com:9090/ssh/pubkey >> ~/.ssh/authorized_keys
     # sort -u ~/.ssh/authorized_keys
     def _install_ssh_key_from_url(self, remote_url):
         """
-        Download and install Foreman's SSH public key.
+        Download and install Server's SSH public key.
         """
         print_generic("Fetching Remote Execution SSH key from %s" % remote_url)
         try:
@@ -673,7 +676,7 @@ server          = %s
         if self._check_subman_version(SUBSCRIPTION_MANAGER_SERVER_TIMEOUT_VERSION):
             exec_failok("/usr/sbin/subscription-manager config --server.server_timeout=%s" % self._options.timeout)
         exec_command("/usr/sbin/rhn-migrate-classic-to-rhsm --org %s --activation-key '%s' %s" % (org_label, activationkey, self._options.rhsmargs), self._options.ignore_registration_failures)
-        exec_command("subscription-manager config --rhsm.baseurl=https://%s/pulp/repos" % self._options.foreman_fqdn, self._options.ignore_registration_failures)
+        exec_command("subscription-manager config --rhsm.baseurl=https://%s/%s" % (self._options.foreman_fqdn, self._repo_base_url), self._options.ignore_registration_failures)
         if self._options.release:
             exec_failexit("subscription-manager release --set %s" % self._options.release)
         self._enable_rhsmcertd()
@@ -697,7 +700,7 @@ server          = %s
 
     def _register_systems(self, org_name, activationkey):
         """
-        Register the host to Satellite 6's organization using
+        Register the host to the server organization using
         `subscription-manager` and the given activation key.
         Option "--force" is given further.
         """
@@ -706,7 +709,7 @@ server          = %s
         else:
             org_label = return_matching_katello_key('organizations', 'name="%s"' % org_name, 'label', False)
         print_generic("Calling subscription-manager")
-        self._options.smargs += " --serverurl=https://%s:%s/rhsm --baseurl=https://%s/pulp/repos" % (self._options.foreman_fqdn, API_PORT, self._options.foreman_fqdn)
+        self._options.smargs += " --serverurl=https://%s:%s/rhsm --baseurl=https://%s/%s" % (self._options.foreman_fqdn, API_PORT, self._options.foreman_fqdn, self._repo_base_url)
         if self._options.force:
             self._options.smargs += " --force"
         if self._options.release:
@@ -718,8 +721,7 @@ server          = %s
 
     def _remove_obsolete_packages(self):
         """Remove old RHN packages"""
-        print_generic("Removing old RHN packages")
-        self._pm_remove(["rhn-setup", "rhn-client-tools", "yum-rhn-plugin", "rhnsd", "rhn-check", "rhnlib", "spacewalk-abrt", "spacewalk-oscap", "osad", "rh-*-rhui-client", "candlepin-cert-consumer-*"], False)
+        pass
 
     @classmethod
     def _set_rhsm_proxy(cls, proxy_config):
@@ -747,7 +749,7 @@ server          = %s
     def blank_migration(self):
         """
         Blank Migration
-         > get CA RPM, optionally create host
+         > get CA, optionally create host
          > register via subscription-manager
         """
         print_generic('This system is not registered to RHN. Attempting to register via subscription-manager')
@@ -843,7 +845,7 @@ server          = %s
 
     @classmethod
     def check_package_installed(cls):
-        """Check if the machine already has Katello/Spacewalk RPMs installed"""
+        """Check if the machine already has Katello/Spacewalk installed"""
         rpm_sat = ['katello', 'foreman-proxy-content', 'katello-capsule', 'spacewalk-proxy-common', 'spacewalk-backend']
         transaction_set = rpm.TransactionSet()
         db_results = transaction_set.dbMatch()
@@ -857,7 +859,7 @@ server          = %s
         """
         Host is currently registered to RHN.
          > install subscription-manager prerequs
-         > get CA RPM, optionally create host
+         > get CA, optionally create host
          > migrate via rhn-classic-migrate-to-rhsm
         """
         print_generic('This system is registered to RHN. Attempting to migrate via rhn-classic-migrate-to-rhsm')
@@ -1077,6 +1079,13 @@ class OSHandlerRHEL(OSHandler):
     # Parent Functions
     ##
 
+    def prepare_migration(self):
+        """
+        Preparation of migration when existing system shall not be removed and no new capsule is used.
+        """
+        if self.os_version == 5:
+            self._prepare_rhel5_migration()
+
     def _clean_katello_agent(self):
         """Remove old Katello agent (aka Gofer) and certificate RPMs."""
         print_generic("Removing old Katello agent and certs")
@@ -1177,13 +1186,6 @@ class OSHandlerRHEL(OSHandler):
         if self._options.deps_repository_url:
             delete_file('/etc/yum.repos.d/katello-client-bootstrap-deps.repo')
 
-    def prepare_migration(self):
-        """
-        Preparation of migration when existing system shall not be removed and no new capsule is used.
-        """
-        if self.os_version == 5:
-            self._prepare_rhel5_migration()
-
     def _pm_clean_cache(self):
         """
         Clean cache of yum.
@@ -1232,11 +1234,10 @@ class OSHandlerRHEL(OSHandler):
             pack_str = packages
         self._call_yum("update %s" % pack_str, fail_on_error)
 
-    def _post_registration(self):
-        """
-        Make configurations after the registration finished.
-        """
-        pass
+    def _remove_obsolete_packages(self):
+        """Remove old RHN packages"""
+        print_generic("Removing old RHN packages")
+        self._pm_remove(["rhn-setup", "rhn-client-tools", "yum-rhn-plugin", "rhnsd", "rhn-check", "rhnlib", "spacewalk-abrt", "spacewalk-oscap", "osad", "rh-*-rhui-client", "candlepin-cert-consumer-*"], False)
 
 
 class OSHandlerSLES(OSHandler):
@@ -1248,6 +1249,7 @@ class OSHandlerSLES(OSHandler):
         OSHandler.__init__(self, in_options)
         mandatory_modules = {"rpm": "python-rpm"}
         self._check_imports(mandatory_modules)
+        self._check_parameter()
 
     ##
     # Inner Helper Functions
@@ -1259,7 +1261,7 @@ class OSHandlerSLES(OSHandler):
         Helper function to call a zypper command on a list of packages.
         pass fail_on_error=False to make zypper commands non-fatal.
         """
-        return exec_command("/usr/bin/zypper --quiet --non-interactive %s %s" % (params, command), not fail_on_error)
+        return exec_command("/usr/bin/zypper --quiet --non-interactive %s %s" % (params, command), not fail_on_error)[0]
 
     def _install_repo(self, repo_url, fail_on_error):
         """
@@ -1282,6 +1284,31 @@ class OSHandlerSLES(OSHandler):
     # Parent Functions
     ##
 
+    def classic_migration(self):
+        """
+        Migration via rhn-classic-migrate-to-rhsm is not supported on SLES.
+        """
+        print_generic("Classic migration is not supported on SLES systems.")
+
+    def prepare_migration(self):
+        """
+        Preparation of migration when existing system shall not be removed and no new capsule is used.
+        """
+        pass
+
+    def _check_parameter(self):
+        """Check input parameters"""
+        print("Prerequisites for Suse Linux Enterprise Server host:")
+        print("SLES11 SP4   -> Pool Repository, Update Repository")
+        print("SLES12 SP5   -> Pool Repository")
+        print("SLES15       -> Pool Repository, Module-Basesystem Repository")
+        print("SLES15 SP1/2 -> Pool Repository, Module-Basesystem Repository, Module-Python2 Repository")
+        print("")
+
+        if not self._options.deps_repository_url:
+            print_error("Repository URL not given! Parameter deps-repository-url is mandatory")
+            sys.exit(1)
+
     def _clean_katello_agent(self):
         """Remove old Katello agent (aka Gofer) and certificate RPMs."""
         print_generic("Removing old Katello agent and certs")
@@ -1296,7 +1323,7 @@ class OSHandlerSLES(OSHandler):
 
     def _install_client_ca(self, clean=False, unreg=True):
         """
-        Retrieve Client CA Certificate RPMs from the Satellite 6 server.
+        Retrieve Client CA Certificate RPMs from the given server.
         Uses --insecure options to curl(1) if instructed to download via HTTPS.
         """
         if clean:
@@ -1335,13 +1362,7 @@ class OSHandlerSLES(OSHandler):
     def _install_prereqs(self):
         """
         Install subscription manager and its prerequisites.
-        If subscription-manager is installed already, check to see if we are migrating. If yes, install subscription-manager-migration.
-        Else if subscription-manager and subscription-manager-migration are available in a configured repo, install them both.
-        Otherwise, exit and inform user that we cannot proceed
         """
-        if not self._options.deps_repository_url:
-            print_error("Repository URL not given! Parameter deps-repository-url is mandatory")
-            sys.exit(1)
         self._setup_repo(self._options.deps_repository_url)
         self._pm_install_no_gpg("subscription-manager", fail_on_error=True)
         if self.os_version == 11:
@@ -1350,12 +1371,6 @@ class OSHandlerSLES(OSHandler):
 
         if 'prereq-update' not in self._options.skip:
             self._pm_update("openssl python", False)
-
-    def prepare_migration(self):
-        """
-        Preparation of migration when existing system shall not be removed and no new capsule is used.
-        """
-        pass
 
     def _pm_clean_cache(self):
         """
@@ -1397,13 +1412,247 @@ class OSHandlerSLES(OSHandler):
 
     def _pm_update(self, packages="", fail_on_error=True):
         """
-        Use yum to update specific packages.
+        Use zypper to update specific packages.
         """
         if isinstance(packages, list):
             pack_str = " ".join(packages)
         else:
             pack_str = packages
         self._call_zypper("update %s" % pack_str, "", fail_on_error)
+
+
+class OSHandlerDeb(OSHandler):
+    """
+    OSHandler implementation for Debian and Ubuntu systems.
+    """
+
+    def __init__(self, in_options):
+        OSHandler.__init__(self, in_options)
+        self._repo_base_url = "pulp/deb"
+
+    ##
+    # Inner Helper Functions
+    ##
+
+    @classmethod
+    def _call_apt(cls, command, params="", fail_on_error=True):
+        """
+        Helper function to call a apt command on a list of packages.
+        pass fail_on_error=False to make apt commands non-fatal.
+        """
+        exec_command("/usr/bin/apt-get --quiet -y %s %s" % (params, command), not fail_on_error)
+
+    @classmethod
+    def _call_apt_cache(cls, params="gencaches", fail_on_error=False):
+        """
+        Helper function to call apt-cache.
+        """
+        exec_command("/usr/bin/apt-cache %s" % params, not fail_on_error)
+
+    def _setup_repo(self, repo_url, gpg_url):
+        """
+        Add Debian repo to install subscription-manager and katello-agent
+        """
+        print_generic("Renaming old rhsm.sources to rhsm.sources.bak")
+        exec_failok("mv -f /etc/apt/sources.list.d/rhsm.sources /etc/apt/sources.list.d/rhsm.sources.bak")
+
+        print_generic("Retrieve GPG key from URL")
+        exec_failexit("wget %s --no-check-certificate" % gpg_url)
+        key_name = gpg_url.split("/")[-1]
+        exec_failexit("apt-key add %s " % key_name)
+        delete_file("./%s" % key_name)
+
+        print_generic("Disable all other repos")
+        exec_command("echo \"# This system is managed by the subscription-manager\" > /etc/apt/sources.list")
+
+        print_generic("Add subscription-manager repository")
+        exec_failexit("echo deb %s stable main > /etc/apt/sources.list.d/tmp_subman.list" % repo_url)
+        print_generic("Update Repository")
+        self._pm_make_cache()
+
+    ##
+    # Parent Functions
+    ##
+
+    def check_package_installed(self):
+        """
+        Check if the machine already has Katello/Spacewalk installed
+        """
+        print_generic("Check for installed Katello/Spacewalk packages")
+        banned_packages = ['katello', 'foreman-proxy-content', 'katello-capsule', 'spacewalk-proxy-common', 'spacewalk-backend']
+        for package in banned_packages:
+            ret_code, _ = exec_failok("dpkg-query --showformat='${Version}' --show %s" % package, suppress_output=True)
+            if ret_code == 0:
+                print_error("%s package found. bootstrap.py should not be used on a Katello/Spacewalk/Satellite host." % (package))
+                sys.exit(1)
+
+    def classic_migration(self):
+        """
+        Migration via rhn-classic-migrate-to-rhsm is not supported on Debian.
+        """
+        print_generic("Classic migration is not supported on Debian systems.")
+
+    def prepare_migration(self):
+        """
+        Preparation of migration when existing system shall not be removed and no new capsule is used.
+        """
+        pass
+
+    def _check_package_version(self, package_name, package_version):
+        """
+        Verify the version of a package.
+        """
+        (ret_code, output) = exec_failok("dpkg-query --showformat='${Version}' --show %s" % package_name)
+        if ret_code != 0:
+            err = "%s not found" % package_name
+        elif output == "":
+            err = "% found, but version cannot be determined" % package_name
+        elif exec_failok("dpkg --compare-versions %s \"lt\" %s" % (output, package_version))[0] > 0:
+            err = "%s %s is too old" % (package_name, output)
+        else:
+            err = None
+
+        return (err is None, err)
+
+    def _check_parameter(self):
+        """Check input parameters"""
+        if not self._options.deps_repository_gpg_key:
+            print_error("GPG URL not given! Parameter deps-repository-gpg-key is mandatory")
+            sys.exit(1)
+        if not self._options.deps_repository_url:
+            print_error("Repository URL not given! Parameter deps-repository-url is mandatory")
+            sys.exit(1)
+
+    def _check_subman_version(self, required_version):
+        """
+        Verify that the command 'subscription-manager' isn't too old.
+        """
+        status, _ = self._check_package_version('python-subscription-manager', required_version)
+
+        return status
+
+    def _clean_katello_agent(self):
+        """Remove old certificate."""
+        print_generic("Removing old certs")
+        delete_file("/etc/rhsm/ca/katello-server-ca.pem")
+
+    def _configure_subscription_manager(self):
+        """
+        Configure subscription-manager.
+        """
+        pass
+
+    def _install_client_ca(self, clean=False, unreg=True):
+        """
+        Retrieve Client CA Certificate from the given server.
+        Uses --insecure options to curl(1) if instructed to download via HTTPS.
+        """
+        if clean:
+            self._clean_katello_agent()
+        if os.path.exists('/etc/rhsm/ca/katello-server-ca.pem'):
+            print_generic("A Katello CA certificate is already installed. Assuming system is registered.")
+            print_generic("If you want to move the system to a different Content Proxy in the same setup, please use --new-capsule.")
+            print_generic("If you want to remove the old host record and all data associated with it, please use --force.")
+            print_generic("Exiting.")
+            sys.exit(1)
+        if os.path.exists('/etc/pki/consumer/cert.pem') and unreg:
+            print_generic('System appears to be registered via another entitlement server. Attempting unregister')
+            self._unregister_system()
+        if self._options.download_method == "https":
+            print_generic("Retrieving Client CA Certificate with wget and --no-check-certificate")
+            exec_failexit("wget https://%s/pub/katello-rhsm-consumer --no-check-certificate" % self._options.foreman_fqdn)
+        else:
+            print_generic("Retrieving Client CA Certificate")
+            exec_failexit("wget http://%s/pub/katello-rhsm-consumer" % self._options.foreman_fqdn)
+
+        print_generic("Add katello certificates")
+        exec_failexit("/bin/bash -x katello-rhsm-consumer", suppress_output=True)
+        delete_file("./katello-rhsm-consumer")
+
+        print_generic("Create symlinks for system wide CA usage")
+        try:
+            shutil.copy("/etc/rhsm/ca/katello-default-ca.pem", "/usr/local/share/ca-certificates/katello-default-ca.crt")
+            shutil.copy("/etc/rhsm/ca/katello-server-ca.pem", "/usr/local/share/ca-certificates/katello-server-ca.crt")
+            exec_failexit("update-ca-certificates")
+        except IOError:
+            print_error('Error creating symlinks from /ets/rhsm/ca/katello-*-ca.pem')
+            sys.exit(1)
+
+    def _install_katello_agent(self):
+        """Katello agent (aka Gofer) is not supported on Debian systems."""
+        pass
+
+    def _install_katello_host_tools(self):
+        """Katello host tools are not supported on Debian systems"""
+        pass
+
+    def _install_prereqs(self):
+        """
+        Install subscription manager and its prerequisites.
+        """
+        self._pm_install("wget httpie jq gnupg", fail_on_error=True)
+        self._setup_repo(self._options.deps_repository_url, self._options.deps_repository_gpg_key)
+        self._pm_install("subscription-manager apt-transport-katello katello-upload-profile", fail_on_error=True)
+
+        if 'prereq-update' not in self._options.skip:
+            self._pm_update("openssl python", False)
+
+    def _pm_clean_cache(self):
+        """
+        Clean cache of apt.
+        """
+        self._call_apt("clean")
+
+    def _pm_install(self, packages="", params="", fail_on_error=True):
+        """
+        Use apt to install packages.
+        """
+        if isinstance(packages, list):
+            pack_str = " ".join(packages)
+        else:
+            pack_str = packages
+        self._call_apt("install %s" % pack_str, params, fail_on_error)
+
+    def _pm_install_no_gpg(self, packages="", params="", fail_on_error=True):
+        """
+        Use apt to install packages without checking the gpg key.
+        """
+        self._pm_install(packages, ("--allow-unauthenticated %s" % params), fail_on_error)
+
+    def _pm_make_cache(self):
+        """
+        Create apt cache.
+        """
+        self._call_apt_cache("gencaches", fail_on_error=False)
+        self._call_apt("update")
+
+    def _pm_remove(self, packages="", fail_on_error=True):
+        """
+        Use apt to remove packages.
+        """
+        if isinstance(packages, list):
+            pack_str = " ".join(packages)
+        else:
+            pack_str = packages
+        self._call_apt("purge %s" % pack_str, "", fail_on_error)
+
+    def _pm_update(self, packages="", fail_on_error=True):
+        """
+        Use apt to update specific packages.
+        """
+        if isinstance(packages, list):
+            pack_str = " ".join(packages)
+        else:
+            pack_str = packages
+        self._call_apt("upgrade %s" % pack_str, "", fail_on_error)
+
+    def _post_registration(self):
+        """
+        Make configurations after the registration finished.
+        """
+        delete_file("/etc/apt/sources.list.d/tmp_subman.list")
+        self._call_apt("update")
+        exec_command("/usr/bin/package-profile-upload")
 
 
 class BetterHTTPErrorProcessor(urllib_basehandler):
@@ -1689,34 +1938,19 @@ if __name__ == '__main__':
     print("This script is designed to register new systems or to migrate an existing system to a Foreman server with Katello")
     print("")
 
-    print("Prerequisites for Suse Linux Enterprise Server host:")
-    print("SLES11 SP4   -> Pool Repository, Update Repository")
-    print("SLES12 SP5   -> Pool Repository")
-    print("SLES15       -> Pool Repository, Module-Basesystem Repository")
-    print("SLES15 SP1/2 -> Pool Repository, Module-Basesystem Repository, Module-Python2 Repository")
-    print("")
-
     # > Register our better HTTP processor as default opener for URLs.
     opener = urllib_build_opener(BetterHTTPErrorProcessor)
     urllib_install_opener(opener)
 
     # > Gather MAC Address.
-    MAC = None
-    try:
-        import uuid
-        mac1 = uuid.getnode()
-        mac2 = uuid.getnode()
-        if mac1 == mac2:
-            MAC = ':'.join(("%012X" % mac1)[i:i + 2] for i in range(0, 12, 2))
-    except ImportError:
-        if os.path.exists('/sys/class/net/eth0/address'):
-            address_files = ['/sys/class/net/eth0/address']
-        else:
-            address_files = glob.glob('/sys/class/net/*/address')
-        for f in address_files:
-            MAC = open(f).readline().strip().upper()
-            if MAC != "00:00:00:00:00:00":
-                break
+    if os.path.exists('/sys/class/net/eth0/address'):
+        address_files = ['/sys/class/net/eth0/address']
+    else:
+        address_files = glob.glob('/sys/class/net/*/address')
+    for f in address_files:
+        MAC = open(f).readline().strip().upper()
+        if MAC != "00:00:00:00:00:00":
+            break
     if not MAC:
         MAC = "00:00:00:00:00:00"
 
@@ -1777,8 +2011,8 @@ if __name__ == '__main__':
     parser.add_option("--enablerepos", dest="enablerepos", help="Repositories to be enabled via subscription-manager - comma separated", metavar="enablerepos")
     parser.add_option("--skip", dest="skip", action="append", help="Skip the listed steps (choices: %s)" % SKIP_STEPS, choices=SKIP_STEPS, default=[])
     parser.add_option("--ip", dest="ip", help="IPv4 address of the primary interface in Foreman (defaults to the address used to make request to Foreman)")
-    parser.add_option("--deps-repository-url", dest="deps_repository_url", help="URL to a repository that contains the subscription-manager RPMs")
-    parser.add_option("--deps-repository-gpg-key", dest="deps_repository_gpg_key", help="GPG Key to the repository that contains the subscription-manager RPMs", default="file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release")
+    parser.add_option("--deps-repository-url", dest="deps_repository_url", help="URL to a repository that contains the subscription-manager. Mandatory for: SLES, Debian, Ubunut")
+    parser.add_option("--deps-repository-gpg-key", dest="deps_repository_gpg_key", help="GPG Key to the repository that contains the subscription-manager. Mandatory for: Debian, Ubuntu", default="file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release")
     parser.add_option("--install-packages", dest="install_packages", help="List of packages to be additionally installed - comma separated", metavar="installpackages")
     parser.add_option("--new-capsule", dest="new_capsule", action="store_true", help="Switch the server to a new capsule for content and Puppet. Pass --server with the Capsule FQDN as well.")
     parser.add_option("-t", "--timeout", dest="timeout", type="int", help="Timeout (in seconds) for API calls and subscription-manager registration. Defaults to %default", metavar="timeout", default=900)
@@ -1923,10 +2157,7 @@ if __name__ == '__main__':
     if "suse" in OS_NAME or "sles" in OS_NAME:
         os_handler = OSHandlerSLES(options)
     elif "debian" in OS_NAME or "ubuntu" in OS_NAME:
-        print_error("Debian and Ubuntu support has not been implemented yet")
-        sys.exit(1)
-        # Implement OSHandlerDebian
-        # os_handler = OSHandlerDebian(options)
+        os_handler = OSHandlerDeb(options)
     elif "centos" in OS_NAME or "rhel" in OS_NAME or "ol" in OS_NAME:
         os_handler = OSHandlerRHEL(options)
     else:
@@ -1970,7 +2201,7 @@ if __name__ == '__main__':
         os_handler.remove_host()
     elif os_handler.check_rhn_registration() and 'migration' not in options.skip and not IS_EL8:
         # > ELIF registered to RHN, install subscription-manager prerequs
-        # >                         get CA RPM, optionally create host,
+        # >                         get CA, optionally create host,
         # >                         migrate via rhn-classic-migrate-to-rhsm
         os_handler.classic_migration()
     elif options.new_capsule:
@@ -1984,7 +2215,7 @@ if __name__ == '__main__':
         # > API doesn't have a public endpoint for creating auto-sign entries yet!
         os_handler.capsule_migration()
     else:
-        # > ELSE get CA RPM, optionally create host,
+        # > ELSE get CA, optionally create host,
         # >      register via subscription-manager
         os_handler.blank_migration()
     if options.location and 'foreman' in options.skip:
