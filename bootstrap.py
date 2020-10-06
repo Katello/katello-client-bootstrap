@@ -35,6 +35,7 @@ except ImportError:
     urllib_install_opener = urllib.request.install_opener
 import base64
 import sys
+import subprocess
 try:
     from commands import getstatusoutput
     NEED_STATUS_SHIFT = True
@@ -75,6 +76,67 @@ VERSION = '1.7.5'
 # Therefore use the decimal notation for file permissions
 OWNER_ONLY_DIR = 448  # octal: 700
 OWNER_ONLY_FILE = 384  # octal: 600
+
+
+def find_root_cert(path):
+    """
+    Determine the Root certificate among others (intermediate
+    and server certificates)in a given file.
+    Returns the certificate as string.
+    Raises: IOError, Exception
+    """
+    delim_begin = "-----BEGIN CERTIFICATE-----\n"
+    delim_end = "-----END CERTIFICATE-----\n"
+    in_cert = False
+    certs = []
+    index = -1
+    with open(path, "r") as cert_file:
+        for line in cert_file:
+            if line == delim_begin and in_cert is False:
+                in_cert = True
+                index += 1
+                certs.append(line)
+            elif line == delim_end and in_cert is True:
+                in_cert = False
+                certs[index] += line
+            elif in_cert is True:
+                certs[index] += line
+
+    cert_len = len(certs)
+
+    # Determine root certificate
+    root_cert = None
+    if cert_len <= 0:
+        raise Exception("Cannot find any certificate in %s" % path)
+    if cert_len == 1:
+        root_cert = certs[0]
+    else:
+        # Determine root certificate within multiple certs (same issuer and subject)
+        for cert in certs:
+            with subprocess.Popen(
+                ["openssl x509 -issuer_hash -subject_hash -noout"],
+                stdin=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                shell=True
+            ) as popen:
+                if not isinstance(cert, bytes):
+                    output, err = popen.communicate(bytes(cert, "utf-8"))
+                else:
+                    output, err = popen.communicate(cert)
+
+                if popen.returncode != 0:
+                    raise Exception("The following error occured during the determination of the certificate issuer and hash:\nError code: %i\n\nError message:\n%s\n\nCertificate:\n%s" % (popen.returncode, err, cert))
+
+                iss, sub = output.split()
+                if iss == sub:
+                    root_cert = cert
+                    break
+
+    if root_cert is None:
+        raise Exception("Cannot determine root certificate (same issuer and subject) in %s" % path)
+
+    return root_cert
 
 
 def get_os():
@@ -564,7 +626,7 @@ server          = %s
         Download and install Server's SSH public keys.
         """
         print_generic("Fetching Remote Execution SSH keys from the Server API")
-        url = "https://" + self._options.foreman_fqdn + ":" + str(API_PORT) + "/api/v2/smart_proxies/"
+        url = "https://" + str(self._options.foreman_fqdn) + ":" + str(API_PORT) + "/api/v2/smart_proxies/"
         smart_proxies = get_json(url)
         for smart_proxy in smart_proxies['results']:
             if 'remote_execution_pubkey' in smart_proxy:
@@ -756,6 +818,8 @@ server          = %s
         self._install_prereqs()
         self._install_client_ca(clean=self._options.force)
         self._generate_katello_facts()
+        global API_PORT
+        API_PORT = self.get_api_port()
         if 'foreman' not in self._options.skip:
             create_host()
         self._configure_subscription_manager()
@@ -791,6 +855,9 @@ server          = %s
         if 'katello-agent' in self._options.skip:
             print_warning("Skipping the installation of the Katello Agent is now the default behavior. passing --skip katello-agent is deprecated")
         self._enable_rhsmcertd()
+
+        global API_PORT
+        API_PORT = self.get_api_port()
 
         if 'foreman' not in self._options.skip:
             current_host_id = return_matching_foreman_key('hosts', 'name="%s"' % self._options.fqdn, 'id', False)
@@ -872,6 +939,8 @@ server          = %s
 
         self._install_client_ca(clean=self._options.force)
         self._generate_katello_facts()
+        global API_PORT
+        API_PORT = self.get_api_port()
         if 'foreman' not in self._options.skip:
             create_host()
         self._configure_subscription_manager()
@@ -1089,7 +1158,7 @@ class OSHandlerRHEL(OSHandler):
     def _clean_katello_agent(self):
         """Remove old Katello agent (aka Gofer) and certificate RPMs."""
         print_generic("Removing old Katello agent and certs")
-        self._pm_remove("katello-ca-consumer-* katello-agent gofer katello-host-tools katello-host-tools-fact-plugin")
+        self._pm_remove("katello-ca-consumer-* katello-agent gofer katello-host-tools katello-host-tools-fact-plugin", False)
         delete_file("/etc/rhsm/ca/katello-server-ca.pem")
 
     def _configure_subscription_manager(self):
@@ -1164,20 +1233,33 @@ class OSHandlerRHEL(OSHandler):
             subman_available = pkg_list.available
         else:
             dnf_base = dnf.Base()
+            dnf_base.conf.read()
+            dnf_base.conf.substitutions.update_from_etc('/')
+            dnf_base.read_all_repos()
+            if self._options.only_deps_repository:
+                save = dnf_base.repos['kt-bootstrap']
+                dnf_base.repos.clear()
+                dnf_base.repos['kt-boostrap'] = save
             dnf_base.fill_sack()
             pkg_list = dnf_base.sack.query().filter(name='subscription-manager')
             subman_installed = pkg_list.installed().run()
             subman_available = pkg_list.available().run()
         self._pm_remove("subscription-manager-gnome", False)
+        if 'ol' in self.os_name:
+            self._pm_remove("rhn-*", False)
         if subman_installed:
-            if self.check_rhn_registration() and 'migration' not in self._options.skip:
+            if self.check_rhn_registration() and 'rhel' in self.os_name and 'migration' not in self._options.skip:
                 print_generic("installing subscription-manager-migration")
-                self._pm_install("subscription-manager-migration-*", False)
+                self._pm_install("subscription-manager-migration-*", fail_on_error=False)
             print_generic("subscription-manager is installed already. Attempting update")
-            self._pm_update("subscription-manager subscription-manager-migration-*", False)
+            self._pm_update("subscription-manager", False)
+            if 'rhel' in self.os_name:
+                self._pm_update("subscription-manager-migration-*", False)
         elif subman_available:
             print_generic("subscription-manager NOT installed. Installing.")
-            self._pm_install("subscription-manager subscription-manager-migration-*")
+            self._pm_install("subscription-manager")
+            if 'rhel' in self.os_name:
+                self._pm_install("subscription-manager-migration-*", fail_on_error=False)
         else:
             print_error("Cannot find subscription-manager in any configured repository. Consider using the --deps-repository-url switch to specify a repository with the subscription-manager RPMs")
             sys.exit(1)
@@ -1200,7 +1282,7 @@ class OSHandlerRHEL(OSHandler):
             pack_str = " ".join(packages)
         else:
             pack_str = packages
-        self._call_yum("install %s" % pack_str, fail_on_error)
+        self._call_yum("install %s" % pack_str, params, fail_on_error)
 
     def _pm_install_no_gpg(self, packages="", params="", fail_on_error=True):
         """
@@ -1222,7 +1304,7 @@ class OSHandlerRHEL(OSHandler):
             pack_str = " ".join(packages)
         else:
             pack_str = packages
-        self._call_yum("remove %s" % pack_str, fail_on_error)
+        self._call_yum("remove %s" % pack_str, "", fail_on_error)
 
     def _pm_update(self, packages="", fail_on_error=True):
         """
@@ -1232,7 +1314,7 @@ class OSHandlerRHEL(OSHandler):
             pack_str = " ".join(packages)
         else:
             pack_str = packages
-        self._call_yum("update %s" % pack_str, fail_on_error)
+        self._call_yum("update %s" % pack_str, "", fail_on_error)
 
     def _remove_obsolete_packages(self):
         """Remove old RHN packages"""
@@ -1312,7 +1394,7 @@ class OSHandlerSLES(OSHandler):
     def _clean_katello_agent(self):
         """Remove old Katello agent (aka Gofer) and certificate RPMs."""
         print_generic("Removing old Katello agent and certs")
-        self._pm_remove("katello-agent katello-ca-consumer*")
+        self._pm_remove("katello-agent katello-ca-consumer*", False)
         delete_file("/etc/rhsm/ca/katello-server-ca.pem")
 
     def _configure_subscription_manager(self):
@@ -1466,7 +1548,7 @@ class OSHandlerDeb(OSHandler):
         exec_command("echo \"# This system is managed by the subscription-manager\" > /etc/apt/sources.list")
 
         print_generic("Add subscription-manager repository")
-        exec_failexit("echo deb %s stable main > /etc/apt/sources.list.d/tmp_subman.list" % repo_url)
+        exec_failexit("echo deb %s default all > /etc/apt/sources.list.d/tmp_subman.list" % repo_url)
         print_generic("Update Repository")
         self._pm_make_cache()
 
@@ -1545,7 +1627,7 @@ class OSHandlerDeb(OSHandler):
     def _install_client_ca(self, clean=False, unreg=True):
         """
         Retrieve Client CA Certificate from the given server.
-        Uses --insecure options to curl(1) if instructed to download via HTTPS.
+        Uses --no-check-certificate option to wget(1) if instructed to download via HTTPS.
         """
         if clean:
             self._clean_katello_agent()
@@ -1571,11 +1653,16 @@ class OSHandlerDeb(OSHandler):
 
         print_generic("Create symlinks for system wide CA usage")
         try:
-            shutil.copy("/etc/rhsm/ca/katello-default-ca.pem", "/usr/local/share/ca-certificates/katello-default-ca.crt")
-            shutil.copy("/etc/rhsm/ca/katello-server-ca.pem", "/usr/local/share/ca-certificates/katello-server-ca.crt")
+            # Determine root certificates
+            default_root_cert = find_root_cert("/etc/rhsm/ca/katello-default-ca.pem")
+            server_root_cert = find_root_cert("/etc/rhsm/ca/katello-server-ca.pem")
+            with open("/usr/local/share/ca-certificates/katello-default-ca.crt", "w+") as default_file:
+                default_file.write(default_root_cert)
+            with open("/usr/local/share/ca-certificates/katello-server-ca.crt", "w+") as server_file:
+                server_file.write(server_root_cert)
             exec_failexit("update-ca-certificates")
-        except IOError:
-            print_error('Error creating symlinks from /ets/rhsm/ca/katello-*-ca.pem')
+        except Exception:
+            print_error("An error occured while updating the certificates:\n  %s" % sys.exc_info()[1])
             sys.exit(1)
 
     def _install_katello_agent(self):
@@ -1749,7 +1836,7 @@ def update_host_capsule_mapping(attribute, capsule_id, host_id):
     """
     Update the host entry to point a feature to a new proxy
     """
-    url = "https://" + options.foreman_fqdn + ":" + str(API_PORT) + "/api/v2/hosts/" + str(host_id)
+    url = "https://" + str(options.foreman_fqdn) + ":" + str(API_PORT) + "/api/v2/hosts/" + str(host_id)
     if attribute == 'content_source_id':
         jdata = {"host": {"content_facet_attributes": {"content_source_id": capsule_id}, "content_source_id": capsule_id}}
     else:
@@ -1761,7 +1848,7 @@ def get_capsule_features(capsule_id):
     """
     Fetch all features available on a proxy
     """
-    url = "https://" + options.foreman_fqdn + ":" + str(API_PORT) + "/katello/api/capsules/%s" % str(capsule_id)
+    url = "https://" + str(options.foreman_fqdn) + ":" + str(API_PORT) + "/katello/api/capsules/%s" % str(capsule_id)
     return [feature['name'] for feature in get_json(url)['features']]
 
 
@@ -1770,7 +1857,7 @@ def update_host_config(attribute, value, host_id):
     Update a host config
     """
     attribute_id = return_matching_foreman_key(attribute + 's', 'title="%s"' % value, 'id', False)
-    json_key = attribute + "_id"
+    json_key = str(attribute) + "_id"
     jdata = {"host": {json_key: attribute_id}}
     put_json("https://" + options.foreman_fqdn + ":" + API_PORT + "/api/hosts/%s" % host_id, jdata)
 
@@ -1797,7 +1884,7 @@ def return_matching_key(api_path, search_key, return_key, null_result_ok=False):
     the key for search (name=, title=, ...).
     The search_key must be quoted in advance.
     """
-    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + api_path + "/?" + urlencode([('search', '' + str(search_key))])
+    myurl = "https://" + str(options.foreman_fqdn) + ":" + str(API_PORT) + str(api_path) + "/?" + str(urlencode([('search', '' + str(search_key))]))
     return_values = get_json(myurl)
     result_len = len(return_values['results'])
     if result_len == 1:
@@ -1818,7 +1905,7 @@ def return_puppetenv_for_hg(hg_id):
     or inherited through its hierarchy. If no environment is found,
     "production" is assumed.
     """
-    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/hostgroups/" + str(hg_id)
+    myurl = "https://" + str(options.foreman_fqdn) + ":" + str(API_PORT) + "/api/v2/hostgroups/" + str(hg_id)
     hostgroup = get_json(myurl)
     environment_name = 'production'
     if hostgroup['environment_name']:
@@ -1834,7 +1921,7 @@ def create_domain(domain, orgid, locid):
     Call Foreman API to create a network domain associated with the given
     organization and location.
     """
-    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/domains"
+    myurl = "https://" + str(options.foreman_fqdn) + ":" + str(API_PORT) + "/api/v2/domains"
     domid = return_matching_foreman_key('domains', 'name="%s"' % domain, 'id', True)
     if not domid:
         jsondata = {"domain": {"name": domain, "organization_ids": [orgid], "location_ids": [locid]}}
@@ -1916,7 +2003,7 @@ def create_host():
 
 def delete_host(host_id):
     """Call Foreman API to delete the current host."""
-    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/hosts/"
+    myurl = "https://" + str(options.foreman_fqdn) + ":" + str(API_PORT) + "/api/v2/hosts/"
     print_running("Deleting host id %s for host %s" % (host_id, FQDN))
     delete_json("%s/%s" % (myurl, host_id))
 
@@ -1925,7 +2012,7 @@ def disassociate_host(host_id):
     """
     Call Foreman API to disassociate host from content host before deletion.
     """
-    myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/hosts/" + str(host_id) + "/disassociate"
+    myurl = "https://" + str(options.foreman_fqdn) + ":" + str(API_PORT) + "/api/v2/hosts/" + str(host_id) + "/disassociate"
     print_running("Disassociating host id %s for host %s" % (host_id, FQDN))
     put_json(myurl)
 
@@ -2011,7 +2098,8 @@ if __name__ == '__main__':
     parser.add_option("--enablerepos", dest="enablerepos", help="Repositories to be enabled via subscription-manager - comma separated", metavar="enablerepos")
     parser.add_option("--skip", dest="skip", action="append", help="Skip the listed steps (choices: %s)" % SKIP_STEPS, choices=SKIP_STEPS, default=[])
     parser.add_option("--ip", dest="ip", help="IPv4 address of the primary interface in Foreman (defaults to the address used to make request to Foreman)")
-    parser.add_option("--deps-repository-url", dest="deps_repository_url", help="URL to a repository that contains the subscription-manager. Mandatory for: SLES, Debian, Ubunut")
+    parser.add_option("--only-deps-repository", dest="only_deps_repository", action="store_true", help="Use only the deps repository while installing the subscription-manager.")
+    parser.add_option("--deps-repository-url", dest="deps_repository_url", help="URL to a repository that contains the subscription-manager. Mandatory for: SLES, Debian, Ubuntu")
     parser.add_option("--deps-repository-gpg-key", dest="deps_repository_gpg_key", help="GPG Key to the repository that contains the subscription-manager. Mandatory for: Debian, Ubuntu", default="file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release")
     parser.add_option("--install-packages", dest="install_packages", help="List of packages to be additionally installed - comma separated", metavar="installpackages")
     parser.add_option("--new-capsule", dest="new_capsule", action="store_true", help="Switch the server to a new capsule for content and Puppet. Pass --server with the Capsule FQDN as well.")
@@ -2195,9 +2283,8 @@ if __name__ == '__main__':
             print_warning("Purging the system from the Legacy environment is not supported on EL5.")
         os_handler.prepare_migration()
 
-    API_PORT = os_handler.get_api_port()
-
     if options.remove:
+        API_PORT = os_handler.get_api_port()
         os_handler.remove_host()
     elif os_handler.check_rhn_registration() and 'migration' not in options.skip and not IS_EL8:
         # > ELIF registered to RHN, install subscription-manager prerequs
