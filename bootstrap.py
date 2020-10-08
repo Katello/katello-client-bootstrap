@@ -287,10 +287,12 @@ def install_prereqs():
             print_generic("installing subscription-manager-migration")
             call_yum("install", "'subscription-manager-migration-*'", False)
         print_generic("subscription-manager is installed already. Attempting update")
-        call_yum("update", "subscription-manager 'subscription-manager-migration-*'", False)
+        call_yum("update", "subscription-manager", False)
+        call_yum("update", "'subscription-manager-migration-*'", False)
     elif subman_available:
         print_generic("subscription-manager NOT installed. Installing.")
-        call_yum("install", "subscription-manager 'subscription-manager-migration-*'")
+        call_yum("install", "subscription-manager")
+        call_yum("install", "'subscription-manager-migration-*'", False)
     else:
         print_error("Cannot find subscription-manager in any configured repository. Consider using the --deps-repository-url switch to specify a repository with the subscription-manager RPMs")
         sys.exit(1)
