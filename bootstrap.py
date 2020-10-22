@@ -277,6 +277,7 @@ def install_prereqs():
         subman_available = pkg_list.available
     else:
         dnf_base = dnf.Base()
+        dnf_base.read_all_repos()
         dnf_base.fill_sack()
         pkg_list = dnf_base.sack.query().filter(name='subscription-manager')
         subman_installed = pkg_list.installed().run()
