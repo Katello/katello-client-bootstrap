@@ -278,6 +278,10 @@ def install_prereqs():
     else:
         dnf_base = dnf.Base()
         dnf_base.read_all_repos()
+        if options.only_deps_repository:
+            save = dnf_base.repos['kt-bootstrap']
+            dnf_base.repos.clear()
+            dnf_base.repos['kt-boostrap'] = save
         dnf_base.fill_sack()
         pkg_list = dnf_base.sack.query().filter(name='subscription-manager')
         subman_installed = pkg_list.installed().run()
@@ -1191,6 +1195,7 @@ if __name__ == '__main__':
     parser.add_option("--enablerepos", dest="enablerepos", help="Repositories to be enabled via subscription-manager - comma separated", metavar="enablerepos")
     parser.add_option("--skip", dest="skip", action="append", help="Skip the listed steps (choices: %s)" % SKIP_STEPS, choices=SKIP_STEPS, default=[])
     parser.add_option("--ip", dest="ip", help="IPv4 address of the primary interface in Foreman (defaults to the address used to make request to Foreman)")
+    parser.add_option("--only-deps-repository", dest="only_deps_repository", action="store_true", help="Use only the deps repository while installing the subscription-manager.")
     parser.add_option("--deps-repository-url", dest="deps_repository_url", help="URL to a repository that contains the subscription-manager RPMs")
     parser.add_option("--deps-repository-gpg-key", dest="deps_repository_gpg_key", help="GPG Key to the repository that contains the subscription-manager RPMs", default="file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release")
     parser.add_option("--install-packages", dest="install_packages", help="List of packages to be additionally installed - comma separated", metavar="installpackages")
