@@ -1136,7 +1136,7 @@ if __name__ == '__main__':
         # pylint:disable=deprecated-method
         RELEASE = platform.linux_distribution()[1]
     except AttributeError:
-        # pylint:disable=deprecated-method
+        # pylint:disable=deprecated-method,no-member
         RELEASE = platform.dist()[1]
     IS_EL5 = int(RELEASE[0]) == 5
     IS_EL8 = int(RELEASE[0]) == 8
