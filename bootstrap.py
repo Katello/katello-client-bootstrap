@@ -278,6 +278,7 @@ def install_prereqs():
     else:
         dnf_base = dnf.Base()
         dnf_base.conf.read()
+        dnf_base.conf.substitutions.update_from_etc('/')
         dnf_base.read_all_repos()
         dnf_base.fill_sack()
         pkg_list = dnf_base.sack.query().filter(name='subscription-manager')
