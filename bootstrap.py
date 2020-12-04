@@ -681,6 +681,7 @@ def install_ssh_key_from_string(foreman_ssh_key):
     output = os.fdopen(os.open(options.remote_exec_authpath, os.O_WRONLY | os.O_CREAT, OWNER_ONLY_FILE), 'a')
     output.write("\n")
     output.write(foreman_ssh_key)
+    output.write("\n")
     os.chown(options.remote_exec_authpath, userpw.pw_uid, userpw.pw_gid)
     print_generic("Foreman's SSH key added to %s" % options.remote_exec_authpath)
     output.close()
