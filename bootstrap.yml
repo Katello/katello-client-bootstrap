@@ -32,6 +32,7 @@
 
   - name: run bootstrap.py
     command: "python {{ bootstrap_target_path }} {{ bootstrap_args }} {{ bootstrap_foreman_args }} {{ bootstrap_additional_args }}"
+    no_log: True
 
   - name: remove bootstrap.py
     file:
