@@ -1099,6 +1099,19 @@ def exec_service(service, command, failonerror=True):
         exec_command("/sbin/service %s %s" % (service, command), not failonerror)
 
 
+def release_from_etc():
+    """
+    Parse /etc/os-release and get the release version (7, 7.9, 8, etc) from it.
+    Used on systems with Python 3.8+ which doesn't provide that in the platform module anymore.
+    """
+    release = "8"
+    os_release = open('/etc/os-release')
+    for line in os_release.readlines():
+        if line.startswith('VERSION_ID='):
+            release = line.replace('VERSION_ID=', '').replace('"', '').strip()
+    return release
+
+
 if __name__ == '__main__':
 
     # pylint:disable=invalid-name
@@ -1137,8 +1150,11 @@ if __name__ == '__main__':
         # pylint:disable=deprecated-method
         RELEASE = platform.linux_distribution()[1]
     except AttributeError:
-        # pylint:disable=deprecated-method,no-member
-        RELEASE = platform.dist()[1]
+        try:
+            # pylint:disable=deprecated-method,no-member
+            RELEASE = platform.dist()[1]
+        except AttributeError:
+            RELEASE = release_from_etc()[1]
     IS_EL5 = int(RELEASE[0]) == 5
     IS_EL8 = int(RELEASE[0]) == 8
     if not IS_EL5:
