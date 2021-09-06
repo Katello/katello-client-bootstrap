@@ -49,7 +49,7 @@ import glob
 import shutil
 import tempfile
 from datetime import datetime
-from optparse import OptionParser
+from optparse import OptionParser  # pylint:disable=deprecated-module
 try:
     from ConfigParser import SafeConfigParser
 except ImportError:
