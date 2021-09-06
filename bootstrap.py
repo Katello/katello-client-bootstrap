@@ -233,8 +233,12 @@ def check_package_version(package_name, package_version):
     transaction_set = rpm.TransactionSet()
     db_result = transaction_set.dbMatch('name', package_name)
     for package in db_result:
-        p_name = package['name'].decode('ascii')
-        p_version = package['version'].decode('ascii')
+        try:
+            p_name = package['name'].decode('ascii')
+            p_version = package['version'].decode('ascii')
+        except AttributeError:
+            p_name = package['name']
+            p_version = package['version']
         if rpm.labelCompare(('0', p_version, '1'), required_version) < 0:
             err = "%s %s is too old" % (p_name, p_version)
         else:
@@ -1021,7 +1025,10 @@ def check_rpm_installed():
     transaction_set = rpm.TransactionSet()
     db_results = transaction_set.dbMatch()
     for package in db_results:
-        package_name = package['name'].decode('ascii')
+        try:
+            package_name = package['name'].decode('ascii')
+        except AttributeError:
+            package_name = package['name']
         if package_name in rpm_sat:
             print_error("%s RPM found. bootstrap.py should not be used on a Katello/Spacewalk/Satellite host." % (package_name))
             sys.exit(1)
