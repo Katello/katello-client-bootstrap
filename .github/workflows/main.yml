@@ -5,11 +5,22 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - "lint"
+          - "test-centos:6"
+          - "test-centos:7"
+          - "test3-centos:stream8"
+          - "test3-centos:stream9"
     steps:
       - uses: actions/checkout@v2.4.0
       - name: Set up Python
         uses: actions/setup-python@v2.3.1
+        if: matrix.target == 'lint'
       - name: Install
         run: pip install flake8 pylint
+        if: matrix.target == 'lint'
       - name: Run tests
-        run: make test
+        run: make ${{ matrix.target }}
