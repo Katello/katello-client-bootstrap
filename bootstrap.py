@@ -797,7 +797,7 @@ def get_capsule_features(capsule_id):
     """
     Fetch all features available on a proxy
     """
-    url = "https://" + options.foreman_fqdn + ":" + str(API_PORT) + "/katello/api/capsules/%s" % str(capsule_id)
+    url = "https://" + options.foreman_fqdn + ":" + str(API_PORT) + "/api/smart_proxies/%s" % str(capsule_id)
     return [feature['name'] for feature in get_json(url)['features']]
 
 
