@@ -15,7 +15,7 @@ jobs:
           - "test3-centos:stream8"
           - "test3-centos:stream9"
     steps:
-      - uses: actions/checkout@v2.4.0
+      - uses: actions/checkout@v3
       - name: Set up Python
         uses: actions/setup-python@v3
         if: matrix.target == 'lint'
