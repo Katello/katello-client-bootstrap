@@ -433,7 +433,7 @@ def migrate_systems(org_name, activationkey):
     else:
         org_label = return_matching_katello_key('organizations', 'name="%s"' % org_name, 'label', False)
     print_generic("Calling rhn-migrate-classic-to-rhsm")
-    options.rhsmargs += " --force --destination-url=https://%s:%s/rhsm" % (options.foreman_fqdn, API_PORT)
+    options.rhsmargs += " --force --destination-url=https://%s:%s/rhsm" % (options.foreman_fqdn, RHSM_PORT)
     if options.legacy_purge:
         options.rhsmargs += " --legacy-user '%s' --legacy-password '%s'" % (options.legacy_login, options.legacy_password)
         if options.removepkgs and check_migration_version(SUBSCRIPTION_MANAGER_MIGRATION_REMOVE_PKGS_VERSION)[0]:
@@ -465,7 +465,7 @@ def register_systems(org_name, activationkey):
     else:
         org_label = return_matching_katello_key('organizations', 'name="%s"' % org_name, 'label', False)
     print_generic("Calling subscription-manager")
-    options.smargs += " --serverurl=https://%s:%s/rhsm --baseurl=https://%s/pulp/repos" % (options.foreman_fqdn, API_PORT, options.foreman_fqdn)
+    options.smargs += " --serverurl=https://%s:%s/rhsm --baseurl=https://%s/pulp/repos" % (options.foreman_fqdn, RHSM_PORT, options.foreman_fqdn)
     if options.force:
         options.smargs += " --force"
     if options.release:
@@ -1009,8 +1009,34 @@ def install_packages():
     call_yum("install", packages, False)
 
 
-def get_api_port():
-    """Helper function to get the server port from Subscription Manager."""
+def get_api_port(foreman_fqdn):
+    """
+    Helper function to get the API port.
+
+    This tries to access the `/api/ping` endoint in Foreman which exists since 1.22 and does
+    not require any authentication.
+    The detection can fail if the TLS certificate of the remote isn't trusted, so this has
+    to be called *after* katello-ca-consumer RPM has been installed and added the CA to the
+    system trust store.
+    The detection can also fail if there is no API reverse proxy available on the
+    Foreman Proxy.
+    If the detection fails we still return a fallback of "443" to allow the "normal" error
+    handling to catch the issue later on - or ignore it if API access it not required.
+    """
+    for port in ['443', '8443']:
+        try:
+            request = urllib_request('https://' + foreman_fqdn + ':' + port + '/api/ping')
+            request.add_header("Content-Type", "application/json")
+            request.add_header("Accept", "application/json")
+            urllib_urlopen(request, timeout=options.timeout)
+            return port
+        except:  # noqa: E722, pylint:disable=bare-except
+            pass
+    return "443"
+
+
+def get_rhsm_port():
+    """Helper function to get the RHSM port from Subscription Manager."""
     configparser = SafeConfigParser()
     configparser.read('/etc/rhsm/rhsm.conf')
     try:
@@ -1152,6 +1178,7 @@ if __name__ == '__main__':
 
     # > Gather API port (HTTPS), ARCHITECTURE and (OS) RELEASE
     API_PORT = "443"
+    RHSM_PORT = "443"
     ARCHITECTURE = get_architecture()
     try:
         # pylint:disable=deprecated-method
@@ -1394,7 +1421,8 @@ if __name__ == '__main__':
     if options.remove:
         # > IF remove, disassociate/delete host, unregister,
         # >            uninstall katello and optionally puppet agents
-        API_PORT = get_api_port()
+        API_PORT = get_api_port(options.foreman_fqdn)
+        RHSM_PORT = get_rhsm_port()
         unregister_system()
         if 'foreman' not in options.skip:
             hostid = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', True)
@@ -1421,7 +1449,8 @@ if __name__ == '__main__':
 
         get_bootstrap_rpm(clean=options.force)
         generate_katello_facts()
-        API_PORT = get_api_port()
+        API_PORT = get_api_port(options.foreman_fqdn)
+        RHSM_PORT = get_rhsm_port()
         if 'foreman' not in options.skip:
             create_host()
         configure_subscription_manager()
@@ -1451,7 +1480,8 @@ if __name__ == '__main__':
             print_warning("Skipping the installation of the Katello Agent is now the default behavior. passing --skip katello-agent is deprecated")
         enable_rhsmcertd()
 
-        API_PORT = get_api_port()
+        API_PORT = get_api_port(options.foreman_fqdn)
+        RHSM_PORT = get_rhsm_port()
         if 'foreman' not in options.skip:
             current_host_id = return_matching_foreman_key('hosts', 'name="%s"' % FQDN, 'id', False)
 
@@ -1510,7 +1540,8 @@ if __name__ == '__main__':
         install_prereqs()
         get_bootstrap_rpm(clean=options.force)
         generate_katello_facts()
-        API_PORT = get_api_port()
+        API_PORT = get_api_port(options.foreman_fqdn)
+        RHSM_PORT = get_rhsm_port()
         if 'foreman' not in options.skip:
             create_host()
         configure_subscription_manager()
