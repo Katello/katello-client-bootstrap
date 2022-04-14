@@ -20,7 +20,7 @@ jobs:
         uses: actions/setup-python@v3
         if: matrix.target == 'lint'
       - name: Install
-        run: pip install flake8 pylint
+        run: pip install flake8 'pylint<2.13'
         if: matrix.target == 'lint'
       - name: Run tests
         run: make ${{ matrix.target }}
