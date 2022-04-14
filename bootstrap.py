@@ -546,6 +546,12 @@ def generate_katello_facts():
 def install_puppet_agent():
     """Install and configure, then enable and start the Puppet Agent"""
     puppet_env = return_puppetenv_for_hg(return_matching_foreman_key('hostgroups', 'title="%s"' % options.hostgroup, 'id', False))
+
+    # If there is no Puppet environment, skip configuring Puppet
+    if puppet_env is None:
+        print_generic("No Puppet environment found, skipping Puppet setup.")
+        return
+
     print_generic("Installing the Puppet Agent")
     call_yum("install", "puppet-agent")
     enable_service("puppet")
@@ -852,14 +858,12 @@ def return_puppetenv_for_hg(hg_id):
     """
     Return the Puppet environment of the given hostgroup ID, either directly
     or inherited through its hierarchy. If no environment is found,
-    "production" is assumed.
+    `None` is returned.
     """
     myurl = "https://" + options.foreman_fqdn + ":" + API_PORT + "/api/v2/hostgroups/" + str(hg_id)
     hostgroup = get_json(myurl)
-    environment_name = 'production'
-    if hostgroup['environment_name']:
-        environment_name = hostgroup['environment_name']
-    elif hostgroup['ancestry']:
+    environment_name = hostgroup.get('environment_name')
+    if not environment_name and hostgroup.get('ancestry'):
         parent = hostgroup['ancestry'].split('/')[-1]
         environment_name = return_puppetenv_for_hg(parent)
     return environment_name
@@ -1493,14 +1497,17 @@ if __name__ == '__main__':
                 print_running("Calling Foreman API to switch location for %s to %s" % (FQDN, options.location))
                 update_host_config('location', options.location, current_host_id)
 
-            # Configure new proxy_id for Puppet (if not skipped), and OpenSCAP (if available and not skipped)
+            # Configure new proxy_id for Puppet (if available and not skipped), and OpenSCAP (if available and not skipped)
             smart_proxy_id = return_matching_foreman_key('smart_proxies', 'name="%s"' % options.foreman_fqdn, 'id', True)
             if smart_proxy_id:
                 capsule_features = get_capsule_features(smart_proxy_id)
                 if 'puppet' not in options.skip:
-                    print_running("Calling Foreman API to update Puppet master and Puppet CA for %s to %s" % (FQDN, options.foreman_fqdn))
-                    update_host_capsule_mapping("puppet_proxy_id", smart_proxy_id, current_host_id)
-                    update_host_capsule_mapping("puppet_ca_proxy_id", smart_proxy_id, current_host_id)
+                    if 'Puppet' in capsule_features:
+                        print_running("Calling Foreman API to update Puppet server and Puppet CA for %s to %s" % (FQDN, options.foreman_fqdn))
+                        update_host_capsule_mapping("puppet_proxy_id", smart_proxy_id, current_host_id)
+                        update_host_capsule_mapping("puppet_ca_proxy_id", smart_proxy_id, current_host_id)
+                    else:
+                        print_warning("New capsule doesn't have Puppet capability, not switching / configuring Puppet server and Puppet CA")
                 if 'Openscap' in capsule_features:
                     print_running("Calling Foreman API to update OpenSCAP proxy for %s to %s" % (FQDN, options.foreman_fqdn))
                     update_host_capsule_mapping("openscap_proxy_id", smart_proxy_id, current_host_id)
@@ -1512,8 +1519,8 @@ if __name__ == '__main__':
             else:
                 print_warning("Could not find Smart Proxy '%s'! Will not inform Foreman about the new Puppet/OpenSCAP/content source for %s." % (options.foreman_fqdn, FQDN))
 
-        if 'puppet' not in options.skip:
-            puppet_conf_path = '/etc/puppetlabs/puppet/puppet.conf'
+        puppet_conf_path = '/etc/puppetlabs/puppet/puppet.conf'
+        if 'puppet' not in options.skip and os.path.exists(puppet_conf_path):
             var_dir = '/opt/puppetlabs/puppet/cache'
             ssl_dir = '/etc/puppetlabs/puppet/ssl'
 
