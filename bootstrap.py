@@ -284,7 +284,10 @@ def install_prereqs():
         dnf_base.conf.read()
         dnf_base.conf.substitutions.update_from_etc('/')
         dnf_base.read_all_repos()
-        dnf_base.fill_sack()
+        try:
+            dnf_base.fill_sack()
+        except:  # noqa: E722, pylint:disable=bare-except
+            pass
         pkg_list = dnf_base.sack.query().filter(name='subscription-manager')
         subman_installed = pkg_list.installed().run()
         subman_available = pkg_list.available().run()
