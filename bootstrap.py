@@ -700,6 +700,36 @@ def install_ssh_key_from_string(foreman_ssh_key):
     output.close()
 
 
+def run_ansible_roles(foreman_fqdn, fqdn, job_invocation_name='Ansible Roles - Ansible Default'):
+    """
+    Call 'Ansible Roles - Ansible Default' remote job API in order to trigger the execution of ansible roles.
+    """
+    print_generic("Calling run_ansible_roles")
+    jsondata = {"search": "name = \"%s\"" % job_invocation_name}
+    myurl = "https://" + foreman_fqdn + ":" + API_PORT + "/api/job_templates/"
+    print_running("Calling Foreman API to retrieve job template id of '%s'" % job_invocation_name)
+    return_values = get_json(myurl, jsondata)
+
+    if 'subtotal' in return_values.keys() and \
+       'results' in return_values.keys() and \
+       return_values['subtotal'] == 1 and \
+       return_values['results'][0]['name'] == job_invocation_name:
+        job_template_id = return_values['results'][0]['id']
+
+        jsondata = {"job_invocation": {"job_template_id": job_template_id, "search_query": "name = %s" % fqdn, "targeting_type": "static_query"}}
+        myurl = "https://" + foreman_fqdn + ":" + API_PORT + "/api/job_invocations/"
+        print_running("Calling Foreman API to execute '%s' job" % job_invocation_name)
+        return_values = post_json(myurl, jsondata)
+        if 'id' in return_values.keys():
+            print_success("Job template '%s' executed. Job id: %d" % (job_invocation_name, return_values['id']))
+        else:
+            print_error("Error during the execution of job template '%s'" % job_invocation_name)
+            sys.exit(1)
+    else:
+        print_error("Job template '%s' not found" % job_invocation_name)
+        sys.exit(1)
+
+
 class BetterHTTPErrorProcessor(urllib_basehandler):
     """
     A substitute/supplement class to HTTPErrorProcessor
@@ -770,9 +800,9 @@ def call_api(url, data=None, method='GET'):
         sys.exit(2)
 
 
-def get_json(url):
+def get_json(url, jdata=None):
     """Use `call_api` to place a "GET" REST API call."""
-    return call_api(url)
+    return call_api(url, data=jdata)
 
 
 def post_json(url, jdata):
@@ -1248,6 +1278,7 @@ if __name__ == '__main__':
     parser.add_option("--rex-urlkeyfile", dest="remote_exec_url", help="HTTP/S location of a file containing one or more Foreman's SSH keys for remote execution.")
     parser.add_option("--rex-apikeys", dest="remote_exec_apikeys", action="store_true", help="Fetch Foreman's SSH keys from the API.")
     parser.add_option("--rex-authpath", dest="remote_exec_authpath", help="Full path to local authorized_keys file in order to install Foreman's SSH keys for remote execution. Default ~/.ssh/authorized_keys")
+    parser.add_option("--run-ansible-roles", dest="run_ansible_roles", action="store_true", help="Run ansible roles after registration.", default=False)
     parser.add_option("--enablerepos", dest="enablerepos", help="Repositories to be enabled via subscription-manager - comma separated", metavar="enablerepos")
     parser.add_option("--skip", dest="skip", action="append", help="Skip the listed steps (choices: %s)" % SKIP_STEPS, choices=SKIP_STEPS, default=[])
     parser.add_option("--ip", dest="ip", help="IPv4 address of the primary interface in Foreman (defaults to the address used to make request to Foreman)")
@@ -1601,3 +1632,6 @@ if __name__ == '__main__':
             else:
                 remote_exec_url = "https://" + str(options.foreman_fqdn) + ":9090/ssh/pubkey"
                 install_ssh_key_from_url(remote_exec_url)
+
+        if options.run_ansible_roles:
+            run_ansible_roles(options.foreman_fqdn, FQDN)
